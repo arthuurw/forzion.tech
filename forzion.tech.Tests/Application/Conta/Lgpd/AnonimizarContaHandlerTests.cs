@@ -38,6 +38,7 @@ public class AnonimizarContaHandlerTests
     private readonly Mock<IMfaChallengeRepository> _challengeRepo = new();
     private readonly Mock<ITrustedDeviceRepository> _trustedDeviceRepo = new();
     private readonly Mock<IPasswordResetTokenRepository> _resetTokenRepo = new();
+    private readonly Mock<ITrocaEmailTokenRepository> _trocaEmailTokenRepo = new();
 
     private readonly AnonimizarContaHandler _handler;
 
@@ -93,7 +94,8 @@ public class AnonimizarContaHandlerTests
             _recoveryRepo.Object,
             _challengeRepo.Object,
             _trustedDeviceRepo.Object,
-            _resetTokenRepo.Object);
+            _resetTokenRepo.Object,
+            _trocaEmailTokenRepo.Object);
     }
 
     private static Conta CriarContaComHash(TipoConta tipo, string email = "user@test.com") =>
@@ -269,6 +271,48 @@ public class AnonimizarContaHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_Aluno_PurgaTrocaEmailTokensDoTitular()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        var aluno = Aluno.Criar(contaId, "Com Troca Email", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsSuccess.Should().BeTrue();
+        _trocaEmailTokenRepo.Verify(r => r.ExcluirPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PurgaTrocaEmailTokensAntesDoCommit()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        var aluno = Aluno.Criar(contaId, "Ordem", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+
+        var ordem = new List<string>();
+        _trocaEmailTokenRepo.Setup(r => r.ExcluirPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                            .Callback(() => ordem.Add("purga-troca")).Returns(Task.CompletedTask);
+        _uow.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => ordem.Add("commit")).Returns(Task.CompletedTask);
+
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsSuccess.Should().BeTrue();
+        ordem.Should().Equal("purga-troca", "commit");
+    }
+
+    [Fact]
     public async Task HandleAsync_PurgaCredenciaisMfaDoTitular()
     {
         var contaId = Guid.NewGuid();
@@ -374,6 +418,26 @@ public class AnonimizarContaHandlerTests
         treinador.Nome.Should().Be("Usuário anonimizado");
     }
 
+    [Fact]
+    public async Task HandleAsync_Treinador_PurgaTrocaEmailTokensDoTitular()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Treinador, "treinador@troca.com");
+        var treinador = Treinador.Criar(contaId, "Coach Troca", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(treinador);
+        _vinculoRepo.Setup(r => r.TemVinculosAtivosAsync(treinador.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(false);
+
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsSuccess.Should().BeTrue();
+        _trocaEmailTokenRepo.Verify(r => r.ExcluirPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     // ── admin bypass ──────────────────────────────────────────────────────────
 
     [Fact]
@@ -396,6 +460,26 @@ public class AnonimizarContaHandlerTests
         conta.AnonimizadaEm.Should().NotBeNull();
         // passwordHasher.Verify should never be called for admin path
         _passwordHasher.Verify(p => p.Verify(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AdminSemSenha_PurgaTrocaEmailTokensDoTitular()
+    {
+        var adminId = Guid.NewGuid();
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno);
+        var aluno = Aluno.Criar(contaId, "Target Troca", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+
+        var result = await _handler.HandleAsync(
+            new AnonimizarContaCommand(contaId, adminId, SenhaAtual: null));
+
+        result.IsSuccess.Should().BeTrue();
+        _trocaEmailTokenRepo.Verify(r => r.ExcluirPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ── pagamentos retained ───────────────────────────────────────────────────

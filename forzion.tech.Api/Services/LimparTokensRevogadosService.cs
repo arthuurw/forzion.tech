@@ -85,6 +85,18 @@ public class LimparTokensRevogadosService(
 
         try
         {
+            var trocaEmailTokenRepo = scope.ServiceProvider.GetRequiredService<ITrocaEmailTokenRepository>();
+            var trocaEmailTokensRemovidos = await trocaEmailTokenRepo.LimparExpiradosAsync(stoppingToken).ConfigureAwait(false);
+            if (trocaEmailTokensRemovidos > 0)
+                logger.LogInformation("Limpeza de tokens de troca de e-mail: {Count} registros removidos.", trocaEmailTokensRemovidos);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Erro ao limpar tokens de troca de e-mail expirados.");
+        }
+
+        try
+        {
             var errorLogRepo = scope.ServiceProvider.GetRequiredService<IErrorLogRepository>();
             var logsRemovidos = await errorLogRepo.LimparAntigosAsync(stoppingToken).ConfigureAwait(false);
             if (logsRemovidos > 0)

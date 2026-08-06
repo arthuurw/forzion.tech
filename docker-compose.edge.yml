@@ -1,0 +1,50 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+# nginx de BORDA único (co-locação prd+hmg): resolve o conflito de porta (só 1 nginx pode bindar
+# 80/443 na VM). Anexa às DUAS redes external (forzion-hmg + forzion-prd) e roteia por server_name.
+# Backends ficam cada um só na sua rede (isolamento §ISOLAMENTO: hmg backend não alcança prd backend
+# — sem rede comum; só a borda cruza, no nível de proxy HTTP, não de rota L3). Aliases *-hmg/*-prd
+# dão nomes únicos (o service name `backend` colidiria entre os 2 projetos visto da borda).
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - /var/log/forzion-nginx:/var/log/nginx
+    mem_limit: 128m
+    cpu_shares: 512
+    pids_limit: 256
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - forzion-hmg
+      - forzion-prd
+
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: >
+      /bin/sh -c "trap exit TERM;
+      while :; do
+        certbot renew --webroot --webroot-path=/var/www/certbot --quiet;
+        sleep 12h & wait $${!};
+      done"
+    restart: unless-stopped
+    logging: *default-logging
+
+networks:
+  forzion-hmg:
+    external: true
+  forzion-prd:
+    external: true

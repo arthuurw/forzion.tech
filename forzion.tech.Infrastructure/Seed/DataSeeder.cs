@@ -231,9 +231,13 @@ public class DataSeeder(
         if (jaExiste)
             return;
 
-        var email = configuration["Seed:AdminEmail"] ?? "admin@forzion.tech";
-        var senha = configuration["Seed:AdminPassword"]
-            ?? throw new InvalidOperationException("Seed:AdminPassword não configurado.");
+        var email = configuration["Seed:AdminEmail"];
+        if (string.IsNullOrWhiteSpace(email))
+            email = "admin@forzion.tech";
+
+        var senha = configuration["Seed:AdminPassword"];
+        if (string.IsNullOrWhiteSpace(senha))
+            throw new InvalidOperationException("Seed:AdminPassword não configurado.");
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var conta = Conta.Criar(Email.Criar(email).Value, passwordHasher.Hash(senha), TipoConta.SystemAdmin, agora).Value;

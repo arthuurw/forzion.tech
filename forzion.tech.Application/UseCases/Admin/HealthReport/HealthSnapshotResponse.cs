@@ -8,7 +8,8 @@ public record HealthSnapshotResponse(
     DateTime CapturadoEm,
     string Ambiente,
     StatusSaude StatusGeral,
-    string PayloadJson);
+    string PayloadJson,
+    bool? EmailEnviado);
 
 public static class HealthSnapshotResponseExtensions
 {
@@ -17,5 +18,6 @@ public static class HealthSnapshotResponseExtensions
         snapshot.CapturadoEm,
         snapshot.Ambiente,
         snapshot.StatusGeral,
-        snapshot.PayloadJson);
+        snapshot.PayloadJson,
+        snapshot.EmailEnviado);
 }

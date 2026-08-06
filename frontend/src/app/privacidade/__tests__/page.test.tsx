@@ -28,6 +28,21 @@ describe("PrivacidadePage", () => {
     expect(screen.getByText(/anamnese/i)).toBeInTheDocument();
   });
 
+  it("discloses treinador fiscal data as a PII category", () => {
+    render(<PrivacidadePage />);
+    expect(
+      screen.getByText(/CPF\/CNPJ, razão social, inscrição municipal/i),
+    ).toBeInTheDocument();
+  });
+
+  it("discloses legal retention of fiscal/transactional data after account deletion", () => {
+    render(<PrivacidadePage />);
+    expect(
+      screen.getByRole("heading", { name: /retenção e exclusão de dados/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/art\. 7º, II e art\. 16, I da LGPD/i)).toBeInTheDocument();
+  });
+
   it("mentions international data transfer", () => {
     render(<PrivacidadePage />);
     expect(

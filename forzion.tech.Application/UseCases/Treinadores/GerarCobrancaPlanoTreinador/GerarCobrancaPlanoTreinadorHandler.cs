@@ -44,6 +44,9 @@ public class GerarCobrancaPlanoTreinadorHandler(
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
 
+        if (assinatura.Status == AssinaturaTreinadorStatus.Ativa && assinatura.DataProximaCobranca > now)
+            return Result.Failure<IniciarPagamentoPlanoResponse>(AssinaturaTreinadorErrors.RenovacaoNaoDevida);
+
         if (assinatura.PlanoPlataformaIdAgendado.HasValue)
         {
             var planoAgendado = await planoRepository.ObterPorIdAsync(assinatura.PlanoPlataformaIdAgendado.Value, cancellationToken).ConfigureAwait(false);
@@ -68,6 +71,16 @@ public class GerarCobrancaPlanoTreinadorHandler(
                     assinatura.PlanoPlataformaIdAgendado, assinatura.Id);
                 assinatura.LimparPlanoAgendado(now);
             }
+
+            // Commit já aqui: o caminho de reuso em CriarPagamentoComIntentService retorna antes de commitar.
+            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        var pendenteAtual = await pagamentoRepository.ObterPendentePorAssinaturaAsync(assinatura.Id, cancellationToken).ConfigureAwait(false);
+        if (pendenteAtual is not null && pendenteAtual.EstaVencido(now))
+        {
+            assinatura.RegistrarPagamentoFalho(now);
+            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
 
         var chave = IdempotencyKey.Cobranca("treinador", assinatura.Id, now);
@@ -84,7 +97,11 @@ public class GerarCobrancaPlanoTreinadorHandler(
                     pix = await stripeService.CriarPixPlataformaPaymentIntentAsync(assinatura.Valor, chave, ct).ConfigureAwait(false);
             },
             ObterPendente: ct => pagamentoRepository.ObterPendentePorAssinaturaAsync(assinatura.Id, ct),
-            VerificarIdempotencia: pendente => pendente.StripePaymentIntentId is not null ? pendente : null,
+            VerificarIdempotencia: pendente => pendente.StripePaymentIntentId is not null
+                && !pendente.EstaVencido(now)
+                && pendente.Valor == assinatura.Valor
+                    ? pendente
+                    : null,
             CriarPagamento: () => PagamentoTreinador.Criar(
                 assinatura.TreinadorId, assinatura.Id, assinatura.Valor,
                 FinalidadePagamentoTreinador.Renovacao, now, command.Metodo),
@@ -93,7 +110,7 @@ public class GerarCobrancaPlanoTreinadorHandler(
                 : pag.DefinirDadosPix(pix!.PaymentIntentId, pix.QrCode, pix.QrCodeUrl, pix.Expiracao, now),
             AdicionarAsync: (pag, ct) => pagamentoRepository.AdicionarAsync(pag, ct)
         )
-        { MarcarFalhou = (pag, agora) => pag.MarcarFalhou(agora) };
+        { ObterPaymentIntentId = pag => pag.StripePaymentIntentId, MarcarFalhou = (pag, agora) => pag.MarcarFalhou(agora) };
 
         var result = await criarPagamentoService.ExecutarAsync(params_, cancellationToken).ConfigureAwait(false);
         if (result.IsFailure)

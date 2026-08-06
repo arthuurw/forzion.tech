@@ -3,6 +3,7 @@ using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.Shared;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Application.UseCases.Admin.HealthReport;
 
@@ -12,7 +13,8 @@ public class ExecutarRelatorioSaudeHandler(
     IHealthSnapshotRepository snapshotRepository,
     IHealthReportSender sender,
     IUnitOfWork unitOfWork,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogger<ExecutarRelatorioSaudeHandler> logger)
 {
     public virtual async Task<Result<HealthSnapshotResponse>> HandleAsync(CancellationToken cancellationToken = default)
     {
@@ -29,8 +31,24 @@ public class ExecutarRelatorioSaudeHandler(
 
         await snapshotRepository.AdicionarAsync(snapshot, cancellationToken).ConfigureAwait(false);
 
-        await sender.EnviarAsync(report, config.ObterDestinatarios(), cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
+        var emailEnviado = true;
+        try
+        {
+            await sender.EnviarAsync(report, config.ObterDestinatarios(), cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            emailEnviado = false;
+            logger.LogCritical(ex, "Relatório de saúde persistido, mas o envio de e-mail falhou.");
+        }
+
+        snapshot.MarcarEmailEnviado(emailEnviado);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         return Result.Success(HealthSnapshotResponseExtensions.ToResponse(snapshot));

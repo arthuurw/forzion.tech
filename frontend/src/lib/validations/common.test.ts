@@ -23,7 +23,7 @@ describe("emailSchema", () => {
 });
 
 describe("passwordSchema", () => {
-  it("aceita senha com 8+ caracteres", () => {
+  it("aceita senha com 8+ caracteres (login não endurecido — FEAUTH-08/D-3)", () => {
     expect(passwordSchema.safeParse("12345678").success).toBe(true);
   });
   it("rejeita senha com menos de 8 caracteres", () => {
@@ -33,21 +33,30 @@ describe("passwordSchema", () => {
 
 describe("registerPasswordSchema", () => {
   it("aceita senha com maiúscula, minúscula e número", () => {
-    expect(registerPasswordSchema.safeParse("Senha123").success).toBe(true);
+    expect(registerPasswordSchema.safeParse("Senha123abcd").success).toBe(true);
   });
   it("rejeita senha sem maiúscula", () => {
-    expect(registerPasswordSchema.safeParse("senha123").success).toBe(false);
+    expect(registerPasswordSchema.safeParse("senha123abcd").success).toBe(false);
   });
   it("rejeita senha sem minúscula", () => {
-    expect(registerPasswordSchema.safeParse("SENHA123").success).toBe(false);
+    expect(registerPasswordSchema.safeParse("SENHA123ABCD").success).toBe(false);
   });
   it("rejeita senha sem número", () => {
-    expect(registerPasswordSchema.safeParse("SenhaABC").success).toBe(false);
+    expect(registerPasswordSchema.safeParse("SenhaABCDefg").success).toBe(false);
   });
-  it("rejeita senha com menos de 8 caracteres", () => {
+  it("rejeita senha com menos de 12 caracteres", () => {
     expect(registerPasswordSchema.safeParse("Se1").success).toBe(false);
   });
-  it("rejeita senha com mais de 72 caracteres", () => {
+  it("rejeita senha com 11 caracteres (fronteira, paridade SenhaForte)", () => {
+    expect(registerPasswordSchema.safeParse("Aa1" + "x".repeat(8)).success).toBe(false);
+  });
+  it("aceita senha com 12 caracteres (fronteira, paridade SenhaForte)", () => {
+    expect(registerPasswordSchema.safeParse("Aa1" + "x".repeat(9)).success).toBe(true);
+  });
+  it("aceita senha com 72 caracteres (fronteira máxima)", () => {
+    expect(registerPasswordSchema.safeParse("Aa1" + "x".repeat(69)).success).toBe(true);
+  });
+  it("rejeita senha com 73 caracteres (excede máxima)", () => {
     expect(registerPasswordSchema.safeParse("Aa1" + "x".repeat(70)).success).toBe(false);
   });
 });
@@ -97,7 +106,7 @@ describe("loginSchema", () => {
 
 describe("cadastroTreinadorSchema", () => {
   const base = {
-    nome: "Carlos", email: "c@t.com", password: "Senha123", confirmPassword: "Senha123",
+    nome: "Carlos", email: "c@t.com", password: "Senha123abcd", confirmPassword: "Senha123abcd",
     planoPlataformaId: "plano-1", modoPagamentoAluno: "Plataforma" as const,
   };
 
@@ -120,8 +129,8 @@ describe("cadastroAlunoSchema", () => {
     nome: "João",
     email: "j@a.com",
     telefone: "11999998888",
-    password: "Senha123",
-    confirmPassword: "Senha123",
+    password: "Senha123abcd",
+    confirmPassword: "Senha123abcd",
     diasDisponiveis: "3",
     tempoDisponivelMinutos: "60",
     finalidade: "Hipertrofia",

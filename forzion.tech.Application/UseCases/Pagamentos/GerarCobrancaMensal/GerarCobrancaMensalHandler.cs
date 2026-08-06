@@ -18,6 +18,7 @@ public class GerarCobrancaMensalHandler(
     IContaRecebimentoRepository contaRecebimentoRepository,
     IStripeService stripeService,
     CriarPagamentoComIntentService criarPagamentoService,
+    IUnitOfWork unitOfWork,
     IOptions<PaymentSettings> paymentSettings,
     TimeProvider timeProvider,
     ILogger<GerarCobrancaMensalHandler> logger)
@@ -51,6 +52,14 @@ public class GerarCobrancaMensalHandler(
         var taxa = _taxaPlataformaPercent;
         var chave = IdempotencyKey.Cobranca("aluno", assinatura.Id, now);
 
+        var pendenteAtual = await pagamentoRepository.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, cancellationToken).ConfigureAwait(false);
+        if (pendenteAtual is not null && pendenteAtual.EstaVencido(now))
+        {
+            // Único ponto que percebe abandono de cartão: Stripe não emite webhook terminal pra PI nunca confirmado.
+            assinatura.RegistrarPagamentoFalho(now);
+            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         PixPaymentResult? pix = null;
         CartaoPaymentResult? cartao = null;
 
@@ -63,14 +72,14 @@ public class GerarCobrancaMensalHandler(
                     pix = await stripeService.CriarPixPaymentIntentAsync(assinatura.Valor, accountId, taxa, chave, ct).ConfigureAwait(false);
             },
             ObterPendente: ct => pagamentoRepository.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, ct),
-            VerificarIdempotencia: pendente => pendente.StripePaymentIntentId is not null ? pendente : null,
+            VerificarIdempotencia: pendente => pendente.StripePaymentIntentId is not null && !pendente.EstaVencido(now) ? pendente : null,
             CriarPagamento: () => Pagamento.Criar(assinatura.Id, assinatura.Valor, now, command.Metodo),
             AplicarIntent: pag => command.Metodo == MetodoPagamento.Cartao
                 ? pag.DefinirDadosCartao(cartao!.PaymentIntentId, cartao.ClientSecret, now)
                 : pag.DefinirDadosPix(pix!.PaymentIntentId, pix.QrCode, pix.QrCodeUrl, pix.Expiracao, now),
             AdicionarAsync: (pag, ct) => pagamentoRepository.AdicionarAsync(pag, ct)
         )
-        { MarcarFalhou = (pag, agora) => pag.MarcarFalhou(agora) };
+        { ObterPaymentIntentId = pag => pag.StripePaymentIntentId, MarcarFalhou = (pag, agora) => pag.MarcarFalhou(agora) };
 
         var result = await criarPagamentoService.ExecutarAsync(params_, cancellationToken).ConfigureAwait(false);
         if (result.IsFailure)

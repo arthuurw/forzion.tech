@@ -4,8 +4,8 @@ name: DB Backup
 # pg_dump -Fc → criptografa com age (chave PÚBLICA; privada fica offline com o dono) → upload R2 off-site.
 # Conexão pelo Session pooler (:5432, IPv4): runner do GitHub não tem rota IPv6 p/ o host direto, e
 # pg_dump exige sessão (Transaction :6543 não serve).
-# Dumpa homolog (staging, canônico hoje) + public (produção, PREPARADO): prod e staging vivem na
-# MESMA DB Supabase, só muda o schema → 1 dump cobre os 2, independente de qual branch é default.
+# 2 alvos em projetos Supabase SEPARADOS: homolog (schema homolog, projeto forzion) sempre; prod
+# (schema public, projeto forzion_p) só quando BACKUP_DATABASE_URL_PROD existe — ausente = no-op verde.
 # Restore: ver specs/specification-dr.md §2.
 
 on:
@@ -25,9 +25,6 @@ jobs:
   backup:
     name: pg_dump -> age -> R2
     runs-on: ubuntu-latest
-    env:
-      # homolog=staging (canônico hoje) + public=produção (PREPARADO). MESMA DB → 1 dump cobre ambos.
-      BACKUP_SCHEMAS: homolog public
     steps:
       - name: Instalar pg_dump 17 + age
         run: |
@@ -44,6 +41,8 @@ jobs:
       - name: Dump + criptografar + upload R2
         env:
           BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          # forzion_p (prod, projeto separado). Secret ausente pré-go-live → string vazia → alvo pulado.
+          BACKUP_DATABASE_URL_PROD: ${{ secrets.BACKUP_DATABASE_URL_PROD }}
           BACKUP_AGE_PUBLIC_KEY: ${{ secrets.BACKUP_AGE_PUBLIC_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -55,45 +54,61 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
           set -euo pipefail
-          STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-          FILE="forzion-db-${STAMP}.dump"
 
           # BKP-01: o dump em claro (PII/LGPD, repo público) não pode sobreviver a NENHUMA saída
-          # — falha do age/aws ou do size-guard. O trap remove claro + .age em qualquer exit.
-          trap 'rm -f "${FILE}" "${FILE}.age"' EXIT
+          # (falha de age/aws/size-guard ou set -e). O trap EXIT limpa qualquer dump dos 2 alvos.
+          trap 'rm -f forzion-db-*.dump forzion-db-*.dump.age' EXIT
 
-          # BKP-02: senha fora do process list. A URI posicional apareceria em ps/argv do pg_dump;
-          # tira a senha p/ PGPASSWORD e passa a URI sem-senha (host/porta/user/db/params intactos).
-          # BKP-03: parse via urlsplit (python3 -c; ubuntu-latest sempre tem). A senha vai
-          # URL-DECODADA pro PGPASSWORD — libpq decoda a senha quando vem na URI mas usa PGPASSWORD
-          # literal, então senha percent-encoded (%40, %2F...) precisa ser decodada aqui ou a auth
-          # falha. SAFE_URL mantém o user-info encodado (libpq decoda a URI) e sem senha (BKP-02);
-          # URI sem senha → password None → PGPASSWORD vazio (não vira a URI inteira como no sed).
-          PGPASSWORD="$(python3 -c 'import os,urllib.parse as p; u=p.urlsplit(os.environ["BACKUP_DATABASE_URL"]); print(p.unquote(u.password) if u.password is not None else "")')"
-          SAFE_URL="$(python3 -c 'import os,urllib.parse as p; u=p.urlsplit(os.environ["BACKUP_DATABASE_URL"]); netloc=((u.username+"@") if u.username is not None else "")+(u.hostname or "")+((":"+str(u.port)) if u.port else ""); print(p.urlunsplit((u.scheme,netloc,u.path,u.query,u.fragment)))')"
-          export PGPASSWORD
+          # Dumpa 1 alvo (pg_dump -> age -> R2). DRY entre homolog e prod → BKP-02/03 num lugar só.
+          backup_one() {
+            local DB_URL="$1" SCHEMAS_STR="$2" R2_PREFIX="$3"
+            local STAMP FILE PGPASSWORD SAFE_URL SIZE
+            STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+            FILE="forzion-db-${STAMP}.dump"
 
-          read -ra SCHEMAS <<< "${BACKUP_SCHEMAS}"
-          SCHEMA_ARGS=()
-          for s in "${SCHEMAS[@]}"; do SCHEMA_ARGS+=("--schema=${s}"); done
-          "${PGDUMP}" "${SAFE_URL}" "${SCHEMA_ARGS[@]}" -Fc -f "${FILE}"
+            # BKP-02: senha fora do process list. A URI posicional apareceria em ps/argv do pg_dump;
+            # tira a senha p/ PGPASSWORD e passa a URI sem-senha (host/porta/user/db/params intactos).
+            # BKP-03: parse via urlsplit (python3 -c; ubuntu-latest sempre tem). A senha vai
+            # URL-DECODADA pro PGPASSWORD — libpq decoda a senha quando vem na URI mas usa PGPASSWORD
+            # literal, então senha percent-encoded (%40, %2F...) precisa ser decodada aqui ou a auth
+            # falha. SAFE_URL mantém o user-info encodado (libpq decoda a URI) e sem senha (BKP-02).
+            PGPASSWORD="$(DB_URL="${DB_URL}" python3 -c 'import os,urllib.parse as p; u=p.urlsplit(os.environ["DB_URL"]); print(p.unquote(u.password) if u.password is not None else "")')"
+            SAFE_URL="$(DB_URL="${DB_URL}" python3 -c 'import os,urllib.parse as p; u=p.urlsplit(os.environ["DB_URL"]); netloc=((u.username+"@") if u.username is not None else "")+(u.hostname or "")+((":"+str(u.port)) if u.port else ""); print(p.urlunsplit((u.scheme,netloc,u.path,u.query,u.fragment)))')"
+            export PGPASSWORD
 
-          # dump minúsculo = falha silenciosa do pg_dump; aborta antes de subir lixo + disparar alerta.
-          SIZE=$(stat -c%s "${FILE}")
-          echo "dump size = ${SIZE} bytes"
-          if [ "${SIZE}" -lt 1000 ]; then
-            echo "Dump suspeito (<1KB). Abortando."
-            exit 1
+            local SCHEMAS SCHEMA_ARGS
+            read -ra SCHEMAS <<< "${SCHEMAS_STR}"
+            SCHEMA_ARGS=()
+            for s in "${SCHEMAS[@]}"; do SCHEMA_ARGS+=("--schema=${s}"); done
+            "${PGDUMP}" "${SAFE_URL}" "${SCHEMA_ARGS[@]}" -Fc -f "${FILE}"
+
+            # dump minúsculo = falha silenciosa do pg_dump; aborta antes de subir lixo + disparar alerta.
+            SIZE=$(stat -c%s "${FILE}")
+            echo "dump size (${R2_PREFIX:-homolog}) = ${SIZE} bytes"
+            if [ "${SIZE}" -lt 1000 ]; then
+              echo "Dump suspeito (<1KB) em ${R2_PREFIX:-homolog}. Abortando."
+              return 1
+            fi
+
+            # criptografa p/ a chave pública; o dump em claro (PII/LGPD) nunca persiste no runner.
+            age -r "${BACKUP_AGE_PUBLIC_KEY}" -o "${FILE}.age" "${FILE}"
+            rm -f "${FILE}"
+
+            aws s3 cp "${FILE}.age" "s3://${R2_BUCKET}/${R2_PREFIX}${FILE}.age" \
+              --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
+              --only-show-errors
+            echo "backup enviado: s3://${R2_BUCKET}/${R2_PREFIX}${FILE}.age (${SIZE} bytes em claro)"
+          }
+
+          # homolog (staging): só schema homolog. public saiu — prod migrou p/ projeto separado forzion_p.
+          backup_one "${BACKUP_DATABASE_URL}" "homolog" ""
+
+          # prod (forzion_p): projeto separado. Secret ausente (pré-go-live) → pula, sem falhar o run.
+          if [ -n "${BACKUP_DATABASE_URL_PROD:-}" ]; then
+            backup_one "${BACKUP_DATABASE_URL_PROD}" "public" "prod/"
+          else
+            echo "backup prod pulado: BACKUP_DATABASE_URL_PROD não setado (forzion_p não provisionado)."
           fi
-
-          # criptografa p/ a chave pública; o dump em claro (PII/LGPD) nunca persiste no runner.
-          age -r "${BACKUP_AGE_PUBLIC_KEY}" -o "${FILE}.age" "${FILE}"
-          rm -f "${FILE}"
-
-          aws s3 cp "${FILE}.age" "s3://${R2_BUCKET}/${FILE}.age" \
-            --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
-            --only-show-errors
-          echo "backup enviado: s3://${R2_BUCKET}/${FILE}.age (${SIZE} bytes em claro)"
 
       - name: Healthchecks ping (success)
         if: success()
@@ -117,8 +132,8 @@ jobs:
               '',
               'Sem backup hoje = janela de perda de dado aumenta (RPO degrada).',
               '',
-              'Investigar:',
-              '1. `BACKUP_DATABASE_URL` válido? (Session pooler :5432, user `forzion_api.<ref>`)',
+              'Investigar (o log diz qual alvo falhou — homolog ou prod):',
+              '1. URL válida? homolog=`BACKUP_DATABASE_URL`, prod=`BACKUP_DATABASE_URL_PROD` (Session pooler :5432, user `forzion_api.<ref>`).',
               '2. Credenciais R2 (`R2_*`) e bucket corretos?',
               '3. `BACKUP_AGE_PUBLIC_KEY` setado?',
               '4. Logs do run acima.',

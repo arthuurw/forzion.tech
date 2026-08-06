@@ -69,6 +69,7 @@ export default function SaudeAdminPage() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [emailFalhou, setEmailFalhou] = useState(false);
   const [ultimoEnvioEm, setUltimoEnvioEm] = useState<string | null>(null);
   const [ultimoSnapshot, setUltimoSnapshot] = useState<HealthSnapshotResponse | null>(null);
   const [snapshotIndisponivel, setSnapshotIndisponivel] = useState(false);
@@ -151,9 +152,15 @@ export default function SaudeAdminPage() {
   const handleEnviarAgora = async () => {
     setRunning(true);
     setError("");
+    setSuccess("");
+    setEmailFalhou(false);
     try {
-      await adminApi.runHealthReport();
-      setSuccess("Relatório enviado e snapshot gerado.");
+      const res = await adminApi.runHealthReport();
+      if (res.data.emailEnviado === false) {
+        setEmailFalhou(true);
+      } else {
+        setSuccess("Relatório enviado e snapshot gerado.");
+      }
       await carregarUltimoSnapshot();
     } catch (err) {
       setError(extractApiError(err, "Erro ao executar o relatório. Salve uma configuração antes de enviar."));
@@ -169,6 +176,12 @@ export default function SaudeAdminPage() {
       <PageHeader title="Relatório de saúde" />
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
+      <AlertBanner
+        open={emailFalhou}
+        severity="warning"
+        message="Snapshot gerado, mas o e-mail falhou. Verifique a configuração de envio."
+        onClose={() => setEmailFalhou(false)}
+      />
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>
           <FormProvider {...form}>
@@ -222,6 +235,9 @@ export default function SaudeAdminPage() {
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Chip label={ultimoSnapshot.statusGeral} size="small" color={STATUS_COLOR[ultimoSnapshot.statusGeral]} />
                 <Typography variant="body2" color="text.secondary">{ultimoSnapshot.ambiente}</Typography>
+                {ultimoSnapshot.emailEnviado === false && (
+                  <Chip label="E-mail não enviado" size="small" color="warning" />
+                )}
               </Box>
               <Typography variant="caption" color="text.secondary">
                 {new Date(ultimoSnapshot.capturadoEm).toLocaleString("pt-BR")}

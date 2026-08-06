@@ -38,8 +38,8 @@ describe("CadastroAlunoPage (R6 resumo + R8 consentimento anamnese)", () => {
     fireEvent.change(screen.getByLabelText(/E-mail/i), { target: { value: "maria@email.com" } });
     fireEvent.change(screen.getByLabelText(/Celular/i), { target: { value: "11987654321" } });
     const senhas = screen.getAllByLabelText(/senha/i);
-    fireEvent.change(senhas[0], { target: { value: "Senha123" } });
-    fireEvent.change(senhas[1], { target: { value: "Senha123" } });
+    fireEvent.change(senhas[0], { target: { value: "Senha123abcd" } });
+    fireEvent.change(senhas[1], { target: { value: "Senha123abcd" } });
     fireEvent.click(screen.getByText("Próximo"));
     await screen.findByText("Disponibilidade");
   };

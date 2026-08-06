@@ -1,49 +1,48 @@
 #!/bin/bash
-# Obtém o primeiro certificado SSL via Let's Encrypt.
-# Executar UMA VEZ após DNS propagado e setup-vm.sh concluído.
-#
-# Uso: bash scripts/init-ssl.sh homolog.forzion.tech seu@email.com
-
+# Emite o 1o certificado Let's Encrypt (webroot ACME) para um conjunto de dominios.
+# Rodar UMA VEZ por ambiente apos DNS + setup-vm. Renew recorrente = servico certbot do edge.
+# Uso:
+#   bash scripts/init-ssl.sh seu@email.com homologacao.forzion.tech pact.homologacao.forzion.tech
+#   bash scripts/init-ssl.sh seu@email.com forzion.tech www.forzion.tech app.forzion.tech
 set -euo pipefail
 
-DOMAIN="${1:?Uso: $0 <dominio> <email>}"
-EMAIL="${2:?Uso: $0 <dominio> <email>}"
-DIR=/opt/forzion/app
+EMAIL="${1:?Uso: $0 <email> <dominio> [dominio...]}"
+shift
+[ "$#" -ge 1 ] || { echo "Informe ao menos 1 dominio."; exit 1; }
 
-cd "$DIR"
+EDGE_DIR="${EDGE_DIR:-/opt/forzion/app}"
+cd "$EDGE_DIR"
 
-# Nginx com config HTTP-only para passar no desafio ACME
-cp nginx/nginx-init.conf nginx/nginx-active.conf
+CERT_ARGS=()
+for d in "$@"; do CERT_ARGS+=( -d "$d" ); done
 
-docker compose -f docker-compose.homolog.yml stop nginx 2>/dev/null || true
-docker run --rm -d \
-  --name nginx-init \
-  -p 80:80 \
-  -v "$DIR/nginx/nginx-init.conf:/etc/nginx/nginx.conf:ro" \
-  -v "$DIR/certbot/www:/var/www/certbot" \
-  nginx:1.27-alpine
+EDGE="docker compose -p edge -f docker-compose.edge.yml"
 
-sleep 3
+issue() {
+  docker run --rm \
+    -v "$EDGE_DIR/certbot/conf:/etc/letsencrypt" \
+    -v "$EDGE_DIR/certbot/www:/var/www/certbot" \
+    certbot/certbot certonly --webroot --webroot-path=/var/www/certbot \
+      --email "$EMAIL" --agree-tos --no-eff-email "${CERT_ARGS[@]}"
+}
 
-# Obter certificado
-docker run --rm \
-  -v "$DIR/certbot/conf:/etc/letsencrypt" \
-  -v "$DIR/certbot/www:/var/www/certbot" \
-  certbot/certbot certonly \
-    --webroot \
-    --webroot-path=/var/www/certbot \
-    --email "$EMAIL" \
-    --agree-tos \
-    --no-eff-email \
-    -d "$DOMAIN"
+# Edge no ar (ex.: cert de PROD com homolog LIVE) → emite via webroot do edge, sem downtime.
+if $EDGE ps --services --filter status=running 2>/dev/null | grep -qx nginx; then
+  issue
+  $EDGE exec -T nginx nginx -s reload
+else
+  docker rm -f nginx-acme 2>/dev/null || true
+  docker run --rm -d --name nginx-acme -p 80:80 \
+    -v "$EDGE_DIR/certbot/www:/var/www/certbot" \
+    nginx:1.27-alpine \
+    sh -c 'printf "events{}\nhttp{server{listen 80;location /.well-known/acme-challenge/{root /var/www/certbot;}location /{return 404;}}}\n" > /etc/nginx/nginx.conf && exec nginx -g "daemon off;"'
+  sleep 3
+  issue
+  docker rm -f nginx-acme
+  echo ""
+  echo "Cert emitido. Suba a stack + edge:"
+  echo "  docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env up -d"
+  echo "  bash scripts/reload-edge.sh"
+fi
 
-docker stop nginx-init
-
-# Substituir placeholder pelo domínio real no nginx.conf
-sed -i "s/DOMAIN_PLACEHOLDER/$DOMAIN/g" "$DIR/nginx/nginx.conf"
-
-echo ""
-echo "✅  Certificado obtido. Iniciando stack completa..."
-docker compose -f docker-compose.homolog.yml --env-file /opt/forzion/.env up -d
-
-echo "✅  Acesse: https://$DOMAIN"
+echo "OK — cert de: $*"

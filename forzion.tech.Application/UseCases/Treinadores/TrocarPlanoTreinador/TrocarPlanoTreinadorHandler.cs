@@ -113,7 +113,7 @@ public class TrocarPlanoTreinadorHandler(
             AdicionarAsync: (pag, ct2) => pagamentoRepository.AdicionarAsync(pag, ct2)
         )
         {
-            // Webhook tardio para o intent descartado encontrará Status != Pendente → JaConsistente.
+            ObterPaymentIntentId = pag => pag.StripePaymentIntentId,
             MarcarFalhou = (pendente, dataAgora) =>
             {
                 if (pendente.StripePaymentIntentId is not null)
@@ -178,6 +178,7 @@ public class TrocarPlanoTreinadorHandler(
             AdicionarAsync: (pag, ct2) => pagamentoRepository.AdicionarAsync(pag, ct2)
         )
         {
+            ObterPaymentIntentId = pag => pag.StripePaymentIntentId,
             MarcarFalhou = (pendente, dataAgora) =>
             {
                 if (pendente.StripePaymentIntentId is not null)

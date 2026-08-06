@@ -13,6 +13,12 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # >10.28.0.143324 trava `dotnet format --verify-no-changes` na CI (Linux) com
+      # exit code 2 (bug do analyzer, nao reproduz no Windows local) -- ver #354/#357/#359.
+      # Remover quando a Sonar publicar uma versao que nao quebre o format.
+      - dependency-name: "SonarAnalyzer.CSharp"
+        versions: [">10.28.0.143324"]
     commit-message:
       prefix: "chore"
 
@@ -29,6 +35,12 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # TS 7 (reescrita nativa/Go) quebra API interna do compiler usada por
+      # typescript-eslint e madge (`Cannot read properties of undefined (reading 'Cjs')`)
+      # -- ver #345. Remover quando o ecossistema (typescript-eslint/madge) suportar TS7.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "chore"
 

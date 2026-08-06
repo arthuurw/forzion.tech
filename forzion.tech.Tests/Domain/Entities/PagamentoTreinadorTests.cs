@@ -192,4 +192,38 @@ public class PagamentoTreinadorTests
         p.MarcarEmDisputa(Agora);
         p.MarcarEmDisputa(Agora).IsFailure.Should().BeTrue();
     }
+
+    [Fact]
+    public void EstaVencido_PixAposExpiracao_True()
+    {
+        var p = Novo();
+        p.DefinirDadosPix("pi_1", "qr", "url", Agora.AddMinutes(30), Agora);
+
+        p.EstaVencido(Agora.AddMinutes(30)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void EstaVencido_PixAntesExpiracao_False()
+    {
+        var p = Novo();
+        p.DefinirDadosPix("pi_1", "qr", "url", Agora.AddMinutes(30), Agora);
+
+        p.EstaVencido(Agora.AddMinutes(29)).Should().BeFalse();
+    }
+
+    [Fact]
+    public void EstaVencido_CartaoAposJanela_True()
+    {
+        var p = PagamentoTreinador.Criar(Guid.NewGuid(), Guid.NewGuid(), 50m, FinalidadePagamentoTreinador.Cadastro, Agora, MetodoPagamento.Cartao).Value;
+
+        p.EstaVencido(Agora.AddHours(PagamentoTreinador.JanelaValidadeCartaoHoras)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void EstaVencido_CartaoDentroDaJanela_False()
+    {
+        var p = PagamentoTreinador.Criar(Guid.NewGuid(), Guid.NewGuid(), 50m, FinalidadePagamentoTreinador.Cadastro, Agora, MetodoPagamento.Cartao).Value;
+
+        p.EstaVencido(Agora.AddHours(PagamentoTreinador.JanelaValidadeCartaoHoras - 1)).Should().BeFalse();
+    }
 }

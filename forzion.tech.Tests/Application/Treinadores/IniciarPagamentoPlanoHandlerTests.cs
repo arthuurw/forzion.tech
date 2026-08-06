@@ -30,7 +30,7 @@ public class IniciarPagamentoPlanoHandlerTests
 
     public IniciarPagamentoPlanoHandlerTests()
     {
-        _transactionProvider.SetupExecuteInTransaction<Result<PagamentoTreinador>>();
+        _transactionProvider.SetupExecuteInTransaction<Result<(PagamentoTreinador, string?)>>();
 
         _stripeService.Setup(s => s.CriarPixPlataformaPaymentIntentAsync(
             It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -40,7 +40,7 @@ public class IniciarPagamentoPlanoHandlerTests
             .ReturnsAsync(CartaoResult);
 
         var criarPagamentoService = new CriarPagamentoComIntentService(
-            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, TimeProvider.System,
+            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, _stripeService.Object, TimeProvider.System,
             Mock.Of<ILogger<CriarPagamentoComIntentService>>());
 
         _handler = new IniciarPagamentoPlanoHandler(

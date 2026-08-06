@@ -2,5 +2,6 @@
   Id: 11111111-1111-1111-1111-111111111111,
   CapturadoEm: 2026-01-01 08:00 Utc,
   Ambiente: Homolog,
-  PayloadJson: {"liveness":"ok"}
+  PayloadJson: {"liveness":"ok"},
+  EmailEnviado: true
 }

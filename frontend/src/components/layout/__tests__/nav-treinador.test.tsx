@@ -61,14 +61,20 @@ describe("NavConfig — treinador", () => {
     expect(plano?.drawerOnly).toBe(true);
     expect(nav.filter((i) => !i.drawerOnly)).toHaveLength(6);
   });
+
+  it("treinadorNav expõe Dados fiscais como item de acesso pleno", () => {
+    const dadosFiscais = NAV_BY_TIPO.Treinador.find((i) => i.href === "/treinador/dados-fiscais");
+    expect(dadosFiscais?.label).toBe("Dados fiscais");
+    expect(dadosFiscais?.drawerOnly).toBeUndefined();
+  });
 });
 
 describe("AppLayout — navegação treinador", () => {
-  it("drawer desktop mostra os 8 itens incluindo Recebimentos e Plano", () => {
+  it("drawer desktop mostra os 8 itens incluindo Dados fiscais, Recebimentos e Plano", () => {
     render(<AppLayout>conteudo</AppLayout>);
+    expect(screen.getByText("Dados fiscais")).toBeInTheDocument();
     expect(screen.getByText("Recebimentos")).toBeInTheDocument();
     expect(screen.getByText("Plano")).toBeInTheDocument();
-    expect(screen.getByText("Notas fiscais")).toBeInTheDocument();
   });
 
   it("drawer desktop navega ao clicar num item exclusivo do drawer", () => {
@@ -82,7 +88,7 @@ describe("AppLayout — navegação treinador", () => {
     render(<AppLayout>conteudo</AppLayout>);
     const labels = screen.getAllByRole("button").map((a) => a.getAttribute("aria-label"));
     expect(labels).toContain("Alunos");
-    expect(labels).toContain("Notas fiscais");
+    expect(labels).toContain("Dados fiscais");
     expect(labels).not.toContain("Recebimentos");
     expect(labels).not.toContain("Plano");
   });

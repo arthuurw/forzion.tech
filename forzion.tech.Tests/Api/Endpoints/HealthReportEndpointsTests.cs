@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
 using FluentValidation;
 using forzion.tech.Application.Interfaces;
@@ -14,6 +15,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace forzion.tech.Tests.Api.Endpoints;
@@ -27,7 +29,7 @@ public class HealthReportEndpointsTests : IClassFixture<HealthReportEndpointsTes
         true, true, true, true, null);
 
     private static readonly HealthSnapshotResponse RespostaSnapshot = new(
-        Guid.NewGuid(), DateTime.UtcNow, "Homolog", StatusSaude.Ok, "{}");
+        Guid.NewGuid(), DateTime.UtcNow, "Homolog", StatusSaude.Ok, "{}", true);
 
     public HealthReportEndpointsTests(HealthReportWebFactory factory) => _factory = factory;
 
@@ -159,6 +161,18 @@ public class HealthReportEndpointsTests : IClassFixture<HealthReportEndpointsTes
     }
 
     [Fact]
+    public async Task Post_Run_EnvioFalhou_RetornaEmailEnviadoFalse()
+    {
+        var respostaComFalha = RespostaSnapshot with { EmailEnviado = false };
+        _factory.ExecutarMock.Setup(h => h.HandleAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Result.Success(respostaComFalha));
+
+        var response = await ClienteAdmin().PostAsync("/admin/health-report/run", null);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("emailEnviado").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Post_Run_SemConfig_Retorna422()
     {
         _factory.ExecutarMock
@@ -192,7 +206,8 @@ public class HealthReportEndpointsTests : IClassFixture<HealthReportEndpointsTes
             Mock.Of<IHealthSnapshotRepository>(),
             Mock.Of<IHealthReportSender>(),
             Mock.Of<IUnitOfWork>(),
-            TimeProvider.System);
+            TimeProvider.System,
+            Mock.Of<ILogger<ExecutarRelatorioSaudeHandler>>());
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

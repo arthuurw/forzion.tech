@@ -176,7 +176,6 @@ frontend/
 │   │   │       ├── planos/             # CRUD planos globais (nome, tier, maxAlunos, preço, descricao, ativo)
 │   │   │       ├── grupos-musculares/  # CRUD grupos musculares
 │   │   │       ├── exercicios/         # Biblioteca global de exercícios
-│   │   │       ├── notas-fiscais/      # NFS-e do sistema (status, reprocessar)
 │   │   │       └── saude/              # Relatório de saúde (config, snapshots, run)
 │   │   │
 │   │   ├── (treinador)/                # Route group — Treinador
@@ -194,7 +193,6 @@ frontend/
 │   │   │       ├── pagamentos/         # Stripe Connect onboarding + status da conta
 │   │   │       ├── plano/              # Assinatura do plano da plataforma: status, troca, renovação (Pix/cartão)
 │   │   │       ├── dados-fiscais/      # Dados fiscais (CPF/CNPJ + endereço) p/ NFS-e; autofill CEP
-│   │   │       ├── notas-fiscais/      # NFS-e emitidas + DANFSe
 │   │   │       ├── suporte/            # Envio de mensagem de suporte
 │   │   │       └── onboarding/
 │   │   │           └── retorno/        # Retorno pós-onboarding Stripe (verifica status)
@@ -309,7 +307,7 @@ frontend/
 │   │   │   ├── conta.ts                # Perfil, senha, troca e-mail, preferências, LGPD
 │   │   │   ├── auth.ts                 # Login, MFA, cadastro, listagens públicas
 │   │   │   ├── mfa.ts                  # Enroll TOTP, recovery codes, step-up
-│   │   │   ├── nfse.ts                 # Dados fiscais, CEP, notas fiscais, DANFSe
+│   │   │   ├── nfse.ts                 # Dados fiscais, CEP
 │   │   │   └── notificacoes.ts         # Feed in-app + contador de não-lidas
 │   │   ├── auth/
 │   │   │   ├── AuthContext.tsx         # Contexto de sessão React
@@ -370,7 +368,6 @@ frontend/
 | `/admin/planos` | SystemAdmin | CRUD planos globais (nome, tier, maxAlunos, preço, descricao, ativo) |
 | `/admin/grupos-musculares` | SystemAdmin | CRUD grupos musculares |
 | `/admin/exercicios` | SystemAdmin | Biblioteca global de exercícios (CRUD + grupo muscular) |
-| `/admin/notas-fiscais` | SystemAdmin | NFS-e do sistema — filtro por status/treinador, reprocessar notas em erro |
 | `/admin/saude` | SystemAdmin | Relatório de saúde — config, snapshots, execução sob demanda |
 | `/treinador` | Treinador | Dashboard — stat cards, donut alunos por status, vínculos pendentes inline |
 | `/treinador/alunos` | Treinador | Lista de alunos vinculados (filtro por status); toggle de preservação por vínculo + banner de graça de limite |
@@ -383,7 +380,6 @@ frontend/
 | `/treinador/plano` | Treinador | Assinatura do plano — status, troca (upgrade/downgrade), renovação via Pix/cartão com polling; badge de tier efetivo (cortesia/divergência) |
 | `/treinador/onboarding/retorno` | Treinador | Retorno pós-onboarding Stripe — verifica e exibe status |
 | `/treinador/dados-fiscais` | Treinador | Dados fiscais (CPF/CNPJ + endereço) para NFS-e; autofill de CEP |
-| `/treinador/notas-fiscais` | Treinador | NFS-e emitidas + link da DANFSe |
 | `/treinador/suporte` | Treinador | Envio de mensagem de suporte |
 | `/aluno` | Aluno | Dashboard |
 | `/aluno/fichas` | Aluno | Lista fichas ativas vinculadas ao aluno |
@@ -823,7 +819,7 @@ const { register, handleSubmit, formState: { errors } } = useForm<Form>({
 |--------|-----|
 | `emailSchema` | E-mail válido |
 | `loginPasswordSchema` | Senha login (sem complexidade mínima) |
-| `registerPasswordSchema` | Senha cadastro (min 8, uppercase, lowercase, dígito) |
+| `registerPasswordSchema` | Senha cadastro (min 12, uppercase, lowercase, dígito) |
 | `loginSchema` | Form de login |
 | `cadastroTreinadorSchema` | Form de cadastro treinador |
 | `cadastroAlunoSchema` | Form de cadastro aluno (incl. campos de perfil) |
@@ -849,7 +845,7 @@ const { register, handleSubmit, formState: { errors } } = useForm<Form>({
 | `lib/api/conta.ts` | `obterPerfil`, `atualizarPerfil`, `alterarSenha` (step-up), troca de e-mail, preferências de notificação, `exportarDados` (LGPD; Blob JSON/XLSX), `excluirConta(senha)` (LGPD; anonimização) |
 | `lib/api/auth.ts` | `login`, `completarMfa`, `enviarCodigoEmailMfa`, `registerTreinador`, `registerAluno`, `resendVerification`, `iniciarPagamentoTreinador`, `listarPlanos`, `listarTreinadores`, `listarPacotes` |
 | `lib/api/mfa.ts` | `iniciarTotp`, `confirmarTotp`, `getStatus`, `desabilitar`, `regenerarRecovery`, `iniciarStepUp` |
-| `lib/api/nfse.ts` | `getDadosFiscais`, `salvarDadosFiscais`, `consultarCep`, `listNotasTreinador`, `listNotasAdmin`, `getDanfse`, `reprocessarNota` |
+| `lib/api/nfse.ts` | `getDadosFiscais`, `salvarDadosFiscais`, `consultarCep` |
 | `lib/api/notificacoes.ts` | `listar`, `contarNaoLidas`, `marcarLida` |
 
 ---
@@ -942,7 +938,7 @@ body {
 | Mecanismo | Detalhe |
 |-----------|---------|
 | Validação de formulários | Zod + React Hook Form em todos os forms públicos |
-| Senhas de cadastro | Mínimo 8 chars, uppercase, lowercase, dígito |
+| Senhas de cadastro | Mínimo 12 chars, uppercase, lowercase, dígito |
 | Mensagens de erro | Login/cadastro nunca exibe detalhes internos do backend |
 | Stripe Publishable Key | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` é pública por design — tokeniza cartões no browser sem expor dados ao servidor; a chave secreta fica exclusivamente no backend |
 | Formula injection (Excel) | `safeCell` prefixia strings com `'` para prevenir execução de fórmulas no ExcelJS |

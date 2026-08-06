@@ -16,4 +16,5 @@ public static class AssinaturaTreinadorErrors
     public static Error NaoEncontrada => Error.NotFound("assinatura_treinador.nao_encontrada", "Assinatura não encontrada.");
     public static Error NaoPodeRenovarCancelada => Error.Business("assinatura_treinador.nao_pode_renovar_cancelada", "Assinatura cancelada não pode ser renovada.");
     public static Error NaoPodeRenovarPendente => Error.Business("assinatura_treinador.nao_pode_renovar_pendente", "Assinatura pendente não pode ser renovada.");
+    public static Error RenovacaoNaoDevida => Error.Business("assinatura_treinador.renovacao_nao_devida", "A assinatura ainda não está vencida; não há cobrança a gerar.");
 }

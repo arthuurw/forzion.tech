@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace forzion.tech.Infrastructure.Persistence.Repositories;
 
-public class TrocaEmailTokenRepository(AppDbContext context) : ITrocaEmailTokenRepository
+public class TrocaEmailTokenRepository(AppDbContext context, TimeProvider timeProvider) : ITrocaEmailTokenRepository
 {
     public async Task AdicionarAsync(TrocaEmailToken token, CancellationToken cancellationToken = default) =>
         await context.TrocaEmailTokens.AddAsync(token, cancellationToken).ConfigureAwait(false);
@@ -19,4 +19,13 @@ public class TrocaEmailTokenRepository(AppDbContext context) : ITrocaEmailTokenR
             .Where(t => t.ContaId == contaId)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task<int> LimparExpiradosAsync(CancellationToken cancellationToken = default)
+    {
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        return await context.TrocaEmailTokens
+            .Where(t => t.ExpiraEm <= agora || t.UsadoEm != null)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
 }

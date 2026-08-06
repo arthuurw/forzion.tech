@@ -13,15 +13,36 @@ export const apiClient = axios.create({
 // também 401 — ex.: família revogada / refresh já rotacionado).
 type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean; _stepUpRetry?: boolean };
 
-// Promise de refresh em voo, compartilhada entre 401s concorrentes (anti-tempestade):
-// N requests que estouram juntos disparam 1 só chamada a /api/auth/refresh.
+// Promise de refresh em voo, compartilhada entre 401s concorrentes na MESMA aba
+// (anti-tempestade): N requests que estouram juntos disparam 1 só chamada a /api/auth/refresh.
 let refreshInFlight: Promise<boolean> | null = null;
+
+const REFRESH_LOCK_NAME = "forzion:auth-refresh";
+const REFRESH_LOCK_TIMEOUT_MS = 10_000;
+
+// Serializa entre ABAS via Web Locks: o cookie refresh httpOnly é compartilhado por
+// origem, então duas abas renovando ao mesmo tempo reapresentam o mesmo token e uma
+// delas dispara reuse-detection (revoga a família, desloga as duas). Fallback direto
+// quando a API não existe. Timeout via AbortSignal: uma aba com a rede travada não
+// pode segurar o lock indefinidamente e impedir outras abas de renovar/deslogar.
+export function runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+  const locks = globalThis.navigator?.locks;
+  if (!locks) return fn();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REFRESH_LOCK_TIMEOUT_MS);
+  return locks.request(REFRESH_LOCK_NAME, { signal: controller.signal }, fn).finally(() => clearTimeout(timeout));
+}
 
 function renovarSessao(): Promise<boolean> {
   if (!refreshInFlight) {
-    // fetch direto (não apiClient) p/ não recursar neste interceptor.
-    refreshInFlight = fetch("/api/auth/refresh", { method: "POST" })
-      .then((r) => r.ok)
+    // fetch direto (não apiClient) p/ não recursar neste interceptor. Erro no
+    // próprio lock (aborto por timeout, restrição do navegador) também resolve
+    // false — nunca deixa o interceptor pendurado sem cair no redirect de /login.
+    refreshInFlight = runExclusive(() =>
+      fetch("/api/auth/refresh", { method: "POST" })
+        .then((r) => r.ok)
+        .catch(() => false),
+    )
       .catch(() => false)
       .finally(() => {
         refreshInFlight = null;

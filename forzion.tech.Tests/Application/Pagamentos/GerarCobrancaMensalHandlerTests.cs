@@ -34,15 +34,15 @@ public class GerarCobrancaMensalHandlerTests
     {
         var paymentSettings = Options.Create(new PaymentSettings { TaxaPlataformaPercent = 5m });
 
-        _transactionProvider.SetupExecuteInTransaction<Result<Pagamento>>();
+        _transactionProvider.SetupExecuteInTransaction<Result<(Pagamento, string?)>>();
 
         var criarPagamentoService = new CriarPagamentoComIntentService(
-            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, TimeProvider.System,
+            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, _stripeService.Object, TimeProvider.System,
             Mock.Of<ILogger<CriarPagamentoComIntentService>>());
 
         _handler = new GerarCobrancaMensalHandler(
             _assinaturaRepo.Object, _pagamentoRepo.Object, _contaRecebimentoRepo.Object,
-            _stripeService.Object, criarPagamentoService,
+            _stripeService.Object, criarPagamentoService, _unitOfWork.Object,
             paymentSettings, TimeProvider.System, _logger.Object);
 
         _stripeService.Setup(s => s.CriarPixPaymentIntentAsync(
@@ -140,6 +140,79 @@ public class GerarCobrancaMensalHandlerTests
         _stripeService.Verify(s => s.CriarPixPaymentIntentAsync(
             It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<decimal>(),
             It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GerarCobranca_PendenteVencido_RegistraFalhaECriaNovo()
+    {
+        var treinador = CriarTreinadorComOnboarding();
+        var assinatura = CriarAssinaturaAluno(treinador.Id);
+        assinatura.Ativar(DateTime.UtcNow);
+        var pendenteVencido = Pagamento.Criar(assinatura.Id, assinatura.Valor, DateTime.UtcNow).Value;
+        pendenteVencido.DefinirDadosPix("pi_dead", "qr", "url", DateTime.UtcNow.AddMinutes(-5), TestData.Agora);
+
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pendenteVencido);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ContaOnboarded(treinador.Id));
+
+        var result = await _handler.HandleAsync(new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id));
+
+        result.IsSuccess.Should().BeTrue();
+        assinatura.TentativasFalhasConsecutivas.Should().Be(1);
+        pendenteVencido.Status.Should().Be(PagamentoStatus.Falhou);
+        result.Value.PagamentoId.Should().NotBe(pendenteVencido.Id);
+    }
+
+    [Fact]
+    public async Task GerarCobranca_TerceiraFalhaConsecutiva_MarcaInadimplente()
+    {
+        var treinador = CriarTreinadorComOnboarding();
+        var assinatura = CriarAssinaturaAluno(treinador.Id);
+        assinatura.Ativar(DateTime.UtcNow);
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
+
+        var pendenteVencido = Pagamento.Criar(assinatura.Id, assinatura.Valor, DateTime.UtcNow).Value;
+        pendenteVencido.DefinirDadosPix("pi_dead_2", "qr", "url", DateTime.UtcNow.AddMinutes(-5), TestData.Agora);
+
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pendenteVencido);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ContaOnboarded(treinador.Id));
+
+        var result = await _handler.HandleAsync(new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id));
+
+        result.IsSuccess.Should().BeTrue();
+        assinatura.TentativasFalhasConsecutivas.Should().Be(3);
+        assinatura.Status.Should().Be(AssinaturaAlunoStatus.Inadimplente);
+    }
+
+    [Fact]
+    public async Task GerarCobranca_PendenteValido_ReusaSemContarFalha()
+    {
+        var treinador = CriarTreinadorComOnboarding();
+        var assinatura = CriarAssinaturaAluno(treinador.Id);
+        assinatura.Ativar(DateTime.UtcNow);
+        var pendenteValido = Pagamento.Criar(assinatura.Id, assinatura.Valor, DateTime.UtcNow).Value;
+        pendenteValido.DefinirDadosPix("pi_fresh", "qr", "url", DateTime.UtcNow.AddHours(1), TestData.Agora);
+
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAlunoAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pendenteValido);
+        _contaRecebimentoRepo.Setup(r => r.ObterPorTreinadorIdAsync(treinador.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ContaOnboarded(treinador.Id));
+
+        var result = await _handler.HandleAsync(new GerarCobrancaMensalCommand(assinatura.Id, treinador.Id));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.PagamentoId.Should().Be(pendenteValido.Id);
+        assinatura.TentativasFalhasConsecutivas.Should().Be(0);
+        _stripeService.Verify(s => s.CriarPixPaymentIntentAsync(
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<decimal>(),
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -347,11 +420,11 @@ public class GerarCobrancaMensalHandlerTests
 
         var fakeStripe = new FakeStripeService();
         var criarPagamentoService = new CriarPagamentoComIntentService(
-            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, TimeProvider.System,
+            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, fakeStripe, TimeProvider.System,
             Mock.Of<ILogger<CriarPagamentoComIntentService>>());
         var handler = new GerarCobrancaMensalHandler(
             _assinaturaRepo.Object, _pagamentoRepo.Object, _contaRecebimentoRepo.Object,
-            fakeStripe, criarPagamentoService,
+            fakeStripe, criarPagamentoService, _unitOfWork.Object,
             Options.Create(new PaymentSettings { TaxaPlataformaPercent = 5m }),
             TimeProvider.System, _logger.Object);
 

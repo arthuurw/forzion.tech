@@ -16,15 +16,16 @@ public class CriarPagamentoComIntentServiceTests
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IDbContextTransactionProvider> _transactionProvider = new();
     private readonly Mock<IDatabaseErrorInspector> _errorInspector = new();
+    private readonly Mock<IStripeService> _stripeService = new();
     private readonly CriarPagamentoComIntentService _service;
 
     public CriarPagamentoComIntentServiceTests()
     {
-        _transactionProvider.SetupExecuteInTransaction<Result<PagamentoTreinador>>();
+        _transactionProvider.SetupExecuteInTransaction<Result<(PagamentoTreinador, string?)>>();
 
         _service = new CriarPagamentoComIntentService(
-            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, TimeProvider.System,
-            Mock.Of<ILogger<CriarPagamentoComIntentService>>());
+            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, _stripeService.Object,
+            TimeProvider.System, Mock.Of<ILogger<CriarPagamentoComIntentService>>());
     }
 
     private static AssinaturaTreinador CriarAssinaturaAtiva()
@@ -62,7 +63,10 @@ public class CriarPagamentoComIntentServiceTests
             AplicarIntent: pag => pag.DefinirDadosPix("pi_test", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow),
             AdicionarAsync: (pag, ct) => repo.Object.AdicionarAsync(pag, ct)
         )
-        { MarcarFalhou = (pag, agora) => pag.MarcarFalhou(agora) };
+        {
+            MarcarFalhou = (pag, agora) => pag.MarcarFalhou(agora),
+            ObterPaymentIntentId = pag => pag.StripePaymentIntentId,
+        };
     }
 
     [Fact]
@@ -154,7 +158,7 @@ public class CriarPagamentoComIntentServiceTests
             .ReturnsAsync((PagamentoTreinador?)null);
 
         var ordem = new List<string>();
-        _transactionProvider.SetupExecuteInTransaction<Result<PagamentoTreinador>>(onBegin: () => ordem.Add("tx"));
+        _transactionProvider.SetupExecuteInTransaction<Result<(PagamentoTreinador, string?)>>(onBegin: () => ordem.Add("tx"));
 
         var p = BuildParams(assinatura, pagamentoRepo: pagamentoRepo, onCriarIntent: () => ordem.Add("intent"));
 
@@ -206,8 +210,72 @@ public class CriarPagamentoComIntentServiceTests
 
         _transactionProvider.Verify(t => t.ExecuteInTransactionAsync(
             System.Data.IsolationLevel.Serializable,
-            It.IsAny<Func<ITransaction, CancellationToken, Task<Result<PagamentoTreinador>>>>(),
+            It.IsAny<Func<ITransaction, CancellationToken, Task<Result<(PagamentoTreinador, string?)>>>>(),
             It.IsAny<CancellationToken>()), Times.Once,
             "G-PAY-1 exige transação Serializable para proteger contra concorrência");
+    }
+
+    [Fact]
+    public async Task ExecutarAsync_DescartaPendenteComPI_CancelaIntentAposCommit()
+    {
+        var assinatura = CriarAssinaturaAtiva();
+        var pendenteDescartado = PagamentoTreinador.Criar(
+            assinatura.TreinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
+        pendenteDescartado.DefinirDadosPix("pi_antigo", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+
+        var pagamentoRepo = new Mock<IPagamentoTreinadorRepository>();
+        pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pendenteDescartado);
+
+        _stripeService.Setup(s => s.CancelarPaymentIntentAsync("pi_antigo", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CancelarPaymentIntentResultado.Cancelado);
+
+        var p = BuildParams(assinatura, pendente: pendenteDescartado, pagamentoRepo: pagamentoRepo,
+            verificarIdempotencia: _ => null);
+
+        var result = await _service.ExecutarAsync(p);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.StripePaymentIntentId.Should().NotBe("pi_antigo");
+        _stripeService.Verify(s => s.CancelarPaymentIntentAsync("pi_antigo", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExecutarAsync_ReusaPendente_NaoCancelaIntent()
+    {
+        var assinatura = CriarAssinaturaAtiva();
+        var existente = PagamentoTreinador.Criar(
+            assinatura.TreinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
+        existente.DefinirDadosPix("pi_existente", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+
+        var pagamentoRepo = new Mock<IPagamentoTreinadorRepository>();
+        pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existente);
+
+        var p = BuildParams(assinatura, pendente: existente, pagamentoRepo: pagamentoRepo);
+
+        var result = await _service.ExecutarAsync(p);
+
+        result.IsSuccess.Should().BeTrue();
+        _stripeService.Verify(s => s.CancelarPaymentIntentAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ExecutarAsync_DescartaZumbiSemPI_NaoCancelaIntent()
+    {
+        var assinatura = CriarAssinaturaAtiva();
+        var zumbi = PagamentoTreinador.Criar(
+            assinatura.TreinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
+
+        var pagamentoRepo = new Mock<IPagamentoTreinadorRepository>();
+        pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(zumbi);
+
+        var p = BuildParams(assinatura, pendente: zumbi, pagamentoRepo: pagamentoRepo);
+
+        var result = await _service.ExecutarAsync(p);
+
+        result.IsSuccess.Should().BeTrue();
+        _stripeService.Verify(s => s.CancelarPaymentIntentAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

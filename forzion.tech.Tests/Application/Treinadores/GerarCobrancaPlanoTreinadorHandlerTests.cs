@@ -31,14 +31,14 @@ public class GerarCobrancaPlanoTreinadorHandlerTests
 
     public GerarCobrancaPlanoTreinadorHandlerTests()
     {
-        _transactionProvider.SetupExecuteInTransaction<Result<PagamentoTreinador>>();
+        _transactionProvider.SetupExecuteInTransaction<Result<(PagamentoTreinador, string?)>>();
 
         _stripeService.Setup(s => s.CriarPixPlataformaPaymentIntentAsync(
             It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(PixResult);
 
         var criarPagamentoService = new CriarPagamentoComIntentService(
-            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, TimeProvider.System,
+            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, _stripeService.Object, TimeProvider.System,
             Mock.Of<ILogger<CriarPagamentoComIntentService>>());
 
         _handler = new GerarCobrancaPlanoTreinadorHandler(
@@ -244,7 +244,7 @@ public class GerarCobrancaPlanoTreinadorHandlerTests
 
         var fakeStripe = new FakeStripeService();
         var criarPagamentoService = new CriarPagamentoComIntentService(
-            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, TimeProvider.System,
+            _unitOfWork.Object, _transactionProvider.Object, _errorInspector.Object, fakeStripe, TimeProvider.System,
             Mock.Of<ILogger<CriarPagamentoComIntentService>>());
         var handler = new GerarCobrancaPlanoTreinadorHandler(
             _assinaturaRepo.Object, _pagamentoRepo.Object, _planoRepo.Object,
@@ -331,5 +331,136 @@ public class GerarCobrancaPlanoTreinadorHandlerTests
         result.IsSuccess.Should().BeTrue("plano deletado não impede cobrança — usa valor atual");
         pagamentoAdicionado!.Valor.Should().Be(50m, "cobra no valor original pois agendamento foi descartado");
         assinatura.PlanoPlataformaIdAgendado.Should().BeNull("LimparPlanoAgendado deve ser chamado ao detectar plano excluído");
+    }
+
+    [Fact]
+    public async Task GerarCobranca_AtivaNaoVencida_RecusaNaoDevida()
+    {
+        var assinatura = CriarAssinaturaAtiva();
+        assinatura.AgendarProximaCobranca(DateTime.UtcNow.AddDays(30), DateTime.UtcNow);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+
+        var result = await _handler.HandleAsync(new GerarCobrancaPlanoTreinadorCommand(assinatura.Id));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be(AssinaturaTreinadorErrors.RenovacaoNaoDevida.Code);
+        _stripeService.Verify(s => s.CriarPixPlataformaPaymentIntentAsync(
+            It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GerarCobranca_Vencida_Cobra()
+    {
+        var assinatura = CriarAssinaturaAtiva();
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PagamentoTreinador?)null);
+
+        var result = await _handler.HandleAsync(new GerarCobrancaPlanoTreinadorCommand(assinatura.Id));
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GerarCobranca_InadimplenteDataFutura_Cobra()
+    {
+        var assinatura = CriarAssinaturaInadimplente();
+        assinatura.AgendarProximaCobranca(DateTime.UtcNow.AddDays(30), DateTime.UtcNow);
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PagamentoTreinador?)null);
+
+        var result = await _handler.HandleAsync(new GerarCobrancaPlanoTreinadorCommand(assinatura.Id));
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GerarCobranca_DowngradeAgendadoComPendenteReusavel_PersisteDowngrade()
+    {
+        var planoNovo = PlanoPlataforma.Criar("Basic", TierPlano.Basic, 10, 30m, DateTime.UtcNow).Value;
+        var assinatura = CriarAssinaturaAtiva();
+        assinatura.AgendarDowngrade(planoNovo.Id, DateTime.UtcNow);
+
+        var pendente = PagamentoTreinador.Criar(assinatura.TreinadorId, assinatura.Id, 30m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
+        pendente.DefinirDadosPix("pi_reusavel", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoNovo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoNovo);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pendente);
+
+        var result = await _handler.HandleAsync(new GerarCobrancaPlanoTreinadorCommand(assinatura.Id));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.PagamentoId.Should().Be(pendente.Id, "pendente com valor já compatível com o downgrade é reaproveitado");
+        assinatura.Valor.Should().Be(30m, "downgrade deve persistir mesmo quando o pendente existente é reaproveitado");
+        assinatura.PlanoPlataformaIdAgendado.Should().BeNull();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task GerarCobranca_PendenteValorAntigo_DescartaECobraValorNovo()
+    {
+        var planoNovo = PlanoPlataforma.Criar("Basic", TierPlano.Basic, 10, 30m, DateTime.UtcNow).Value;
+        var assinatura = CriarAssinaturaAtiva();
+        assinatura.AgendarDowngrade(planoNovo.Id, DateTime.UtcNow);
+
+        var pendenteAntigo = PagamentoTreinador.Criar(assinatura.TreinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow).Value;
+        pendenteAntigo.DefinirDadosPix("pi_antigo", "qr", "url", DateTime.UtcNow.AddHours(1), DateTime.UtcNow);
+
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _planoRepo.Setup(r => r.ObterPorIdAsync(planoNovo.Id, It.IsAny<CancellationToken>())).ReturnsAsync(planoNovo);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pendenteAntigo);
+
+        PagamentoTreinador? pagamentoAdicionado = null;
+        _pagamentoRepo.Setup(r => r.AdicionarAsync(It.IsAny<PagamentoTreinador>(), It.IsAny<CancellationToken>()))
+            .Callback<PagamentoTreinador, CancellationToken>((p, _) => pagamentoAdicionado = p);
+
+        var result = await _handler.HandleAsync(new GerarCobrancaPlanoTreinadorCommand(assinatura.Id));
+
+        result.IsSuccess.Should().BeTrue();
+        pendenteAntigo.Status.Should().Be(PagamentoStatus.Falhou, "pendente com valor pré-downgrade é descartado, não reaproveitado");
+        pagamentoAdicionado!.Valor.Should().Be(30m, "cobrança nova usa o valor pós-downgrade");
+    }
+
+    [Fact]
+    public async Task GerarCobranca_PendenteVencido_RegistraFalhaTreinador()
+    {
+        var assinatura = CriarAssinaturaAtiva();
+        var pendenteVencido = PagamentoTreinador.Criar(assinatura.TreinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow.AddHours(-2)).Value;
+        pendenteVencido.DefinirDadosPix("pi_vencido", "qr", "url", DateTime.UtcNow.AddHours(-1), DateTime.UtcNow.AddHours(-2));
+
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pendenteVencido);
+
+        var result = await _handler.HandleAsync(new GerarCobrancaPlanoTreinadorCommand(assinatura.Id));
+
+        result.IsSuccess.Should().BeTrue();
+        assinatura.TentativasFalhasConsecutivas.Should().Be(1);
+        pendenteVencido.Status.Should().Be(PagamentoStatus.Falhou);
+    }
+
+    [Fact]
+    public async Task GerarCobranca_TerceiraFalha_MarcaTreinadorInadimplente()
+    {
+        var assinatura = CriarAssinaturaAtiva();
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
+        assinatura.RegistrarPagamentoFalho(DateTime.UtcNow);
+
+        var pendenteVencido = PagamentoTreinador.Criar(assinatura.TreinadorId, assinatura.Id, 50m, FinalidadePagamentoTreinador.Renovacao, DateTime.UtcNow.AddHours(-2)).Value;
+        pendenteVencido.DefinirDadosPix("pi_vencido3", "qr", "url", DateTime.UtcNow.AddHours(-1), DateTime.UtcNow.AddHours(-2));
+
+        _assinaturaRepo.Setup(r => r.ObterPorIdAsync(assinatura.Id, It.IsAny<CancellationToken>())).ReturnsAsync(assinatura);
+        _pagamentoRepo.Setup(r => r.ObterPendentePorAssinaturaAsync(assinatura.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pendenteVencido);
+
+        var result = await _handler.HandleAsync(new GerarCobrancaPlanoTreinadorCommand(assinatura.Id));
+
+        result.IsSuccess.Should().BeTrue();
+        assinatura.TentativasFalhasConsecutivas.Should().Be(3);
+        assinatura.Status.Should().Be(AssinaturaTreinadorStatus.Inadimplente);
     }
 }

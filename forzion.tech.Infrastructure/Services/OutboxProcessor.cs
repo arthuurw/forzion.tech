@@ -34,9 +34,10 @@ public sealed class OutboxProcessor(
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
-        var idleMs = (int)_options.TimeoutTransacaoIdle.TotalMilliseconds;
-        var sqlIdleTimeout = "SET LOCAL idle_in_transaction_session_timeout = " + idleMs.ToString(CultureInfo.InvariantCulture);
-        await context.Database.ExecuteSqlRawAsync(sqlIdleTimeout, cancellationToken).ConfigureAwait(false);
+        var idleMsTexto = ((int)_options.TimeoutTransacaoIdle.TotalMilliseconds).ToString(CultureInfo.InvariantCulture);
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT set_config('idle_in_transaction_session_timeout', {idleMsTexto}, true)",
+            cancellationToken).ConfigureAwait(false);
 
         var itens = await repository.ObterProcessaveisAsync(_options.LotePorCiclo, agora, cancellationToken).ConfigureAwait(false);
         if (itens.Count == 0)

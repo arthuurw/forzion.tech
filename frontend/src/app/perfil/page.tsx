@@ -23,6 +23,7 @@ import ConsentBanner from "@/components/ui/ConsentBanner";
 import PageHeader from "@/components/ui/PageHeader";
 import PasswordField from "@/components/forms/PasswordField";
 import { contaApi, type PerfilResponse } from "@/lib/api/conta";
+import { registerPasswordSchema } from "@/lib/validations/common";
 import { baixarMeusDados } from "@/lib/utils/downloadBlob";
 import { alunoApi } from "@/lib/api/aluno";
 import { apiClient } from "@/lib/api/client";
@@ -33,7 +34,7 @@ import type { MeuVinculoResponse, TreinadorResponse, PacoteResponse } from "@/ty
 const senhaSchema = z
   .object({
     senhaAtual: z.string().min(1, "Informe a senha atual."),
-    novaSenha: z.string().min(8, "A nova senha deve ter pelo menos 8 caracteres."),
+    novaSenha: registerPasswordSchema,
     confirmarSenha: z.string().min(1, "Confirme a nova senha."),
   })
   .refine((d) => d.novaSenha === d.confirmarSenha, {

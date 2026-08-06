@@ -49,6 +49,7 @@ const CATEGORIAS_PII = [
   "Dados de saúde declarados na anamnese (condições, restrições e objetivos), tratados mediante consentimento específico.",
   "Dados de uso da plataforma (fichas de treino, execuções registradas).",
   "Dados de pagamento, processados pela Stripe.",
+  "Dados fiscais do treinador (CPF/CNPJ, razão social, inscrição municipal e endereço fiscal), coletados para cumprimento de obrigações fiscais; a emissão de documentos fiscais é feita por software fiscal sob responsabilidade do treinador.",
 ];
 
 export default function PrivacidadePage() {
@@ -71,9 +72,10 @@ export default function PrivacidadePage() {
             <Typography variant="body2" color="text.secondary">
               Tratamos seus dados pessoais para operar a plataforma de gestão
               fitness: conectar treinadores e alunos, manter fichas de treino e
-              registros de execução, processar assinaturas e pagamentos, e enviar
-              comunicações essenciais ao serviço. O tratamento de dados de saúde
-              ocorre apenas com seu consentimento específico (art. 11 da LGPD).
+              registros de execução, processar assinaturas e pagamentos, cumprir
+              obrigações fiscais legais e enviar comunicações essenciais ao
+              serviço. O tratamento de dados de saúde ocorre apenas com seu
+              consentimento específico (art. 11 da LGPD).
             </Typography>
           </Box>
 
@@ -139,6 +141,23 @@ export default function PrivacidadePage() {
               contratuais que asseguram nível de proteção adequado. O texto
               jurídico definitivo detalhará a base legal específica de cada
               transferência.
+            </Typography>
+          </Box>
+
+          <Divider />
+
+          <Box component="section">
+            <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
+              Retenção e exclusão de dados
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              A exclusão da conta é feita por anonimização irreversível dos dados
+              pessoais. Registros com valor transacional ou fiscal — pagamentos,
+              assinaturas e os dados fiscais do treinador — são retidos pelo prazo
+              exigido pela legislação fiscal brasileira (cerca de cinco anos),
+              mesmo após o pedido de exclusão, com base no cumprimento de
+              obrigação legal e regulatória (art. 7º, II e art. 16, I da LGPD).
+              Encerrado esse prazo, são anonimizados ou eliminados.
             </Typography>
           </Box>
 

@@ -33,7 +33,7 @@ public class ProcessarRenovacoesEndpointsTests(ProcessarRenovacoesEndpointsTests
     {
         private static readonly CriarPagamentoComIntentService CriarServiceStub = new(
             Mock.Of<IUnitOfWork>(), Mock.Of<IDbContextTransactionProvider>(),
-            Mock.Of<IDatabaseErrorInspector>(), TimeProvider.System,
+            Mock.Of<IDatabaseErrorInspector>(), Mock.Of<IStripeService>(), TimeProvider.System,
             Mock.Of<ILogger<CriarPagamentoComIntentService>>());
 
         public Mock<IAssinaturaAlunoRepository> AssinaturaAlunoRepoMock { get; } = new();
@@ -42,7 +42,7 @@ public class ProcessarRenovacoesEndpointsTests(ProcessarRenovacoesEndpointsTests
         public Mock<GerarCobrancaMensalHandler> GerarCobrancaMensalMock { get; } = new(
             Mock.Of<IAssinaturaAlunoRepository>(), Mock.Of<IPagamentoRepository>(),
             Mock.Of<IContaRecebimentoRepository>(), Mock.Of<IStripeService>(),
-            CriarServiceStub, Options.Create(new PaymentSettings()), TimeProvider.System,
+            CriarServiceStub, Mock.Of<IUnitOfWork>(), Options.Create(new PaymentSettings()), TimeProvider.System,
             Mock.Of<ILogger<GerarCobrancaMensalHandler>>());
 
         public Mock<GerarCobrancaPlanoTreinadorHandler> GerarCobrancaTreinadorMock { get; } = new(

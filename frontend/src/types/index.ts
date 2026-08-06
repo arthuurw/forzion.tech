@@ -465,6 +465,7 @@ export interface HealthSnapshotResponse {
   ambiente: string;
   statusGeral: StatusSaude;
   payloadJson: string;
+  emailEnviado: boolean | null;
 }
 
 export interface AdminDashboardCounts {

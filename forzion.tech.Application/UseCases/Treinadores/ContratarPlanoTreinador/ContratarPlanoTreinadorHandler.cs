@@ -82,7 +82,10 @@ public class ContratarPlanoTreinadorHandler(
                 : pag.DefinirDadosPix(pix!.PaymentIntentId, pix.QrCode, pix.QrCodeUrl, pix.Expiracao, agora),
             AdicionarAsync: (pag, ct) => pagamentoRepository.AdicionarAsync(pag, ct)
         )
-        { MarcarFalhou = (pag, dataAgora) => pag.MarcarFalhou(dataAgora) };
+        {
+            MarcarFalhou = (pag, dataAgora) => pag.MarcarFalhou(dataAgora),
+            ObterPaymentIntentId = pag => pag.StripePaymentIntentId,
+        };
 
         var result = await criarPagamentoService.ExecutarAsync(params_, cancellationToken).ConfigureAwait(false);
         if (result.IsFailure)
