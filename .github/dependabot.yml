@@ -35,6 +35,12 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # TS 7 (reescrita nativa/Go) quebra API interna do compiler usada por
+      # typescript-eslint e madge (`Cannot read properties of undefined (reading 'Cjs')`)
+      # -- ver #345. Remover quando o ecossistema (typescript-eslint/madge) suportar TS7.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "chore"
 
