@@ -7,6 +7,13 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({}),
 }));
 
+const featureFlagsState = vi.hoisted(() => ({ whatsappTemporariamenteIndisponivel: true }));
+vi.mock("@/lib/config/feature-flags", () => ({
+  get WHATSAPP_TEMPORARIAMENTE_INDISPONIVEL() {
+    return featureFlagsState.whatsappTemporariamenteIndisponivel;
+  },
+}));
+
 vi.mock("@/lib/api/pagamento", () => ({
   pagamentoApi: {
     obterAssinaturaTreinador: vi.fn(),
@@ -85,6 +92,7 @@ function mockOk(planoOverrides: Partial<TreinadorDashboardResponse["plano"]> = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  featureFlagsState.whatsappTemporariamenteIndisponivel = true;
 });
 
 describe("PlanoTreinadorPage — badge tier efetivo (FE-01)", () => {
@@ -108,6 +116,12 @@ describe("PlanoTreinadorPage — badge tier efetivo (FE-01)", () => {
 });
 
 describe("PlanoTreinadorPage — gating de canais por tier efetivo (FE-05)", () => {
+  // Comportamento pré-existente do chip (function-of-tier puro), exercitado com a
+  // flag WA-05 desligada — ver describe "kill-switch" abaixo para a flag ligada.
+  beforeEach(() => {
+    featureFlagsState.whatsappTemporariamenteIndisponivel = false;
+  });
+
   it("tier efetivo Free: e-mail e whatsapp indisponíveis", async () => {
     mockOk({ tierEfetivo: "Free" });
     render(<PlanoTreinadorPage />);
@@ -130,5 +144,26 @@ describe("PlanoTreinadorPage — gating de canais por tier efetivo (FE-05)", () 
 
     expect(await screen.findByText(/E-mail de engajamento — disponível/)).toBeInTheDocument();
     expect(screen.getByText(/WhatsApp — disponível/)).toBeInTheDocument();
+  });
+});
+
+describe("PlanoTreinadorPage — kill-switch WhatsApp temporariamente indisponível (WA-05)", () => {
+  it("flag ligada + tier efetivo ProPlus (legado): chip mostra indisponibilidade temporária, não tier", async () => {
+    featureFlagsState.whatsappTemporariamenteIndisponivel = true;
+    mockOk({ tierEfetivo: "ProPlus" });
+    render(<PlanoTreinadorPage />);
+
+    expect(await screen.findByText("WhatsApp — temporariamente indisponível")).toBeInTheDocument();
+    expect(screen.queryByText(/WhatsApp — disponível$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/WhatsApp — indisponível$/)).not.toBeInTheDocument();
+  });
+
+  it("flag desligada: chip volta ao comportamento function-of-tier (regressão)", async () => {
+    featureFlagsState.whatsappTemporariamenteIndisponivel = false;
+    mockOk({ tierEfetivo: "ProPlus" });
+    render(<PlanoTreinadorPage />);
+
+    expect(await screen.findByText(/WhatsApp — disponível/)).toBeInTheDocument();
+    expect(screen.queryByText("WhatsApp — temporariamente indisponível")).not.toBeInTheDocument();
   });
 });

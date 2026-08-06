@@ -132,7 +132,7 @@ public class DataSeeder(
         (TierPlanoEnum.Free,    "Free",     10,  0m,   true,  "Ideal para começar e testar sem compromisso. Acesso à plataforma para até 10 alunos."),
         (TierPlanoEnum.Basic,   "Basic",    25,  50m,  true,  "Acesso completo à plataforma de treinos. R$2 por aluno/mês na lotação."),
         (TierPlanoEnum.Pro,     "Pro",      50,  100m, true,  "Tudo do Basic + notificações por e-mail que mantêm seus alunos engajados entre as sessões."),
-        (TierPlanoEnum.ProPlus, "Pro Plus", 100, 200m, true,  "Tudo do Pro + WhatsApp integrado: seus alunos recebem tudo onde já estão."),
+        (TierPlanoEnum.ProPlus, "Pro Plus", 100, 200m, false, "Tudo do Pro + WhatsApp integrado: seus alunos recebem tudo onde já estão."),
         (TierPlanoEnum.Elite,   "Elite",    300, 500m, false, "O plano mais completo: tudo do Pro Plus somado a IA para personalizar e otimizar cada treino."),
     ];
 
