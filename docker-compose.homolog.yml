@@ -31,6 +31,7 @@ services:
       Seed__ZapTestEmail: ${SEED_ZAP_TEST_EMAIL:-zap-test@forzion.tech}
       Seed__ZapTestPassword: ${SEED_ZAP_TEST_PASSWORD:-}
       # WhatsApp via Meta Cloud API (opcional — PhoneNumberId+AccessToken vazios → NullWhatsAppNotifier)
+      WhatsApp__Habilitado: ${WHATSAPP_HABILITADO:-false}
       WhatsApp__PhoneNumberId: ${WHATSAPP_PHONE_NUMBER_ID:-}
       WhatsApp__AccessToken: ${WHATSAPP_ACCESS_TOKEN:-}
       WhatsApp__ApiVersion: ${WHATSAPP_API_VERSION:-v21.0}

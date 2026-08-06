@@ -17,12 +17,13 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
   - `MetaWhatsAppCloudNotifier` — `Habilitado=true`. POST `messages` (Bearer). `SendTemplateAsync` monta payload `type:template` (components body). `SendAsync` monta `type:text`. Telefone normalizado por `PhoneNumberNormalizer` (null → skip + warn). Falha HTTP/exceção = LOG only, sem rethrow.
   - `NullWhatsAppNotifier` — `Habilitado=false`; no-op (warn no ctor, debug por mensagem).
   - `EnvironmentWhatsAppDecorator` — embrulha o real. `Habilitado` delega. Em não-prod (`WhatsAppSettings.MarcarComoTeste`) aplica redirect/allowlist de telefone; em prod passthrough.
-- GATE (DI, `InfrastructureExtensions`): `WhatsApp:PhoneNumberId` E `WhatsApp:AccessToken` não-vazios → `MetaWhatsAppCloudNotifier` (typed HttpClient, base `graph.facebook.com/{ApiVersion}/{PhoneNumberId}/`, timeout 15s); senão → `NullWhatsAppNotifier`. **Sempre** embrulhado no `EnvironmentWhatsAppDecorator` (helper `EnvolverComWhatsAppDecorator`, análogo ao e-mail).
+- GATE (DI, `InfrastructureExtensions`): `WhatsApp:Habilitado=true` **E** `WhatsApp:PhoneNumberId`/`WhatsApp:AccessToken` não-vazios → `MetaWhatsAppCloudNotifier` (typed HttpClient, base `graph.facebook.com/{ApiVersion}/{PhoneNumberId}/`, timeout 15s); qualquer outra combinação (inclusive `Habilitado=false` com credenciais válidas) → `NullWhatsAppNotifier`. **Sempre** embrulhado no `EnvironmentWhatsAppDecorator` (helper `EnvolverComWhatsAppDecorator`, análogo ao e-mail). **Kill-switch explícito** (`WhatsApp:Habilitado`, default `false`): a flag é checada ANTES da credencial — defense-in-depth vs configurar credencial cedo demais durante um processo de verificação Meta em andamento. Mesmo gate central protege webhook POST (`WebhookEndpoints`) e `WhatsAppHealthCheck`, que checam a flag independentemente (ver §DESATIVAÇÃO TEMPORÁRIA).
 - Handlers de domain event registrados manual no DI; despachados no `UnitOfWork.CommitAsync`.
 
 ## CONFIG (chaves)
 | Chave | Onde lida | Função | Ausente |
 |-------|-----------|--------|---------|
+| `WhatsApp:Habilitado` | `InfrastructureExtensions` (gate DI) + `WebhookEndpoints` (POST) + `WhatsAppHealthCheck` | kill-switch explícito; `false` força Null/no-op/Healthy independente de credencial | → `false` (bind bool sem exception) |
 | `WhatsApp:PhoneNumberId` | `InfrastructureExtensions` (gate) | seleciona Meta real; compõe BaseAddress | → Null |
 | `WhatsApp:AccessToken` | idem | Bearer token Meta | → Null |
 | `WhatsApp:ApiVersion` | idem | versão Graph API | default `v21.0` |
@@ -34,7 +35,7 @@ DOC PARA AGENTES. Fonte de verdade das notificações WhatsApp (Meta Cloud API).
 | `App:FrontendBaseUrl` | `AppSettings` | base dos links nas mensagens | default vazio |
 
 - `WhatsAppSettings` (Application/Settings) bind seção `WhatsApp`. Defaults prod-safe.
-- Deploy: env vars no compose. `docker-compose.homolog.yml` mapeia `WhatsApp__*` ← `${WHATSAPP_*}` (PhoneNumberId, AccessToken, ApiVersion, AppSecret, WebhookVerifyToken, MarcarComoTeste [default `true` em hmg], RedirecionarDestinatariosPara, AllowlistTelefones) → setar no `/opt/forzion/.env`. `docker-compose.yml` (local dev) mantém só PhoneNumberId/AccessToken/ApiVersion comentadas. Local sem Docker: User Secrets. Chaves documentadas em `.env.example`.
+- Deploy: env vars no compose. `docker-compose.homolog.yml`/`docker-compose.server.yml` mapeiam `WhatsApp__*` ← `${WHATSAPP_*}` (Habilitado [default `false`], PhoneNumberId, AccessToken, ApiVersion, AppSecret, WebhookVerifyToken, MarcarComoTeste, RedirecionarDestinatariosPara, AllowlistTelefones) → setar no `/opt/forzion/.env`. `docker-compose.yml` (local dev) mantém só PhoneNumberId/AccessToken/ApiVersion comentadas. Local sem Docker: User Secrets. Chaves documentadas em `.env.example`.
 
 ## COMPONENTES
 - `MetaWhatsAppCloudNotifier` / `NullWhatsAppNotifier` / `EnvironmentWhatsAppDecorator`.
@@ -129,6 +130,16 @@ Fonte das vars: `WhatsAppTemplates.cs` (ordem dos `{{n}}` = ordem do array, IMUT
 ## TESTES
 - Unit (xUnit, sem Docker) em `forzion.tech.Tests`: notifier/webhook/handler tests (`MetaWhatsAppCloudNotifierTests`, `ProcessarWebhookWhatsAppHandlerTests`, `WhatsAppDeliveryLogTests`, handlers dos 5 adaptados + 10 novos). Cobrem: Habilitado false no-op, entidade não encontrada, telefone null, happy path (assert template Name + body params).
 - E2E/Infra (Testcontainers) exigem Docker → CI.
+
+## DESATIVAÇÃO TEMPORÁRIA (estado atual — feature `desativar-whatsapp-temporario`)
+Verificação de negócio da Meta Business Manager bloqueada (razão social ausente no site, resolvendo fora deste código). Até aprovar, a integração fica desligada por um kill-switch explícito, não mais implícito pela ausência de credencial.
+
+- **Config**: `WhatsApp:Habilitado=false` (default) em todos os ambientes. Gate DI força `NullWhatsAppNotifier` mesmo com credencial válida configurada (ver §STACK & GATE).
+- **Webhook**: `POST /webhooks/whatsapp` checa a flag ANTES de ler/validar payload (HMAC); `false` → `200 Ok()` no-op sem instanciar o command/handler (evita oráculo de assinatura). `GET` (handshake) inalterado, independe da flag — mantém a inscrição do webhook ativa na Meta.
+- **Health check**: `WhatsAppHealthCheck` checa a flag antes de checar credencial; `false` → `Healthy("WhatsApp desativado temporariamente.")` sem bater na Graph API — o desligamento proposital não derruba `/health/ready`.
+- **Plano ProPlus** (único tier ativo que confere WhatsApp — Elite já inativo): migration `InativarPlanoProPlus` (`is_ativo=false` em `planos_plataforma` WHERE `tier='ProPlus'`) — propaga automaticamente pra landing, contratar, trocar e o guard de backend (`plano_plataforma.inativo`), que já leem `is_ativo`/`isAtivo`. `DataSeeder` local reflete o mesmo estado.
+- **Frontend**: chip "WhatsApp" em Meu Plano sobreposto por `WHATSAPP_TEMPORARIAMENTE_INDISPONIVEL` (`frontend/src/lib/config/feature-flags.ts`, hoje `true`) — mostra label/tooltip de indisponibilidade temporária independente do `tierEfetivo` (cobre tier legado ProPlus/Elite que já teria direito ao canal).
+- **Reativação** (sem UI admin, flip manual): (1) `WhatsApp:Habilitado=true` nos envs desejados; (2) reverter a migration (`is_ativo=true` em `planos_plataforma` WHERE `tier='ProPlus'`) OU nova migration equivalente; (3) `WHATSAPP_TEMPORARIAMENTE_INDISPONIVEL=false` no frontend. Templates aprovados na Meta continuam válidos — não precisam ser re-submetidos.
 
 ## GAPS / ROADMAP — status
 Paridade email→WhatsApp **FECHADA** (todos os eventos de e-mail relevantes têm WhatsApp; verify/reset e health-report admin permanecem N/A por serem channel-bound/internos). Itens estruturais FECHADOS: type:template, `EnvironmentWhatsAppDecorator`, padronização event-handlers, `Habilitado`, catálogo central, E.164, webhook de status.

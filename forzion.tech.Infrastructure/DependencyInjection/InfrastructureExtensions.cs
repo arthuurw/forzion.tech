@@ -343,10 +343,11 @@ public static class InfrastructureExtensions
         // WhatsApp notifier — Meta Cloud API when configured, no-op otherwise. Sempre
         // embrulhado no EnvironmentWhatsAppDecorator: passthrough em prod, redirect/allowlist
         // de telefone em não-prod.
+        var whatsAppHabilitado = configuration.GetValue<bool>("WhatsApp:Habilitado");
         var whatsAppPhoneNumberId = configuration["WhatsApp:PhoneNumberId"];
         var whatsAppAccessToken = configuration["WhatsApp:AccessToken"];
         var whatsAppApiVersion = configuration["WhatsApp:ApiVersion"] ?? "v21.0";
-        if (!string.IsNullOrWhiteSpace(whatsAppPhoneNumberId) && !string.IsNullOrWhiteSpace(whatsAppAccessToken))
+        if (whatsAppHabilitado && !string.IsNullOrWhiteSpace(whatsAppPhoneNumberId) && !string.IsNullOrWhiteSpace(whatsAppAccessToken))
         {
             services.AddHttpClient<MetaWhatsAppCloudNotifier>(client =>
             {

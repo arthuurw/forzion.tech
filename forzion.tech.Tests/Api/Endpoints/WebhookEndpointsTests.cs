@@ -154,12 +154,55 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
             .Setup(h => h.HandleAsync(It.IsAny<ProcessarWebhookWhatsAppCommand>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure(Error.Business("webhook_whatsapp.assinatura_invalida", "Assinatura inválida.")));
 
+        var client = _factory.WithWebHostBuilder(builder =>
+                builder.UseSetting("WhatsApp:Habilitado", "true"))
+            .CreateClient();
+
         var content = new StringContent("{}", Encoding.UTF8, "application/json");
-        var response = await _factory.CreateClient().PostAsync("/webhooks/whatsapp", content);
+        var response = await client.PostAsync("/webhooks/whatsapp", content);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var problem = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
         problem.GetProperty("detail").GetString().Should().Be("Webhook inválido.");
+    }
+
+    // --- POST /webhooks/whatsapp (kill-switch WhatsApp:Habilitado) ---
+
+    [Fact]
+    public async Task Post_WebhookWhatsApp_Desabilitado_Retorna200SemInvocarHandler()
+    {
+        // Mock é compartilhado via IClassFixture — limpa histórico de outros testes da classe.
+        _factory.ProcessarWebhookWhatsAppHandlerMock.Invocations.Clear();
+
+        // Factory base não seta WhatsApp:Habilitado — default false, igual ao ambiente real.
+        var content = new StringContent("{}", Encoding.UTF8, "application/json");
+        var response = await _factory.CreateClient().PostAsync("/webhooks/whatsapp", content);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        _factory.ProcessarWebhookWhatsAppHandlerMock.Verify(
+            h => h.HandleAsync(It.IsAny<ProcessarWebhookWhatsAppCommand>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Post_WebhookWhatsApp_Habilitado_InvocaHandlerComoAntes()
+    {
+        _factory.ProcessarWebhookWhatsAppHandlerMock.Invocations.Clear();
+        _factory.ProcessarWebhookWhatsAppHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ProcessarWebhookWhatsAppCommand>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success());
+
+        var client = _factory.WithWebHostBuilder(builder =>
+                builder.UseSetting("WhatsApp:Habilitado", "true"))
+            .CreateClient();
+
+        var content = new StringContent("{}", Encoding.UTF8, "application/json");
+        var response = await client.PostAsync("/webhooks/whatsapp", content);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        _factory.ProcessarWebhookWhatsAppHandlerMock.Verify(
+            h => h.HandleAsync(It.IsAny<ProcessarWebhookWhatsAppCommand>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     // --- GET /webhooks/whatsapp (Meta verification handshake) ---
@@ -203,6 +246,23 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
             .GetAsync("/webhooks/whatsapp?hub.mode=unsubscribe&hub.verify_token=&hub.challenge=abc123");
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Get_WebhookWhatsApp_ComFlagHabilitada_HandshakeInalterado()
+    {
+        // Complementa Get_WebhookWhatsApp_TokenCorreto_Retorna200ComChallenge (roda com a
+        // factory base, flag ausente/false): prova que o GET também é idêntico com flag=true.
+        var client = _factory.WithWebHostBuilder(builder =>
+                builder.UseSetting("WhatsApp:Habilitado", "true"))
+            .CreateClient();
+
+        var response = await client
+            .GetAsync($"/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token={WebhookWebFactory.VerifyToken}&hub.challenge=abc123");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Be("abc123");
     }
 
     // --- WebApplicationFactory ---

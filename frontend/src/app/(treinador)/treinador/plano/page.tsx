@@ -14,6 +14,7 @@ import {
   DialogTitle,
   Divider,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -31,6 +32,7 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import TierEfetivoBadge from "@/components/treinador/TierEfetivoBadge";
 import { formatarBRL } from "@/lib/utils/formatting";
 import { permiteEmailEngajamento, permiteWhatsapp, type TierEfetivoStatus } from "@/lib/utils/tier";
+import { WHATSAPP_TEMPORARIAMENTE_INDISPONIVEL } from "@/lib/config/feature-flags";
 import type {
   AssinaturaTreinadorResponse,
   ContratarPlanoTreinadorResponse,
@@ -326,12 +328,23 @@ export default function PlanoTreinadorPage() {
                 color={permiteEmailEngajamento(dashboardPlano.tierEfetivo) ? "success" : "default"}
                 variant={permiteEmailEngajamento(dashboardPlano.tierEfetivo) ? "filled" : "outlined"}
               />
-              <Chip
-                size="small"
-                label={`WhatsApp — ${permiteWhatsapp(dashboardPlano.tierEfetivo) ? "disponível" : "indisponível"}`}
-                color={permiteWhatsapp(dashboardPlano.tierEfetivo) ? "success" : "default"}
-                variant={permiteWhatsapp(dashboardPlano.tierEfetivo) ? "filled" : "outlined"}
-              />
+              {WHATSAPP_TEMPORARIAMENTE_INDISPONIVEL ? (
+                <Tooltip title="Verificação de negócio do WhatsApp em andamento junto à Meta. O canal volta assim que for aprovado.">
+                  <Chip
+                    size="small"
+                    label="WhatsApp — temporariamente indisponível"
+                    color="default"
+                    variant="outlined"
+                  />
+                </Tooltip>
+              ) : (
+                <Chip
+                  size="small"
+                  label={`WhatsApp — ${permiteWhatsapp(dashboardPlano.tierEfetivo) ? "disponível" : "indisponível"}`}
+                  color={permiteWhatsapp(dashboardPlano.tierEfetivo) ? "success" : "default"}
+                  variant={permiteWhatsapp(dashboardPlano.tierEfetivo) ? "filled" : "outlined"}
+                />
+              )}
             </Stack>
           </CardContent>
         </Card>

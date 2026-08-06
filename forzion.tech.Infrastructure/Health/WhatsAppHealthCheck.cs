@@ -12,6 +12,9 @@ public sealed class WhatsAppHealthCheck(IHttpClientFactory httpClientFactory, IC
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
+        if (!configuration.GetValue<bool>("WhatsApp:Habilitado"))
+            return HealthCheckResult.Healthy("WhatsApp desativado temporariamente.");
+
         var phoneNumberId = configuration["WhatsApp:PhoneNumberId"];
         var accessToken = configuration["WhatsApp:AccessToken"];
 
