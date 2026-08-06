@@ -24,8 +24,22 @@ if ! $EDGE run --rm --no-deps nginx nginx -t; then
   exit 1
 fi
 
+conf_hash_host="$(sha256sum nginx/nginx.conf | cut -d' ' -f1)"
+conf_hash_live() { $EDGE exec -T nginx sha256sum /etc/nginx/nginx.conf 2>/dev/null | cut -d' ' -f1; }
+
 $EDGE up -d --remove-orphans
 
-if [ "$EDGE_WAS_UP" = 1 ]; then
+if [ "$(conf_hash_live)" != "$conf_hash_host" ]; then
+  # Bind-mount de arquivo unico prende o inode que existia no start do container. `git pull`
+  # troca o arquivo por rename => o container segue lendo o inode antigo e `nginx -s reload`
+  # rele essa copia morta; so recriar reancora o mount. O `nginx -t` acima roda em container
+  # efemero (mount novo), entao aprova o config novo enquanto o vivo continua servindo o velho.
+  $EDGE up -d --force-recreate --no-deps nginx
+elif [ "$EDGE_WAS_UP" = 1 ]; then
   $EDGE exec -T nginx nginx -s reload
+fi
+
+if [ "$(conf_hash_live)" != "$conf_hash_host" ]; then
+  echo "::error::edge servindo nginx.conf diferente do checkout ($EDGE_DIR) apos o reload."
+  exit 1
 fi
