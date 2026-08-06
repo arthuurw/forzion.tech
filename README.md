@@ -584,7 +584,7 @@ Vínculos: `GET /treinador/vinculos`, `POST .../{id}/aprovar` `{ pacoteId, trarF
 
 #### Internal — `X-Internal-Key` (rate `internal`)
 
-`POST /internal/processar-renovacoes` · `/internal/processar-renovacoes-treinador` · `/internal/processar-pre-avisos` · `/internal/processar-pre-avisos-treinador` · `/internal/processar-engajamento` · `/internal/reconciliar-pagamentos` (503 se truncado) · `/internal/gerar-nfse-comissao` · `/internal/reconciliar-nfse` · `/internal/processar-limite-alunos` (graça/apara) · `/internal/lgpd/contas-elegiveis` · `DELETE /internal/lgpd/contas/{id}`.
+`POST /internal/processar-renovacoes` · `/internal/processar-renovacoes-treinador` · `/internal/processar-pre-avisos` · `/internal/processar-pre-avisos-treinador` · `/internal/processar-engajamento` · `/internal/reconciliar-pagamentos` (503 se truncado) · `/internal/processar-limite-alunos` (graça/apara) · `/internal/lgpd/contas-elegiveis` · `DELETE /internal/lgpd/contas/{id}`.
 
 #### Infra
 
@@ -836,7 +836,7 @@ E2E/                     → pipeline real: WAF + Postgres + migrations + seed, 
 - `gitleaks` (árvore inteira), `security-backend` (vuln NuGet + SBOM CycloneDX), `security` (osv + npm audit + license + SBOM), `lint-migrations` (migration arriscada), `zap-baseline` (DAST passivo), `commitlint` (PR).
 - `gate` agrega os required; `deploy-homolog` deploya via Tailscale + SSH (ver Deploy). Pós-deploy: `pact-publish` + `pact-provider-verify`.
 
-Workflows dedicados: `mutation.yml` (Stryker), `openapi-drift.yml`, `contract.yml` (Pact file-source PR gate), `semgrep.yml` (SAST), `lighthouse.yml`, `smoke.yml`, `db-backup.yml`, `lgpd-purge.yml`, `billing-{renewal,renewal-treinador,prenotification,reconciliation}.yml`, `gerar-nfse-comissao.yml`, `reconciliar-nfse.yml`, `limite-alunos.yml` (graça/apara diária), `release-images.yml`, `deploy-prod.yml`, `hygiene.yml`, `zap.yml`, `pact-provider.yml`.
+Workflows dedicados: `mutation.yml` (Stryker), `openapi-drift.yml`, `contract.yml` (Pact file-source PR gate), `semgrep.yml` (SAST), `lighthouse.yml`, `smoke.yml`, `db-backup.yml`, `lgpd-purge.yml`, `billing-{renewal,renewal-treinador,prenotification,reconciliation}.yml`, `limite-alunos.yml` (graça/apara diária), `release-images.yml`, `deploy-prod.yml`, `hygiene.yml`, `zap.yml`, `pact-provider.yml`.
 
 ---
 
