@@ -169,6 +169,7 @@ Cobrança do treinador pelo próprio plano (cadastro/renovação/troca) — NÃO
 - **Capabilities BR (gotcha)**: contas Express em `Country=BR` exigem `card_payments` **junto** de `transfers` — pedir `transfers` sozinho falha `You cannot request the 'transfers' capability without the 'card_payments' capability for accounts in BR`. `CriarContaConnectAsync` solicita as duas.
 - Hmg (Test): test accounts liberam instant, sem KYC. Usar pra E2E checkout-stripe.spec.ts.
 - Prod (Live): Stripe exige Connect Express **profile review** (1-3 dias, aprovação humana) antes do primeiro account real. Iniciar antes do go-live.
+- **Pix ativa na PLATAFORMA, não na conta conectada** (docs Stripe, verificado 2026-08-06): a doc que manda o platform pedir `pix_payments` vale pro caso "connected account é o Merchant of Record" (direct charge). O forzion cobra por **destination charge** (`TransferData`+`ApplicationFeeAmount`) ⇒ MoR é a plataforma ⇒ basta Pix ativo na conta da plataforma em Live; `CriarContaConnectAsync` segue pedindo só `card_payments`+`transfers` (correto). Migrar pra direct charge exigiria pedir `pix_payments` por conta Express.
 
 ### Variáveis do `/opt/forzion/.env` por ambiente
 **Hmg** (Test):
