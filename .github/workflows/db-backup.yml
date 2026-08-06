@@ -43,6 +43,7 @@ jobs:
           BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
           # forzion_p (prod, projeto separado). Secret ausente pré-go-live → string vazia → alvo pulado.
           BACKUP_DATABASE_URL_PROD: ${{ secrets.BACKUP_DATABASE_URL_PROD }}
+          PROD_DEPLOY_ENABLED: ${{ vars.PROD_DEPLOY_ENABLED }}
           BACKUP_AGE_PUBLIC_KEY: ${{ secrets.BACKUP_AGE_PUBLIC_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -103,9 +104,13 @@ jobs:
           # homolog (staging): só schema homolog. public saiu — prod migrou p/ projeto separado forzion_p.
           backup_one "${BACKUP_DATABASE_URL}" "homolog" ""
 
-          # prod (forzion_p): projeto separado. Secret ausente (pré-go-live) → pula, sem falhar o run.
+          # prod (forzion_p): projeto separado. Secret ausente pula o alvo — mas só ENQUANTO prod não
+          # subiu: com o deploy armado, "pular em silêncio" seria prod real rodando sem DR nenhum.
           if [ -n "${BACKUP_DATABASE_URL_PROD:-}" ]; then
             backup_one "${BACKUP_DATABASE_URL_PROD}" "public" "prod/"
+          elif [ "${PROD_DEPLOY_ENABLED:-}" = "true" ]; then
+            echo "::error::PROD_DEPLOY_ENABLED=true sem BACKUP_DATABASE_URL_PROD: produção está no ar SEM backup."
+            exit 1
           else
             echo "backup prod pulado: BACKUP_DATABASE_URL_PROD não setado (forzion_p não provisionado)."
           fi
