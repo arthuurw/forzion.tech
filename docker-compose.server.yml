@@ -50,11 +50,11 @@ services:
 
   frontend:
     image: ${REGISTRY}/forzion/frontend:${TAG:-latest}
+    # NEXT_PUBLIC_* não aparecem aqui de propósito: a imagem vem pronta do GHCR e esses
+    # valores já foram congelados no `next build` (build-args do release-images.yml).
     environment:
       NODE_ENV: production
       API_BASE_URL: http://backend:8080
-      NEXT_PUBLIC_API_BASE_URL: /api/backend
-      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
       # Mesmo segredo do backend (Auth__JwtSecret): /api/auth/me valida a assinatura do JWT.
       JWT_SECRET: ${JWT_SECRET}
       JWT_ISSUER: ${JWT_ISSUER:-forzion.tech}

@@ -23,9 +23,9 @@ const analyticsConsented = consentPrefs?.analytics === true;
 Sentry.init({
   dsn,
   enabled: Boolean(dsn) && analyticsConsented,
-  environment: process.env.NEXT_PUBLIC_SENTRY_ENV ?? process.env.NODE_ENV,
-  tracesSampleRate: Number(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE ?? "0.05"),
-  replaysSessionSampleRate: Number(process.env.NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_RATE ?? "0.02"),
+  environment: process.env.NEXT_PUBLIC_SENTRY_ENV || process.env.NODE_ENV,
+  tracesSampleRate: Number(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE || "0.05"),
+  replaysSessionSampleRate: Number(process.env.NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_RATE || "0.02"),
   replaysOnErrorSampleRate: 1.0,
   sendDefaultPii: false,
   integrations: [],

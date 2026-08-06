@@ -60,11 +60,17 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      # NEXT_PUBLIC_* só chegam no bundle pelo build (`next build` congela o valor).
+      # Em `environment:` ficariam inertes — foi o que desligou o Stripe.js em homolog.
+      args:
+        NEXT_PUBLIC_API_BASE_URL: /api/backend
+        NEXT_PUBLIC_SITE_URL: https://homologacao.forzion.tech
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+        NEXT_PUBLIC_SENTRY_ENV: homolog
     environment:
       NODE_ENV: production
       API_BASE_URL: http://backend:8080
-      NEXT_PUBLIC_API_BASE_URL: /api/backend
-      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
       # Mesmo segredo do backend (Auth__JwtSecret): /api/auth/me valida a assinatura do JWT.
       JWT_SECRET: ${JWT_SECRET}
       JWT_ISSUER: ${JWT_ISSUER:-homologacao.forzion.tech}

@@ -59,6 +59,16 @@ jobs:
           context: frontend
           file: frontend/Dockerfile
           push: true
+          # NEXT_PUBLIC_* são congeladas no bundle pelo `next build`: sem passar aqui, a
+          # imagem de prod nasce com Stripe.js desligado e robots.txt noindex, e nenhuma
+          # variável de runtime conserta isso depois.
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=/api/backend
+            NEXT_PUBLIC_SITE_URL=${{ vars.PROD_SITE_URL || 'https://forzion.tech' }}
+            NEXT_PUBLIC_INDEXABLE=true
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ vars.PROD_STRIPE_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ vars.PROD_SENTRY_DSN }}
+            NEXT_PUBLIC_SENTRY_ENV=production
           tags: |
             ghcr.io/arthuurw/forzion/frontend:${{ github.sha }}
             ghcr.io/arthuurw/forzion/frontend:latest

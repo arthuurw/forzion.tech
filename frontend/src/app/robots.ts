@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://forzion.tech";
 
 // Indexável só quando explicitamente habilitado (produção). Default = noindex
 // total, evitando que homolog/staging (host público) seja indexado. Defesa em
