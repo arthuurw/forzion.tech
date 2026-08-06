@@ -27,14 +27,26 @@ public class DataSeederPlanosTests(InfrastructureTestFixture fixture)
     }
 
     [Fact]
-    public async Task SeedAsync_PlanosNaoElite_PermanecemAtivos()
+    public async Task SeedAsync_PlanoProPlus_CriadoInativo()
     {
         var connectionString = await SeedAsync();
 
         await using var ctx = fixture.CreateContext(connectionString);
-        var demais = await ctx.PlanosPlataforma.Where(p => p.Tier != TierPlano.Elite).ToListAsync();
-        demais.Should().NotBeEmpty();
-        demais.Should().OnlyContain(p => p.IsAtivo);
+        var proPlus = await ctx.PlanosPlataforma.SingleAsync(p => p.Tier == TierPlano.ProPlus);
+        proPlus.IsAtivo.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SeedAsync_PlanosVendaveis_PermanecemAtivos()
+    {
+        var connectionString = await SeedAsync();
+
+        await using var ctx = fixture.CreateContext(connectionString);
+        var vendaveis = await ctx.PlanosPlataforma
+            .Where(p => p.Tier != TierPlano.Elite && p.Tier != TierPlano.ProPlus)
+            .ToListAsync();
+        vendaveis.Should().NotBeEmpty();
+        vendaveis.Should().OnlyContain(p => p.IsAtivo);
     }
 
     [Fact]
