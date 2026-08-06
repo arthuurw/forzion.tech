@@ -7,7 +7,8 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 - Mudança de tabela → atualizar [specification-db], não aqui.
 
 ## STACK & GATE
-- SDK: Stripe.net `52.1.0` (NuGet no Infrastructure). Pinada em `forzion.tech.Infrastructure.csproj`.
+- SDK: Stripe.net `52.1.1` (NuGet no Infrastructure). Pinada em `forzion.tech.Infrastructure.csproj`.
+- **TRAIN da API version vs webhook endpoint (verificado empiricamente 2026-08-06, SDK 52.1.1 = `2026-06-24.dahlia`)**: `EventUtility.ConstructEvent` (overload de 3 args ⇒ `throwOnApiVersionMismatch: true`) compara a **release train**, não a data — evento `2026-04-22.dahlia` (versão do endpoint live criado no dashboard) passa; `2025-03-31.basil` ou `2024-06-20` lançam `StripeException`. Como `ValidarWebhookAsync` ENGOLE `StripeException` devolvendo `null` (LogWarning), um bump de Stripe.net que troque de train (dependabot faz isso sozinho) derruba a confirmação de pagamento em silêncio até os endpoints serem recriados com a API version nova — só a reconciliação (`billing-reconciliation.yml`) recupera, com atraso. Guard: `StripeWebhookApiVersionTests` falha no PR do bump.
 - `IStripeService` (Application/Interfaces): 12 métodos:
   - `CriarContaConnectAsync(email, nome, ct)` → `accountId` (conta Express, `Country=BR`, capabilities `card_payments`+`transfers` — BR exige ambas; exige Connect habilitado na conta, ver §Connect Express por ambiente)
   - `GerarLinkOnboardingAsync(accountId, urlRetorno, urlCancelamento, ct)` → URL
