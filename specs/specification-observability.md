@@ -9,7 +9,7 @@ DOC PARA AGENTES. Fonte de verdade de logging estruturado, health checks, relat�
 ## ESTADO GERAL (resumo)
 - Observabilidade É APP-LEVEL, não plataforma. Sem stack dedicada (sem Prometheus/Grafana/Loki/OTel/APM backend).
 - Backend: logging estruturado via `ILogger` + sink ERROR→DB; `/health` liveness + `/health/ready` readiness (DbContextCheck + SchemaHealthCheck + StripeHealthCheck + ResendHealthCheck + WhatsAppHealthCheck); relatório de saúde diário por e-mail; alert de chargeback via LogCritical; auth-failure LogWarning (R1-R4); auditoria durável de ações privilegiadas (R10-R14, `logs_aprovacao`).
-- Frontend: Sentry (erros + tracing + Session Replay) + Web Vitals RUM; Lighthouse CI semanal (budgets).
+- Frontend: Sentry (erros + tracing + Session Replay) + Web Vitals RUM; Lighthouse CI semanal (budgets). **DSN provisionado só em PROD** (`vars.PROD_SENTRY_DSN`, desde 2026-08-07) — antes disso o SDK rodou no-op em TODO ambiente desde sempre, apesar de wirado. Homolog tem o DSN no `.env` da VM mas a imagem de lá **ainda não foi rebuildada** (`NEXT_PUBLIC_*` é build-time) ⇒ homolog segue cego. Source map NÃO sobe em prod (§4 `Sentry init`).
 - Gates LGPD: Sentry no browser só com consentimento analytics; ver [specification-lgpd]. Gate `Null/no-op` sem DSN.
 - PII: nenhum e-mail/telefone cru em qualquer nível de log; mascaramento em fonte via `MascaraPii`; chokepoint Scrub no `HealthReportCollector` antes do relatório de saúde.
 
@@ -133,6 +133,7 @@ Pipeline distinto do `/health`: coleta profunda (DB connect real, KPIs, entregab
 
 ### Sentry init (gates + no-op)
 - `next.config.ts` `withSentryConfig`: plugin de build. Source maps SÓ com `SENTRY_AUTH_TOKEN` (`sourcemaps.disable = !TOKEN`) → `next build` em dev/CI sem token funciona. `silent: !CI`, `disableLogger: true`, `widenClientFileUpload: true`. Org/project/authToken via env.
+- **GAP ATIVO — stack trace de prod vem MINIFICADO**: `SENTRY_AUTH_TOKEN`/`SENTRY_ORG`/`SENTRY_PROJECT` NÃO chegam ao build da imagem de produção. O `frontend/Dockerfile` não declara `ARG` pra nenhum dos três e o `release-images.yml` não os passa em `build-args` ⇒ `sourcemaps.disable = true` sempre. Setar o token na VM não resolve prod: a imagem de prod é buildada no Actions, não na VM. **NÃO consertar com `ARG`/`ENV`** — grava o token no histórico de camadas da imagem (`docker history` extrai; é o mesmo `SecretsUsedInArgOrEnv` que o build já avisa por causa do `ARG JWT_SECRET`, hoje falso-positivo por ser placeholder). Caminho correto: BuildKit `--mount=type=secret` no `RUN`, ou `sentry-cli sourcemaps upload` em step separado do workflow. Rastreado em #375.
 - Runtimes (3 inits, todos gated `NEXT_PUBLIC_SENTRY_DSN` → `enabled: Boolean(dsn)`; **no-op completo sem DSN** = dev/CI sem config):
 
 | Arquivo | Runtime | Notas |
