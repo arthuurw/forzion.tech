@@ -11,6 +11,9 @@ concurrency:
 
 permissions:
   contents: read
+  # O passo de falha abre issue de alerta: sem isto ele morre em "Resource not accessible
+  # by integration" e a falha de deploy de prod fica sem notificacao (visto no run 31139104028).
+  issues: write
 
 jobs:
   deploy-prod:
