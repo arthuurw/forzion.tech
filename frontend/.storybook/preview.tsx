@@ -1,18 +1,11 @@
 import type { Preview } from "@storybook/nextjs";
 import { ThemeProvider, CssBaseline } from "@mui/material";
-import { initialize, mswLoader } from "msw-storybook-addon";
+import { mswLoader } from "msw-storybook-addon/csf3";
 import theme from "../src/lib/theme";
 import { handlers } from "../src/test/msw/handlers";
 
-// Inicializa Service Worker MSW para interceptar HTTP em stories.
-// Requer public/mockServiceWorker.js (gerado via "npx msw init public/").
-initialize({
-  onUnhandledRequest: "warn",
-  serviceWorker: { url: "/mockServiceWorker.js" },
-});
-
 const preview: Preview = {
-  loaders: [mswLoader],
+  loaders: [mswLoader()],
   parameters: {
     msw: { handlers },
     layout: "centered",

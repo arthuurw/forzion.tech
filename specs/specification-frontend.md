@@ -277,7 +277,7 @@ Cliente `lib/api/nfse.ts` (`nfseApi`: `getDadosFiscais`/`salvarDadosFiscais`/`co
 
 **Pact** (contract tests): config separada `vitest.pact.config.mts`. Consumer em `src/test/pact/consumer.test.ts`. API: `PactV3 + MatchersV3`. Tests: listFichas, getVinculo, getPerfil, listAlunos.
 
-**Storybook** (v10): `@storybook/nextjs`, `msw-storybook-addon`, `@storybook/addon-a11y`. Port 6006.
+**Storybook** (v10): `@storybook/nextjs`, `msw-storybook-addon` (v3), `@storybook/addon-a11y`. Port 6006. **API v3**: `initialize` não existe mais e `mswLoader` mudou pra `msw-storybook-addon/csf3`, virando factory — `preview.tsx` usa `loaders: [mswLoader()]`; o `defaultSetup` já sobe o worker com `onUnhandledRequest` que ignora asset/request interno do Storybook, então NÃO precisa mais de setup custom. **GOTCHA verde falso**: usar a API v2 com a v3 instalada NÃO reprova nem `tsc --noEmit` nem `storybook:build` (webpack só emite warning de "export not found"); quebra em runtime, ao carregar o preview. Gate não pega — conferir os exports do pacote ao subir major.
 
 **E2E** (Playwright `^1.61.1`): `e2e/`. Smoke, security, LGPD tests. Runs pós-deploy no CI (`smoke.yml`).
 
@@ -327,7 +327,7 @@ Lista completa re-derivável de `.env.example`. Invariantes não-óbvios:
 ## DICAS / GOTCHAS
 - `legacy-peer-deps=true` em `.npmrc` (madge@8 + TS6) — ver §TYPESCRIPT; NÃO remover sem atualizar madge.
 - npm override `"@pact-foundation/pact": { "https-proxy-agent": "^7.0.6" }`: pact v17 bundla `https-proxy-agent@9` (ESM puro); override força CJS-compatível. NÃO remover ao atualizar pact.
-- jsdom mantido em `^26` (não `^27`): jsdom 27 tem dep `@csstools/css-calc` ESM-only que quebra o vitest pool `forks`.
+- jsdom em `^30` (o pin antigo em `^26` por causa do `@csstools/css-calc` ESM-only no pool `forks` NÃO vale mais). **GOTCHA `Blob.prototype.stream()`**: o jsdom não implementa; o interceptor XHR do MSW embrulha o `xhr.response` (Blob, quando `responseType:"blob"`) num `Response` da Fetch API e o undici do **Node 22 (o do CI)** chama `stream()` nesse objeto → `TypeError: object.stream is not a function`, a promise do axios nunca resolve e o teste estoura o timeout. Polyfill em `src/test/setup/mocks/blobStream.ts` (instalado por `installGlobalMocks`). O undici do Node 24 nem entra nesse caminho (trata o Blob como não-blob e stringifica), então **local passa e só o CI reprova** — ver [specification-local-ci-repro].
 - `SBOM` usa `--ignore-npm-errors` para tolerar `typescript@6 invalid` (peer dep madge) e pacotes `@emnapi/*`/`@napi-rs/*` extraneous (deps opcionais NAPI-RS do pact v17).
 - AppLayout-logout-antes-de-redirect (evita loop com o proxy): ver §APPLAYOUT.
 - Proxy NÃO interceta `/api/*`; auth das API routes é dos próprios Route Handlers: ver §PROXY.

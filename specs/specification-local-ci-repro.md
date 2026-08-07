@@ -8,7 +8,7 @@ Atualizar quando: mudar matriz de versões CI (node/dotnet), surgir novo gate/wo
 ## 0. MATRIZ DE AMBIENTE (local×CI) — origem de quase toda divergência
 | Tool | CI (ubuntu) | Local típico (Windows) | Impacto |
 |---|---|---|---|
-| Node | **22** | 20 (default) | coverage v8 conta diferente → thresholds frontend divergem. Use `fnm install 22 && fnm use 22` (PowerShell: `fnm env \| iex; fnm use 22`). |
+| Node | **22** | 20 (default) / 24 | coverage v8 conta diferente → thresholds frontend divergem. Use `fnm install 22 && fnm use 22` (PowerShell: `fnm env \| iex; fnm use 22`). **O undici embutido muda com a major do Node** e isso cria falha só-no-CI: o undici do 22 aceita objeto blob-like duck-typed e chama `.stream()` nele; o do 24 exige `instanceof Blob` e cai no fallback de string. Suíte 100% verde em node 24 NÃO prova o gate — Blob do jsdom no caminho de fetch/XHR reprova só no CI (caso concreto + polyfill: [specification-frontend] §DICAS/GOTCHAS). |
 | .NET SDK | **10.0.x** (pin `global.json` floor 10.0.100, rollForward latestFeature) | 10.x | CI e local alinhados em SDK 10 (TFM `net10.0`). `.slnx` exige SDK ≥9 (SDK 8 dava MSB1003 — histórico, não mais relevante). |
 | OS | Linux | Windows + Docker Desktop | CRLF, MSYS path-mangling, fsync de volume glacial. |
 
