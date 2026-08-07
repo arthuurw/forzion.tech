@@ -9,6 +9,11 @@ set -euo pipefail
 
 [ -d /opt/forzion ] && { echo "recusando rodar em host de deploy (-p edge derrubaria o edge real)." >&2; exit 1; }
 
+# Todo path deste script e do LADO CONTAINER (`dst=/etc/test.conf`, `exec ... /etc/test.conf`):
+# o git-bash os reescreveria pra `C:/Program Files/Git/etc/...` e o docker recusaria o mount.
+# Seguro globalmente aqui porque os mounts saem de volumes, nao de bind do host.
+export MSYS_NO_PATHCONV=1
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WORK="$(mktemp -d)"
 VOL="edge-freshness-check-vol"
