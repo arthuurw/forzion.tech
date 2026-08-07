@@ -26,7 +26,17 @@ for wf in "${CRONS[@]}"; do
     echo "FALHOU -- $nome: ENV_FILE hardcoded (esperado vars.ENV_FILE com fallback)." >&2
     falhas=$((falhas + 1))
   fi
+
+  # Slug do healthchecks precisa carregar o ambiente: com um slug fixo, homolog e production
+  # pingam o MESMO check e o sucesso de homolog marca "up" por cima da falha de production.
+  while IFS= read -r linha; do
+    case "$linha" in
+      *'matrix.env'*) ;;
+      *) echo "FALHOU -- $nome: ping do healthchecks com slug fixo: ${linha##*hc-ping.com/}" >&2
+         falhas=$((falhas + 1)) ;;
+    esac
+  done < <(grep -F 'hc-ping.com' "$wf")
 done
 
 [ "$falhas" -eq 0 ] || exit 1
-echo "cron-env-parametrizacao-check: OK -- ${#CRONS[@]} crons resolvem chave/APP_DIR/ENV_FILE por ambiente."
+echo "cron-env-parametrizacao-check: OK -- ${#CRONS[@]} crons resolvem chave/APP_DIR/ENV_FILE/slug por ambiente."
