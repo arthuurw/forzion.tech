@@ -6,7 +6,9 @@
 # pega e o nginx -t sozinho não pegaria, por ser sintaticamente válido -- spec E5). Requer Docker.
 set -euo pipefail
 
+# docker.exe nao entende path MSYS (/tmp/...): converte o lado HOST dos binds se houver cygpath.
 WORK="$(mktemp -d)"
+WORK_BIND="$(command -v cygpath >/dev/null 2>&1 && cygpath -m "$WORK" || echo "$WORK")"
 NET="nginx-gate-check-net"
 UP="nginx-gate-check-upstream"
 EDGE="nginx-gate-check-edge"
@@ -28,7 +30,7 @@ http {
   }
 }
 EOF
-if docker run --rm -v "$WORK/broken.conf:/etc/nginx/nginx.conf:ro" nginx:1.27-alpine nginx -t >/dev/null 2>&1; then
+if docker run --rm -v "$WORK_BIND/broken.conf:/etc/nginx/nginx.conf:ro" nginx:1.27-alpine nginx -t >/dev/null 2>&1; then
   echo "nginx-gate-check: FALHOU -- config quebrada passou no nginx -t." >&2
   exit 1
 fi
@@ -45,7 +47,7 @@ http {
   }
 }
 EOF
-docker run --rm -v "$WORK/valid.conf:/etc/nginx/nginx.conf:ro" nginx:1.27-alpine nginx -t >/dev/null 2>&1 \
+docker run --rm -v "$WORK_BIND/valid.conf:/etc/nginx/nginx.conf:ro" nginx:1.27-alpine nginx -t >/dev/null 2>&1 \
   || { echo "nginx-gate-check: FALHOU -- config válida reprovou no nginx -t." >&2; exit 1; }
 echo "OK -- nginx -t aprovou a config válida (exit 0)."
 
@@ -55,7 +57,7 @@ docker network create "$NET" >/dev/null
 
 docker rm -f "$UP" >/dev/null 2>&1 || true
 docker run -d --name "$UP" --network "$NET" \
-  -v "$WORK/valid.conf:/etc/nginx/nginx.conf:ro" \
+  -v "$WORK_BIND/valid.conf:/etc/nginx/nginx.conf:ro" \
   nginx:1.27-alpine >/dev/null
 sleep 1
 
@@ -77,7 +79,7 @@ EOF
 
 docker rm -f "$EDGE" >/dev/null 2>&1 || true
 docker run -d --name "$EDGE" --network "$NET" -p 18080:80 \
-  -v "$WORK/edge-ok.conf:/etc/nginx/nginx.conf:ro" \
+  -v "$WORK_BIND/edge-ok.conf:/etc/nginx/nginx.conf:ro" \
   nginx:1.27-alpine >/dev/null
 sleep 1
 
@@ -107,7 +109,7 @@ http {
 EOF
 docker rm -f "$EDGE" >/dev/null 2>&1 || true
 docker run -d --name "$EDGE" --network "$NET" -p 18080:80 \
-  -v "$WORK/edge-broken.conf:/etc/nginx/nginx.conf:ro" \
+  -v "$WORK_BIND/edge-broken.conf:/etc/nginx/nginx.conf:ro" \
   nginx:1.27-alpine >/dev/null
 sleep 1
 
