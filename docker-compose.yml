@@ -64,12 +64,12 @@ services:
       dockerfile: Dockerfile
       args:
         API_BASE_URL: "http://backend:8080"
+        NEXT_PUBLIC_API_BASE_URL: "/api/backend"
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "${STRIPE_PUBLISHABLE_KEY:-}"
     ports:
       - "3001:3000"
     environment:
       API_BASE_URL: "http://backend:8080"
-      NEXT_PUBLIC_API_BASE_URL: "/api/backend"
-      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "${STRIPE_PUBLISHABLE_KEY:-}"
       # Mesmo segredo do backend (Auth__JwtSecret): /api/auth/me valida a assinatura do JWT.
       JWT_SECRET: "${JWT_SECRET}"
       JWT_ISSUER: "${JWT_ISSUER:-forzion.tech}"

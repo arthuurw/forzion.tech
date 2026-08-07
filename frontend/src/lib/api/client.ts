@@ -2,7 +2,7 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { extractApiErrorInfo } from "@/lib/api/extractApiError";
 import { requestStepUp } from "@/lib/auth/stepUpController";
 
-const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/backend";
+const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/backend";
 
 export const apiClient = axios.create({
   baseURL,

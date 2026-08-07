@@ -45,10 +45,10 @@ jobs:
 
       - name: Healthchecks ping (success)
         if: success()
-        run: curl -fsS -m 10 --retry 3 "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/billing-renewal-treinador" || true
+        run: curl -fsS -m 10 --retry 3 "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/billing-renewal-treinador-${{ matrix.env }}" || true
       - name: Healthchecks ping (failure)
         if: failure()
-        run: curl -fsS -m 10 --retry 3 "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/billing-renewal-treinador/fail" || true
+        run: curl -fsS -m 10 --retry 3 "https://hc-ping.com/${{ secrets.HC_PING_KEY }}/billing-renewal-treinador-${{ matrix.env }}/fail" || true
 
       - name: Notificar falha via issue
         if: failure()

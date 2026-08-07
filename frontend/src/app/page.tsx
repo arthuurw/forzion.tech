@@ -11,7 +11,7 @@ import PlanosSlab from "./_landing/PlanosSlab";
 import PlanosSkeleton from "./_landing/PlanosSkeleton";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://forzion.tech";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },

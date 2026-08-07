@@ -7,7 +7,8 @@ DOC PARA AGENTES. Fonte de verdade do processo de pagamento (Stripe Connect Expr
 - Mudança de tabela → atualizar [specification-db], não aqui.
 
 ## STACK & GATE
-- SDK: Stripe.net `52.1.0` (NuGet no Infrastructure). Pinada em `forzion.tech.Infrastructure.csproj`.
+- SDK: Stripe.net `52.1.1` (NuGet no Infrastructure). Pinada em `forzion.tech.Infrastructure.csproj`.
+- **TRAIN da API version vs webhook endpoint (verificado empiricamente 2026-08-06, SDK 52.1.1 = `2026-06-24.dahlia`)**: `EventUtility.ConstructEvent` (overload de 3 args ⇒ `throwOnApiVersionMismatch: true`) compara a **release train**, não a data — evento `2026-04-22.dahlia` (versão do endpoint live criado no dashboard) passa; `2025-03-31.basil` ou `2024-06-20` lançam `StripeException`. Como `ValidarWebhookAsync` ENGOLE `StripeException` devolvendo `null` (LogWarning), um bump de Stripe.net que troque de train (dependabot faz isso sozinho) derruba a confirmação de pagamento em silêncio até os endpoints serem recriados com a API version nova — só a reconciliação (`billing-reconciliation.yml`) recupera, com atraso. Guard: `StripeWebhookApiVersionTests` falha no PR do bump.
 - `IStripeService` (Application/Interfaces): 12 métodos:
   - `CriarContaConnectAsync(email, nome, ct)` → `accountId` (conta Express, `Country=BR`, capabilities `card_payments`+`transfers` — BR exige ambas; exige Connect habilitado na conta, ver §Connect Express por ambiente)
   - `GerarLinkOnboardingAsync(accountId, urlRetorno, urlCancelamento, ct)` → URL
@@ -169,6 +170,8 @@ Cobrança do treinador pelo próprio plano (cadastro/renovação/troca) — NÃO
 - **Capabilities BR (gotcha)**: contas Express em `Country=BR` exigem `card_payments` **junto** de `transfers` — pedir `transfers` sozinho falha `You cannot request the 'transfers' capability without the 'card_payments' capability for accounts in BR`. `CriarContaConnectAsync` solicita as duas.
 - Hmg (Test): test accounts liberam instant, sem KYC. Usar pra E2E checkout-stripe.spec.ts.
 - Prod (Live): Stripe exige Connect Express **profile review** (1-3 dias, aprovação humana) antes do primeiro account real. Iniciar antes do go-live.
+- **Conta LIVE da plataforma — estado validado 2026-08-06** (`acct_1TXnjZ02VXyADAA1`, via MCP do Stripe): `country=BR`, `default_currency=brl`, `details_submitted`/`charges_enabled`/`payouts_enabled` = true, `requirements.currently_due` VAZIO (ativação completa), `business_type=company` com CNPJ, conta bancária BRL default, `statement_descriptor=FORZION`. **Capabilities: `card_payments` + `transfers` + `boleto_payments` ATIVAS; `pix_payments` AUSENTE** — conta BR ativada e boleto liberado, logo a falta de Pix é liberação do lado do Stripe (abrir suporte informando Connect + destination charge). Cartão funciona ponta a ponta sem isso. `payouts.schedule = delay_days 30, daily` (padrão de conta BR nova): 1º repasse 30 dias após a cobrança — impacto de fluxo de caixa/comunicação ao treinador, não de código. Webhook LIVE já criado: `https://app.forzion.tech/webhooks/stripe`, `enabled`, com os 6 eventos exatos, `api_version 2026-04-22.dahlia` (compatível — mesma train do SDK, ver bullet do SDK acima).
+- **Pix ativa na PLATAFORMA, não na conta conectada** (docs Stripe, verificado 2026-08-06): a doc que manda o platform pedir `pix_payments` vale pro caso "connected account é o Merchant of Record" (direct charge). O forzion cobra por **destination charge** (`TransferData`+`ApplicationFeeAmount`) ⇒ MoR é a plataforma ⇒ basta Pix ativo na conta da plataforma em Live; `CriarContaConnectAsync` segue pedindo só `card_payments`+`transfers` (correto). Migrar pra direct charge exigiria pedir `pix_payments` por conta Express.
 
 ### Variáveis do `/opt/forzion/.env` por ambiente
 **Hmg** (Test):

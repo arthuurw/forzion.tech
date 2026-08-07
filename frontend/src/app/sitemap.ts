@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://forzion.tech";
 
 const PUBLIC_ROUTES = ["/", "/login", "/cadastro/treinador", "/cadastro/aluno"];
 

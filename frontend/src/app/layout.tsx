@@ -16,7 +16,7 @@ const inter = Inter({
   display: "swap",
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://forzion.tech";
 const SITE_DESCRIPTION = "Plataforma de gestão de treinos para personal trainers";
 
 export const metadata: Metadata = {
