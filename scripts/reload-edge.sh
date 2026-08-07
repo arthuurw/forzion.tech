@@ -25,7 +25,19 @@ if ! $EDGE run --rm --no-deps nginx nginx -t; then
 fi
 
 conf_hash_host="$(sha256sum nginx/nginx.conf | cut -d' ' -f1)"
-conf_hash_live() { $EDGE exec -T nginx sha256sum /etc/nginx/nginx.conf 2>/dev/null | cut -d' ' -f1; }
+
+# `exec` falha enquanto o container recem-criado ainda esta em `created`: sem o retry o hash
+# viria vazio e o deploy reprovaria por CORRIDA, nao por config divergente. `|| true` porque
+# sob `set -e` a atribuicao herdaria o exit do pipeline e abortaria o script.
+conf_hash_live() {
+  local h
+  for _ in 1 2 3 4 5; do
+    h="$($EDGE exec -T nginx sha256sum /etc/nginx/nginx.conf 2>/dev/null | cut -d' ' -f1)" || true
+    if [ -n "$h" ]; then echo "$h"; return 0; fi
+    sleep 1
+  done
+  echo ""
+}
 
 $EDGE up -d --remove-orphans
 
