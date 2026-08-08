@@ -212,7 +212,10 @@ A aplicação NÃO usa client Supabase: todo acesso é **Npgsql direto** (EF Cor
 ### Event trigger `public.rls_auto_enable` (prod)
 Função `SECURITY DEFINER` de dono `postgres`, `search_path` fixado em `pg_catalog`, ligada a 1 event trigger: toda `CREATE TABLE` em `public` recebe `enable row level security` automaticamente (falha capturada e só logada, não aborta o DDL). Defesa em profundidade contra tabela nova nascer sem RLS. `proacl` concede EXECUTE a `PUBLIC`/`anon`/`authenticated`, o que **não** é vetor: função que retorna `event_trigger` não pode ser chamada diretamente nem é exposta pelo PostgREST. Conferir se homolog tem o equivalente.
 
-Fechar os gaps = desabilitar a Data API por projeto (Settings → API) e desativar/rotacionar as chaves publicáveis. Cross-ref [specification-security] §8/§10.1, [specification-lgpd] §PENDÊNCIAS.
+### Guarda contra regressão
+`.github/workflows/supabase-exposure-guard.yml` (cron semanal, seg 07:00 UTC) roda as DUAS asserções acima nos 2 projetos: probe HTTP (reprova em 2xx) e SQL de `has_table_privilege` + `pg_default_acl` (reprova se `anon`/`authenticated` tiverem privilégio, `supabase_admin` excluído). Falha abre issue `ops`/`security` sem registrar nenhuma linha de dado. ⚠️ `schedule` só dispara da branch **default** ([specification-infrastructure] §CI-CD) — o guard fica INERTE em `homolog`, só passa a rodar após a promoção para `main`.
+
+Cross-ref [specification-security] §8/§10.1, [specification-lgpd] §PENDÊNCIAS.
 
 ## MIGRATION-SAFETY (política de mudança de schema)
 
