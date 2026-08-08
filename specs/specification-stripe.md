@@ -279,7 +279,7 @@ Disparado por `billing-reconciliation.yml` (cron semanal seg 04h UTC + `workflow
 - ClientSecret: incluído em `ToResponseAluno` (necessário pra Stripe.js confirmPayment); OMITIDO em `ToResponseTreinador` (treinador não deve confirmar pagamento do aluno).
 - StripeConnectAccountId: nunca exposto em response público (só usado server-side em CriarPaymentIntent + webhook validation).
 - Stripe.js coleta dados de cartão client-side via `<PaymentElement>` — nunca tocam o backend forzion. PCI-DSS SAQ-A escopo.
-- Rate limits: `internal` 5 req/min, `webhook` (vide `Program.cs`), `read`/`write` padrão. `/webhooks/*` é o ÚNICO caminho onde o backend vê o IP real do cliente (nginx seta `X-Real-IP`/`X-Forwarded-For` direto) — todo o resto passa pelo proxy BFF do Next (`frontend/src/app/api/backend/[...path]/route.ts`), que não repassa esses headers, colapsando `read`/`write`/`internal` num balde por-IP único (`ctx.Connection.RemoteIpAddress` = sempre o IP do container `frontend`). GAP conhecido, não deste subsistema.
+- Rate limits: `internal` 5 req/min, `webhook` (vide `Program.cs`), `read`/`write` padrão. `/webhooks/*` vai direto ao backend pelo nginx (`X-Real-IP`/`X-Forwarded-For` da borda) e nunca dependeu do BFF; desde 2026-08-08 o proxy BFF também emite o IP real, então `read`/`write` não caem mais num balde por-IP único ([specification-security] §4). Sem impacto neste subsistema.
 
 ## TESTES
 - Unit/Application/Api em `forzion.tech.Tests`: `PagamentoTests` (guards de transição), `ProcessarWebhookStripeHandlerTests`, `GerarCobrancaMensalHandlerTests`, `StripeWebhookParserTests`, `MoneyCentavosProperties` (8 invariantes CsCheck), `WebhookEndpointsTests`, etc.
