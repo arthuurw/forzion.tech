@@ -69,6 +69,12 @@ jobs:
             NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ vars.PROD_STRIPE_PUBLISHABLE_KEY }}
             NEXT_PUBLIC_SENTRY_DSN=${{ vars.PROD_SENTRY_DSN }}
             NEXT_PUBLIC_SENTRY_ENV=production
+            SENTRY_ORG=${{ vars.SENTRY_ORG }}
+            SENTRY_PROJECT=${{ vars.SENTRY_PROJECT }}
+          # SENTRY_AUTH_TOKEN separado de build-args: vira secret mount (frontend/Dockerfile),
+          # nunca ARG/ENV — não persiste em layer nem no cache-to:type=gha,mode=max abaixo.
+          secrets: |
+            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
           tags: |
             ghcr.io/arthuurw/forzion/frontend:${{ github.sha }}
             ghcr.io/arthuurw/forzion/frontend:latest
