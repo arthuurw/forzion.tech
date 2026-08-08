@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { CompletarMfaResponse } from "@/types";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+import { forwardedForHeader } from "@/lib/security/forwardedFor";
 import {
   applySessionCookies,
   applyTrustedDeviceCookie,
@@ -29,7 +30,11 @@ export async function POST(request: NextRequest) {
 
   const res = await fetch(`${API_BASE}/auth/mfa/verificar`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${pending}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${pending}`,
+      ...forwardedForHeader(request),
+    },
     body: JSON.stringify(body),
   });
 

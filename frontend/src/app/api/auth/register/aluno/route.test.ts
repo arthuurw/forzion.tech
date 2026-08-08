@@ -65,6 +65,25 @@ describe("POST /api/auth/register/aluno", () => {
     });
   });
 
+  it("emite X-Forwarded-For com o IP resolvido, ignorando o header forjado pelo cliente", async () => {
+    let received: string | null = null;
+    server.use(
+      http.post("*/auth/register/aluno", ({ request }) => {
+        received = request.headers.get("x-forwarded-for");
+        return HttpResponse.json({}, { status: 201 });
+      }),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      headers: { "x-forwarded-for": "198.51.100.9" },
+      body: { email: "x@x.com" },
+    });
+    await POST(req);
+
+    expect(received).toBe("127.0.0.1");
+  });
+
   it("backend retorna 400 → propaga status e body", async () => {
     server.use(
       http.post("*/auth/register/aluno", () =>

@@ -190,4 +190,29 @@ describe("POST /api/auth — MFA pendente", () => {
 
     expect(cookieHeader).toBe("trusted_device=device-raw");
   });
+
+  it("emite X-Forwarded-For com o IP resolvido, ignorando o header forjado pelo cliente", async () => {
+    let received: string | null = null;
+    server.use(
+      http.post("*/auth/login", ({ request }) => {
+        received = request.headers.get("x-forwarded-for");
+        return HttpResponse.json({
+          token: fakeJwt,
+          refreshToken: "raw-refresh",
+          tipoConta: "Aluno",
+          contaId: "c1",
+          perfilId: "p1",
+        });
+      }),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      headers: { "x-forwarded-for": "198.51.100.9" },
+      body: { email: "u@u.com", senha: "secret" },
+    });
+    await POST(req);
+
+    expect(received).toBe("127.0.0.1");
+  });
 });
