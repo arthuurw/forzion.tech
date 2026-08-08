@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { isCrossOrigin } from "@/lib/security/sameOrigin";
+import { forwardedForHeader } from "@/lib/security/forwardedFor";
 
 const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
 
 // Headers do cliente que são permitidos de serem repassados ao backend.
-// Nenhum outro header (Cookie, Authorization, X-Forwarded-For, etc.) é repassado.
+// Nenhum outro header (Cookie, Authorization, X-Forwarded-For do cliente) é repassado:
+// o X-Forwarded-For enviado ao backend é montado pelo proxy a partir do IP resolvido.
 const ALLOWED_REQUEST_HEADERS = ["content-type", "accept", "x-step-up-token"];
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -33,6 +35,9 @@ async function proxy(request: NextRequest, path: string[]): Promise<NextResponse
     if (value) headers.set(name, value);
   }
   if (token) headers.set("Authorization", `Bearer ${token}`);
+  for (const [name, value] of Object.entries(forwardedForHeader(request))) {
+    headers.set(name, value);
+  }
 
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
   const body = hasBody ? await request.arrayBuffer() : undefined;

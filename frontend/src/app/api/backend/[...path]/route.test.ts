@@ -164,6 +164,67 @@ describe("Backend proxy /api/backend/[...path]", () => {
     });
   });
 
+  describe("Repasse do IP real ao backend", () => {
+    it("emite X-Forwarded-For com o IP resolvido de X-Real-IP", async () => {
+      setupCookies({});
+      let received: string | null = null;
+
+      server.use(
+        http.get("*/admin/x", ({ request }) => {
+          received = request.headers.get("x-forwarded-for");
+          return HttpResponse.json({});
+        }),
+      );
+
+      const req = createMockRequest({
+        method: "GET",
+        headers: { "x-real-ip": "203.0.113.7" },
+      });
+      await GET(req, makeCtx(["admin", "x"]));
+
+      expect(received).toBe("203.0.113.7");
+    });
+
+    it("X-Forwarded-For forjado pelo cliente é substituído pelo IP resolvido", async () => {
+      setupCookies({});
+      let received: string | null = null;
+
+      server.use(
+        http.get("*/admin/x", ({ request }) => {
+          received = request.headers.get("x-forwarded-for");
+          return HttpResponse.json({});
+        }),
+      );
+
+      const req = createMockRequest({
+        method: "GET",
+        headers: { "x-real-ip": "203.0.113.7", "x-forwarded-for": "198.51.100.9" },
+      });
+      await GET(req, makeCtx(["admin", "x"]));
+
+      expect(received).toBe("203.0.113.7");
+      expect(received).not.toBe("198.51.100.9");
+    });
+
+    it("sem IP resolvível → header ausente e request segue normal", async () => {
+      setupCookies({});
+      let received: string | null = "sentinel";
+
+      server.use(
+        http.get("*/admin/x", ({ request }) => {
+          received = request.headers.get("x-forwarded-for");
+          return HttpResponse.json({});
+        }),
+      );
+
+      const req = createMockRequest({ method: "GET" });
+      const res = await GET(req, makeCtx(["admin", "x"]));
+
+      expect(received).toBeNull();
+      expect(res.status).toBe(200);
+    });
+  });
+
   describe("Forwarding metodos HTTP", () => {
     it.each([
       ["GET", GET],
