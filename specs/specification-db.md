@@ -175,21 +175,42 @@ data_protection_keys — keyring de ASP.NET Core DataProtection persistido (`IDa
 - postgres: `ConnectionStrings:DefaultConnection`. Admin/DDL privilegiado. NÃO é superuser pleno no Supabase → NÃO consegue `SET ROLE forzion_api` sem o `GRANT ... WITH SET TRUE` (§APLICAÇÃO DE MIGRATIONS).
 - Runtime: app conecta como forzion_api. **Auto-migrate no boot só em Development** (`MigrationStartup.ShouldAutoMigrateOnBoot`); Homolog e Production aplicam via `app migrate` one-shot no pipeline de deploy ([specification-dr] §4).
 - ⚠️ `Program.cs` adiciona User Secrets DEPOIS do CreateBuilder → secrets sobrescrevem env vars em RUNTIME. `dotnet run` em Development conecta no SUPABASE REMOTO (não local) e migra/seeda lá. `AppDbContextFactory` (design-time, `dotnet ef`) adiciona env por último → env vence (override por env funciona só no ef).
-- **`forzion_p` (PROD)** provisionado por `scripts/provision-forzion_p-grants.sql` → `app migrate` one-shot (`compose -p prd run --rm --no-deps backend migrate`, que aplica schema **E seed** e sai — `Program.cs:20`). Todas as 45 tabelas de `public` são owned by `forzion_api`, com **zero grant de tabela p/ `anon`/`authenticated`/`service_role`** — não por REVOKE, e sim por construção: tabela criada POR `forzion_api` não herda default ACL (só existem `pg_default_acl` de `postgres`/`supabase_admin`). `data_protection_keys` nasce VAZIA — só popula no 1º boot do web host, não no migrate.
-- **GOTCHA — reset de senha do Supabase DESFAZ o hardening de grants**: "Reset database password" no dashboard re-provisiona as roles gerenciadas e RESTAURA os grants default do schema (`PUBLIC`/`anon`/`authenticated`/`service_role` voltam com `USAGE`). Rodar `provision-forzion_p-grants.sql` de novo (idempotente) DEPOIS de qualquer reset. O script revoga privilégio de TABELA/SEQUENCE desses roles, NÃO o `USAGE` do schema — `anon=U`/`authenticated=U` permanecem no ACL por design; a proteção real é (a) ownership `forzion_api`, (b) zero grant de tabela.
+- **`forzion_p` (PROD)** provisionado por `scripts/provision-forzion_p-grants.sql` → `app migrate` one-shot (`compose -p prd run --rm --no-deps backend migrate`, que aplica schema **E seed** e sai — `Program.cs:20`). Todas as 45 tabelas de `public` são owned by `forzion_api`, com **zero grant de tabela p/ `anon`/`authenticated`/`service_role`** — não por REVOKE, e sim por construção: tabela criada POR `forzion_api` não herda default ACL (só existem `pg_default_acl` de `postgres`/`supabase_admin`). Confirmado por medição em 2026-08-08: `has_table_privilege('anon', …, 'SELECT')` = 0 nas 45 (§DATA API). `data_protection_keys` nasce VAZIA — só popula no 1º boot do web host, não no migrate.
+- **GOTCHA — reset de senha do Supabase DESFAZ o hardening de grants**: "Reset database password" no dashboard re-provisiona as roles gerenciadas e RESTAURA os grants default do schema (`PUBLIC`/`anon`/`authenticated`/`service_role` voltam com `USAGE`). Rodar `provision-forzion_p-grants.sql` de novo (idempotente) DEPOIS de qualquer reset. O script revoga privilégio de TABELA/SEQUENCE desses roles, NÃO o `USAGE` do schema — `anon=U`/`authenticated=U` permanecem no ACL por design; a proteção real é (a) ownership `forzion_api`, (b) zero grant de tabela, (c) default privileges de `postgres` revogadas (§6 do script, add. 2026-08-08).
 - **Credencial da plataforma pode dessincronizar em projeto dormente**: `forzion_p` ficou semanas sem uso e passou a recusar TODA query da Management API/MCP com `28P01 password authentication failed` p/ `postgres` E `supabase_read_only_user` — inclusive SQL Editor. Reset da senha do banco ressincroniza. Não afeta `DB_CONNECTION` do app, que conecta como `forzion_api` (role própria, senha independente).
 
 ## DATA API / POSTGREST — postura por ambiente
-**[GAP ABERTO — nenhuma correção implementada.]** A aplicação NÃO usa client Supabase: todo acesso é **Npgsql direto** (EF Core) como `forzion_api`. PostgREST/Data API é portanto **superfície de ataque pura** — desabilitá-la não custa funcionalidade nenhuma.
+A aplicação NÃO usa client Supabase: todo acesso é **Npgsql direto** (EF Core) como `forzion_api`. PostgREST/Data API é portanto **superfície de ataque pura** — desabilitá-la não custa funcionalidade nenhuma.
 
-| Ambiente | Estado | Resíduo |
+**Estado MEDIDO em 2026-08-08** (fonte: `pg_class.relacl`, `has_table_privilege`, `pg_default_acl`; não `information_schema` — ver GOTCHA abaixo):
+
+| Ambiente / schema | Tabelas | Legíveis por `anon` | `USAGE` de `anon` no schema | Owner |
+|---|---|---|---|---|
+| prod `forzion_p` / `public` | 45 | **0** | sim | `forzion_api` |
+| homolog `forzion` / `homolog` | 45 | **0** | sim | `forzion_api` |
+| homolog `forzion` / `develop` | 46 | **0** | não | `forzion_api` |
+| homolog `forzion` / `public` | 0 | 0 | sim | — |
+
+- **Não há exposição de dado por PostgREST em nenhum ambiente.** Sem privilégio de tabela, o PostgREST não lê nada mesmo com a Data API ligada. RLS off é irrelevante nesse cenário: RLS filtra linhas de quem JÁ tem privilégio; quem não tem privilégio nenhum não chega à filtragem. `USAGE` de schema isolado não dá acesso a objeto.
+- **[GAP] Data API HABILITADA em prod**, sem consumidor. Probe: `GET /rest/v1/contas?select=id&limit=1` com a chave publicável → `503` + `Proxy-Status: PostgREST; error=PGRST002`. O header prova que o PostgREST processou a request ⇒ a Data API não está desabilitada; `PGRST002` é falha de schema cache (conexão/pool), TRANSITÓRIA. Ausência de `200` ≠ superfície fechada — mas ausência de grant sim.
+- **[GAP] Chaves `anon` (legacy JWT) e `sb_publishable_…` ambas ATIVAS** em prod, sem consumidor.
+
+### Default privileges — o mecanismo, e onde ele não alcança
+`pg_default_acl` em `public`, após o revoke de 2026-08-08 (aplicado nos DOIS projetos):
+
+| Criador | TABLES / SEQUENCES / FUNCTIONS | Concede a `anon`/`authenticated`? |
 |---|---|---|
-| prod (`forzion_p`) | **Data API HABILITADA**; RLS **off** nas 45 tabelas de `public`; chaves `anon` (legacy JWT) e `sb_publishable_…` ambas ATIVAS | PII de titular real exposta se qualquer grant de tabela reaparecer p/ `anon`/`authenticated` |
-| homolog (`forzion`) | grants de `anon`/`authenticated` em `public` — resíduo de AD-002, ainda aberto | dado de homologação servível pela chave publicável |
+| `postgres` | os três | **não** — revogado; sobra `{postgres, service_role, forzion_api}` |
+| `supabase_admin` | os três | **sim** — TABLES concede `anon=arwdDxtm` |
 
-- Evidência de que a Data API está LIGADA em prod: `GET /rest/v1/contas?select=id&limit=1` com a chave publicável responde `503` com header `Proxy-Status: PostgREST; error=PGRST002`. O header prova que o PostgREST processou a request; `PGRST002` = falha ao montar o schema cache (conexão/pool), condição TRANSITÓRIA — não é postura de bloqueio. Ausência de `200` hoje ≠ superfície fechada.
-- Única barreira efetiva em prod hoje = ownership `forzion_api` + zero grant de tabela (§ACESSOS). É FRÁGIL: o reset de senha do dashboard restaura grants default (§ACESSOS GOTCHA) e nada no CI detecta a regressão. RLS off significa que, restaurado o grant, toda linha fica legível.
-- Fechar o gap = desabilitar a Data API por projeto (Settings → API) e revogar/rotacionar as chaves publicáveis. Cross-ref [specification-security] §8, [specification-lgpd] §PENDÊNCIAS (exposição potencial de PII de titular real).
+- **`supabase_admin` é INALCANÇÁVEL pelo plano de dados**: `ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin …` → `ERROR 42501 permission denied` (exige membership; o `postgres` gerenciado não tem). Objeto criado em `public` POR `supabase_admin` nasce com `anon=arwdDxtm` e não há revoke possível.
+- Consequência de arquitetura: **desabilitar a Data API é o controle PRIMÁRIO**, não o secundário — `anon`/`authenticated` só são alcançáveis de fora via PostgREST. O revoke de `provision-forzion_p-grants.sql` §6 é a segunda camada, para o caso de a Data API ser religada.
+- **GOTCHA — `information_schema.role_table_grants` NÃO serve de verificação**: a view filtra pelas roles das quais o usuário corrente é membro e devolve **falso-zero** (na medição retornou vazio até para `forzion_api`, dona das 45 tabelas). Usar `has_table_privilege(role, oid, 'SELECT')` ou `pg_class.relacl`.
+
+### Event trigger `public.rls_auto_enable` (prod)
+Função `SECURITY DEFINER` de dono `postgres`, `search_path` fixado em `pg_catalog`, ligada a 1 event trigger: toda `CREATE TABLE` em `public` recebe `enable row level security` automaticamente (falha capturada e só logada, não aborta o DDL). Defesa em profundidade contra tabela nova nascer sem RLS. `proacl` concede EXECUTE a `PUBLIC`/`anon`/`authenticated`, o que **não** é vetor: função que retorna `event_trigger` não pode ser chamada diretamente nem é exposta pelo PostgREST. Conferir se homolog tem o equivalente.
+
+Fechar os gaps = desabilitar a Data API por projeto (Settings → API) e desativar/rotacionar as chaves publicáveis. Cross-ref [specification-security] §8/§10.1, [specification-lgpd] §PENDÊNCIAS.
 
 ## MIGRATION-SAFETY (política de mudança de schema)
 
