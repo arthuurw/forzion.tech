@@ -187,9 +187,14 @@ describe("Backend proxy /api/backend/[...path]", () => {
       },
     );
 
-    it("bloqueia internal em método mutante também", async () => {
-      const req = createMockRequest({ method: "POST", body: { a: 1 } });
-      const res = await POST(req, makeCtx(["internal", "billing", "cobrar"]));
+    it.each([
+      ["POST", POST],
+      ["PUT", PUT],
+      ["PATCH", PATCH],
+      ["DELETE", DELETE],
+    ] as const)("bloqueia internal em %s também", async (method, handler) => {
+      const req = createMockRequest({ method, body: { a: 1 } });
+      const res = await handler(req, makeCtx(["internal", "billing", "cobrar"]));
 
       expect(res.status).toBe(404);
       expect(fetchSpy).not.toHaveBeenCalled();
