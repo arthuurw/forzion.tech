@@ -19,7 +19,7 @@ Single source: `createTheme(..., ptBR)`. Locale `@mui/material/locale > ptBR` ap
 | `background.default` | `#F7F8FA` | cinza claro app |
 | `background.paper` | `#FFFFFF` | |
 | `text.primary` | `#111827` | 17.7:1 em #FFF / 16.7:1 em #F7F8FA (AA) |
-| `text.secondary` | `#4B5563` | gray-600; 7.6:1 em #FFF / 7.1:1 em #F7F8FA (AA) — F18 resolvido (era #6B7280 ≈4.6:1 em #F7F8FA) |
+| `text.secondary` | `#4B5563` | gray-600; 7.6:1 em #FFF / 7.1:1 em #F7F8FA (AA) — F18 resolvido |
 | `divider` | `rgba(0,0,0,0.08)` | (MuiDivider override → `rgba(0,0,0,0.07)`) |
 | `brand.label` | `#7a6300` | **LEGADO sem uso visual** — era overline accent dos labels de seção da landing; as eyebrows (`SectionEyebrow`) foram removidas em 2026-06-28 (ver §LANDING). Chave custom sobrevive via module augmentation; não hardcodar. |
 | `action.subtleBg` | `alpha("#1A1A1A",0.06)` = `rgba(26,26,26,0.06)` | fundo sutil de ícone/avatar quadrado (perfil, seguranca). Token nomeado via augmentation de `TypeAction` — `bgcolor:"action.subtleBg"` no `sx`. NÃO hardcodar o literal (FPAD-12). |
@@ -160,7 +160,7 @@ Regex base (case-insensitive), revisar cada hit à mão:
 Frontend: `grep -rniE "<regex>" frontend/src --include=*.tsx --include=*.ts | grep -viE "\.(test|spec|stories)\."`. Gotcha: literais bare como `"treinador ativo"` (sem `seu`/`bloqueado`) escapam regex estreito — varrer também o papel solto em mensagens de erro/403.
 
 ## ACESSIBILIDADE
-**Conformance alvo: WCAG 2.1 AA** (declarado como ALVO; sem doc de auditoria formal de conformidade no repo). Tags axe usadas: `wcag2a + wcag2aa + wcag21a + wcag21aa` (`frontend/e2e/utils/axe.ts`).
+**Conformance alvo: WCAG 2.1 AA** (declarado como ALVO; sem doc de auditoria formal de conformidade no repo). Tags axe usadas: `wcag2a + wcag2aa + wcag21a + wcag21aa` (`frontend/e2e/utils/axe.ts`). **[GAP] Não existe página pública de acessibilidade** (accessibility statement).
 
 ### Harness (REFERENCIAR [specification-tests]; não reexecutar disciplina aqui)
 | Camada | Ferramenta | Local | Escopo |
@@ -174,10 +174,8 @@ Frontend: `grep -rniE "<regex>" frontend/src --include=*.tsx --include=*.ts | gr
 `pkg`: `@axe-core/playwright ^4.12.1`. `runAxe(page)` = tags AA (wcag2a/aa + wcag21a/aa) **INCLUINDO `color-contrast`** — sem `disableRules`. Único helper (não há mais `runAxeStrict`).
 
 ### CONFORMANCE WCAG 2.1 AA — color-contrast (F18 RESOLVIDO)
-- **Conformance real**: WCAG 2.1 AA pleno, **incluindo 1.4.3 contraste**. `color-contrast` gateia no `runAxe` default (`e2e/utils/axe.ts`), aplicado por `e2e/specs/a11y/all-pages-axe.spec.ts` (`expect(violations).toEqual([])`) sobre rotas públicas + autenticadas.
-- **Fix de tema** (`src/lib/theme/index.ts`): `text.secondary` `#6B7280`→`#4B5563`, `error.main` `#D32F2F`→`#C62828` (ratios/AA na §Paleta). Secondary era fonte das violações (placeholder/disabled/helperText herdam dele). `text.primary` e `primary.contrastText` sobre `primary` já passavam.
-- **Removido**: ratchet spec `color-contrast-ratchet.spec.ts` e helper `runAxeStrict` (não havia outro uso). Gate hard ON — sem mitigação por ratchet.
-- **Lighthouse**: a11y 0.95 (que inclui contraste) agora alinhado ao axe E2E — fontes de verdade convergentes.
+- **Conformance real**: WCAG 2.1 AA pleno, **incluindo 1.4.3 contraste**, gate hard (sem ratchet/mitigação). `color-contrast` gateia no `runAxe` default (`e2e/utils/axe.ts`), aplicado por `e2e/specs/a11y/all-pages-axe.spec.ts` (`expect(violations).toEqual([])`) sobre rotas públicas + autenticadas. Lighthouse a11y (`minScore 0.95`, inclui contraste) e o axe E2E convergem como fontes de verdade.
+- Tokens (`src/lib/theme/index.ts`, valores/ratios na §Paleta): `text.secondary` e `error.main` eram a fonte das violações — herdadas por placeholder/disabled/helperText. `text.primary` e `primary.contrastText` sobre `primary` já passavam.
 - **Amarelo de marca (`primary.main` #F5C400) como TEXTO só passa AA sobre fundo escuro.** Em superfície clara usar o token `brand.label` (#7A6300, ~5.6:1 no branco) — eyebrows/labels da landing (`_landing/*`). GOTCHA recorrente: texto amarelo direto em seção clara (HowItWorks step, wordmark de Diferenciais) reprovava AA; corrigido p/ `brand.label`. Card inativo de plano NÃO usa `opacity:0.x` global (rebaixa todo o texto < AA) — estado "inativo" vai só no Chip "Em breve" + `pointerEvents:none`.
 
 ### Padrões a11y reais encontrados
