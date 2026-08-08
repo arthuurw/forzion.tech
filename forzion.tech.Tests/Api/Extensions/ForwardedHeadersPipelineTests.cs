@@ -18,9 +18,8 @@ public class ForwardedHeadersPipelineTests
 {
     private const string RedeDoProxy = "172.18.0.0/16";
 
-    // O middleware só é registrado em Production/Homolog, então WebApplicationFactory (que roda em
-    // Test) passaria verde sem exercitar nada. Montar o middleware sobre as options reais é o único
-    // arranjo que prova a semântica de peer confiável.
+    // Monta o middleware direto sobre as options reais para isolar a semântica de peer confiável de
+    // qualquer boot de host. O registro no pipeline da app é coberto por RateLimitIpRealPipelineTests.
     private static async Task<DefaultHttpContext> ProcessarAsync(string ipDoPeer, string xff, string? subClaim = null)
     {
         var options = new ConfigurationBuilder()
