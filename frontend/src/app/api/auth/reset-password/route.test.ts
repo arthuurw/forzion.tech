@@ -85,4 +85,23 @@ describe("POST /api/auth/reset-password", () => {
     expect(res.status).toBe(400);
     expect(backendCalled).toBe(false);
   });
+
+  it("emite X-Forwarded-For com o IP real, ignorando o header forjado pelo cliente", async () => {
+    let received: string | null = null;
+    server.use(
+      http.post("*/auth/reset-password", ({ request }) => {
+        received = request.headers.get("x-forwarded-for");
+        return HttpResponse.json({}, { status: 200 });
+      }),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      headers: { "x-real-ip": "203.0.113.7", "x-forwarded-for": "198.51.100.9" },
+      body: { token: "a".repeat(64), novaSenha: "SenhaForte123" },
+    });
+    await POST(req);
+
+    expect(received).toBe("203.0.113.7");
+  });
 });

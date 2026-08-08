@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { clearSessionCookies } from "@/lib/auth/sessionCookies";
 import { isCrossOrigin } from "@/lib/security/sameOrigin";
+import { forwardedForHeader } from "@/lib/security/forwardedFor";
 
 const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
 
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
     try {
       await fetch(`${API_BASE}/conta/logout`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, ...forwardedForHeader(request) },
       });
     } catch {
       // falha silenciosa — cookies são limpos de qualquer forma

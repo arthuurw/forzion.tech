@@ -106,4 +106,24 @@ describe("POST /api/auth/logout", () => {
     expect(backendCalled).toBe(false);
     expect(res.headers.get("set-cookie")).toBeNull();
   });
+
+  it("emite X-Forwarded-For com o IP real, ignorando o header forjado pelo cliente", async () => {
+    setupCookies({ token: "valid-token" });
+    let received: string | null = null;
+    server.use(
+      http.post("*/conta/logout", ({ request }) => {
+        received = request.headers.get("x-forwarded-for");
+        return HttpResponse.json({});
+      }),
+    );
+
+    const headers = new Headers({
+      host: "localhost:3000",
+      "x-real-ip": "203.0.113.7",
+      "x-forwarded-for": "198.51.100.9",
+    });
+    await POST({ headers } as unknown as Parameters<typeof POST>[0]);
+
+    expect(received).toBe("203.0.113.7");
+  });
 });
