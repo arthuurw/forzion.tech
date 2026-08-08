@@ -189,7 +189,7 @@ Nenhum dos itens abaixo tem correção implementada. Backlog rastreável em card
 
 **Não verificado**
 - **Isolamento de segredos prd↔hmg NÃO verificado**: `JWT_SECRET`, `MFA_ENCRYPTION_KEY`, `DATA_PROTECTION_KEY`, `INTERNAL_API_KEY`, `DELIVERY_LOG_HASH_KEY` vivem nos `.env` da VM (`/opt/forzion/.env` vs `/opt/forzion/prod/.env`), fora do alcance de auditoria automatizada. §10.2 exige valores 100% distintos; a conformidade é ASSUMIDA, não comprovada.
-- **Advisors do Supabase (homolog)**: `function_search_path_mutable` em `public.custom_access_token_hook`; `auth_leaked_password_protection` desabilitado.
+- **Advisors do Supabase (homolog)**: `function_search_path_mutable` em `public.custom_access_token_hook` — **RESOLVIDO 2026-08-08**, a função foi dropada (resíduo morto de scaffold anterior: consultava `usuarios.tenant_id`, tabela inexistente). `auth_leaked_password_protection` desabilitado — **estado desconhecido**: `get_advisors` passou a retornar lista VAZIA, e lista vazia NÃO é atestado (ver AD-008: o linter pode estar sem conseguir introspectar). Não afirmar resolvido sem verificação direta. Irrelevante na prática enquanto o Supabase Auth não tiver consumidor — `auth.users` de homolog está em 0 desde a limpeza, e prod nunca teve usuário.
 
 ## 9. ROTAÇÃO DE SEGREDOS, CADÊNCIA DE DEPS & ENFORCEMENT DE AUTHZ
 Postura PROATIVA (complementa §2 AuthZ, §5 segredos, §6 scanning — que são reativos/estáticos). Entradas [ALVO] = política a definir.
