@@ -97,6 +97,7 @@ public class RateLimitIpRealPipelineTests : IClassFixture<RateLimitIpRealPipelin
             builder.UseSetting("ConnectionStrings:AppConnection", "Host=127.0.0.1;Database=nao-usado;Username=nao;Password=nao");
             builder.UseSetting("Stripe:SecretKey", "sk_test_dummy");
             builder.UseSetting("Stripe:WebhookSecret", "whsec_dummy");
+            builder.UseSetting("Stripe:TaxaPlataformaPercent", "10");
             builder.UseSetting("Stripe:UrlBase", "https://localhost");
 
             builder.ConfigureServices(services =>
