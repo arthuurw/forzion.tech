@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
@@ -35,7 +37,15 @@ ARG NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE
 ENV NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=$NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE
 ARG NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_RATE
 ENV NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_RATE=$NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_RATE
-RUN npm run build
+# SENTRY_ORG/SENTRY_PROJECT não são segredo (slugs); SENTRY_AUTH_TOKEN é — montado como
+# secret BuildKit só durante este RUN (nunca vira layer nem entra no cache exportado por
+# `cache-to: type=gha,mode=max`, diferente de ARG/ENV). Ausente = sourcemaps.disable=true
+# (next.config.ts), upload vira no-op — build local/dev/CI sem token funciona igual antes.
+ARG SENTRY_ORG
+ENV SENTRY_ORG=$SENTRY_ORG
+ARG SENTRY_PROJECT
+ENV SENTRY_PROJECT=$SENTRY_PROJECT
+RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN,env=SENTRY_AUTH_TOKEN npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
