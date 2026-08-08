@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import type { SessionUser, TipoConta } from "@/types";
 import { applySessionCookies, clearSessionCookies, fetchBackendRefresh } from "@/lib/auth/sessionCookies";
+import { forwardedForHeader } from "@/lib/security/forwardedFor";
 
 function toSessionUser(payload: Record<string, unknown>): SessionUser | null {
   const contaId = payload["conta_id"] as string | undefined;
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
   // Access ausente/expirado mas refresh presente: rotaciona server-side antes de devolver
   // null, p/ a sessão sobreviver a um reload com access já vencido (15min) sem deslogar.
   if (refresh) {
-    const data = await fetchBackendRefresh(refresh);
+    const data = await fetchBackendRefresh(refresh, forwardedForHeader(request));
     if (data) {
       const user: SessionUser = {
         contaId: data.contaId,

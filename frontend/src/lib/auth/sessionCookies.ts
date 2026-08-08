@@ -87,11 +87,14 @@ export function clearSessionCookies(response: NextResponse): void {
  * (o endpoint lê `Request.Cookies["refresh"]`, nunca body/JS). Retorna o par novo
  * rotacionado, ou null em qualquer falha (inválido/expirado/reuse/rede) → caller desloga.
  */
-export async function fetchBackendRefresh(refreshRaw: string): Promise<RefreshResponse | null> {
+export async function fetchBackendRefresh(
+  refreshRaw: string,
+  forwardedFor: Record<string, string>,
+): Promise<RefreshResponse | null> {
   try {
     const res = await fetch(`${API_BASE}/auth/refresh`, {
       method: "POST",
-      headers: { Cookie: `refresh=${refreshRaw}` },
+      headers: { Cookie: `refresh=${refreshRaw}`, ...forwardedFor },
     });
     if (!res.ok) return null;
     return (await res.json()) as RefreshResponse;
