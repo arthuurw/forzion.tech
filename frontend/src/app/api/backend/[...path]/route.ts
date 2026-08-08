@@ -12,6 +12,22 @@ const ALLOWED_REQUEST_HEADERS = ["content-type", "accept", "x-step-up-token"];
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+// Decodifica em laço porque uma única passada deixa passar `%2569nternal`.
+// Termina: cada passada que muda a string a encurta.
+function decodeFully(segment: string): string | null {
+  let current = segment;
+  for (;;) {
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(current);
+    } catch {
+      return null;
+    }
+    if (decoded === current) return current;
+    current = decoded;
+  }
+}
+
 async function proxy(request: NextRequest, path: string[]): Promise<NextResponse> {
   if (MUTATING_METHODS.has(request.method) && isCrossOrigin(request)) {
     return NextResponse.json({ error: "cross-origin" }, { status: 403 });
@@ -20,6 +36,14 @@ async function proxy(request: NextRequest, path: string[]): Promise<NextResponse
   // A9 — Sanitização de path: rejeitar segmentos que permitiriam path traversal.
   if (path.some((s) => s === ".." || s === ".")) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+  }
+
+  const firstSegment = decodeFully(path[0] ?? "");
+  if (firstSegment === null) {
+    return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+  }
+  if (firstSegment.toLowerCase() === "internal") {
+    return new NextResponse(null, { status: 404 });
   }
 
   const cookieStore = await cookies();
