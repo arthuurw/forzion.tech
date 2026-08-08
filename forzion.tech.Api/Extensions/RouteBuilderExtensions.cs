@@ -13,7 +13,6 @@ using forzion.tech.Api.Endpoints.Treinos;
 using forzion.tech.Api.Endpoints.Treinador;
 using forzion.tech.Api.Endpoints.Suporte;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
@@ -77,16 +76,7 @@ public static class RouteBuilderExtensions
         app.UseStatusCodePages();
 
         if (app.Environment.IsProduction() || app.Environment.IsEnvironment("Homolog"))
-        {
-            var forwarded = new ForwardedHeadersOptions
-            {
-                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
-                ForwardLimit = 1,
-            };
-            forwarded.KnownIPNetworks.Clear();
-            forwarded.KnownProxies.Clear();
-            app.UseForwardedHeaders(forwarded);
-        }
+            app.UseForwardedHeaders(app.Configuration.BuildForwardedHeadersOptions(app.Environment));
 
         if (app.Environment.IsProduction())
             app.UseHttpsRedirection();
