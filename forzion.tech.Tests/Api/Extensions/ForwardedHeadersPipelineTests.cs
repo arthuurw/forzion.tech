@@ -67,9 +67,12 @@ public class ForwardedHeadersPipelineTests
     [Fact]
     public async Task DoisHopsNoXff_ComForwardLimitUm_AdotaOHopDaDireita()
     {
-        var ctx = await ProcessarAsync(ipDoPeer: "172.18.0.5", xff: "203.0.113.7, 198.51.100.44");
+        // O hop da direita está DENTRO da rede confiável de propósito: com ForwardLimit=2 o middleware
+        // seguiria desenrolando e adotaria 203.0.113.7. É o que faz este teste discriminar o limite.
+        var ctx = await ProcessarAsync(ipDoPeer: "172.18.0.5", xff: "203.0.113.7, 172.18.0.9");
 
-        ctx.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse("198.51.100.44"));
+        ctx.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse("172.18.0.9"));
+        RateLimitPartitionKeys.KeyFromIp(ctx).Should().Be("ip:172.18.0.9");
     }
 
     [Fact]
