@@ -49,3 +49,33 @@ BEGIN
   END IF;
 END
 $$;
+
+-- 6. Default privileges de anon/authenticated: REVOKE. O passo 5 cobre só objeto EXISTENTE; sem este
+--    passo, objeto criado no futuro COMO postgres (migration pelo dashboard, provisionamento manual)
+--    nasce com o grant default do Supabase e fica legível pela chave publicável. Foi essa a lacuna
+--    que a auditoria de 2026-08-08 encontrou: o passo 4 ADICIONA forzion_api às default privileges,
+--    mas não REMOVE anon/authenticated delas.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
+     AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated';
+    EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated';
+    EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM anon, authenticated';
+  END IF;
+END
+$$;
+
+-- LIMITE CONHECIDO — o criador `supabase_admin` NÃO é alcançável por este script:
+--   ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin ... => ERROR 42501 permission denied
+-- (exige membership em supabase_admin; o `postgres` do Supabase gerenciado não tem). O default de
+-- TABLES desse criador concede anon=arwdDxtm, então objeto criado em public POR supabase_admin nasce
+-- exposto e não há como impedir pelo plano de dados. Por isso DESABILITAR A DATA API é o controle
+-- PRIMÁRIO, não o secundário: anon/authenticated só são alcançáveis externamente via PostgREST.
+-- Este script é a segunda camada, para o caso de a Data API ser religada.
+--
+-- VERIFICAÇÃO (não confiar em information_schema.role_table_grants — a view filtra por membership do
+-- usuário corrente e devolve falso-zero):
+--   SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+--    WHERE n.nspname='public' AND c.relkind='r' AND has_table_privilege('anon', c.oid, 'SELECT');
+-- Esperado: 0.
