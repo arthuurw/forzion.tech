@@ -5,6 +5,7 @@ using forzion.tech.Application.Interfaces;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.ValueObjects;
+using forzion.tech.Infrastructure.Logging;
 using forzion.tech.Infrastructure.Persistence.Repositories;
 using forzion.tech.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -307,7 +308,8 @@ public class RefreshTokenRepositoryTests(InfrastructureTestFixture fixture)
             new RefreshTokenFamilyRepository(ctx),
             new ContaRepository(ctx),
             config,
-            NullLogger<RefreshTokenService>.Instance);
+            NullLogger<RefreshTokenService>.Instance,
+            new AlertaSegurancaSentryNulo());
     }
 
     private async Task<(RefreshTokenFamily familia, string raw)> SeedSessaoAtivaAsync()
