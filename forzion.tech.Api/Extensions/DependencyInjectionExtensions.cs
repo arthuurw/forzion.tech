@@ -98,10 +98,12 @@ using forzion.tech.Application.UseCases.Auth.RedefinirSenha;
 using forzion.tech.Application.UseCases.Auth.VerificarEmail;
 using forzion.tech.Application.Settings;
 using forzion.tech.Infrastructure.Notifications.Email;
+using forzion.tech.Infrastructure.Common;
 using forzion.tech.Infrastructure.Logging;
 using forzion.tech.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Sentry;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace forzion.tech.Api.Extensions;
@@ -230,6 +232,32 @@ public static class DependencyInjectionExtensions
             services.AddSingleton<ErrorLogDbSinkProvider>();
             services.AddSingleton<ILoggerProvider>(sp => sp.GetRequiredService<ErrorLogDbSinkProvider>());
             services.AddHostedService<ErrorLogDbSinkDrenoService>();
+
+            // Sink adicional, coexiste com o de DB acima (nenhum substitui o outro). Ausente =
+            // no-op silencioso (padrão NullEmailService) — Sentry é observabilidade, não caminho
+            // de negócio, não faz sentido fail-fast igual e-mail. Breadcrumb desligado
+            // (MinimumBreadcrumbLevel=None): só o próprio evento de erro sai da app, nenhum log
+            // Info/Debug intermediário não escrutinado por PII.
+            var sentryDsn = configuration["Sentry:Dsn"];
+            if (!string.IsNullOrWhiteSpace(sentryDsn))
+            {
+                services.AddLogging(logging => logging.AddSentry(options =>
+                {
+                    options.Dsn = sentryDsn;
+                    options.Environment = environment.EnvironmentName;
+                    options.SendDefaultPii = false;
+                    options.MinimumEventLevel = LogLevel.Error;
+                    options.MinimumBreadcrumbLevel = LogLevel.None;
+                    options.SetBeforeSend((@event, _) =>
+                    {
+                        if (@event.Message is { } message)
+                            @event.Message = new SentryMessage { Formatted = MascaraPii.Scrub(message.Formatted) };
+                        foreach (var excecao in @event.SentryExceptions ?? [])
+                            excecao.Value = MascaraPii.Scrub(excecao.Value);
+                        return @event;
+                    });
+                }));
+            }
         }
 
         return services;
