@@ -89,6 +89,12 @@ describe("middleware — rotas públicas", () => {
     expect(NextResponse.redirect).not.toHaveBeenCalled();
   });
 
+  it("/privacidade sem auth → pass-through", async () => {
+    await middleware(makeRequest("/privacidade"));
+    expect(NextResponse.next).toHaveBeenCalled();
+    expect(NextResponse.redirect).not.toHaveBeenCalled();
+  });
+
   it("/cadastro/aluno sem auth → pass-through", async () => {
     await middleware(makeRequest("/cadastro/aluno"));
     expect(NextResponse.next).toHaveBeenCalled();
