@@ -1,9 +1,11 @@
 using System.Net;
 using FluentAssertions;
 using forzion.tech.Api.Extensions;
+using forzion.tech.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
 
 namespace forzion.tech.Tests.Api.Extensions;
@@ -16,12 +18,31 @@ public class RateLimitRejeicaoLogTests
     public void RegistrarRejeicaoAuth_PoliticaSensivel_LogaEventoEstruturadoComIpERota(string politica)
     {
         var coletor = new ColetorLog();
+        var alertaSeguranca = new Mock<IAlertaSegurancaSentry>();
         var ctx = ContextoComPolitica(politica, "/auth/login", "POST", "203.0.113.7");
 
-        DependencyInjectionExtensions.RegistrarRejeicaoAuth(ctx, coletor);
+        DependencyInjectionExtensions.RegistrarRejeicaoAuth(ctx, coletor, alertaSeguranca.Object);
 
         coletor.Mensagens.Should().ContainSingle();
         coletor.Mensagens[0].Should().ContainAll(politica, "/auth/login", "POST", "203.0.113.7");
+    }
+
+    [Theory]
+    [InlineData("auth")]
+    [InlineData("mfa")]
+    public void RegistrarRejeicaoAuth_PoliticaSensivel_RegistraAlertaComPoliticaRotaEIp(string politica)
+    {
+        var alertaSeguranca = new Mock<IAlertaSegurancaSentry>();
+        var ctx = ContextoComPolitica(politica, "/auth/login", "POST", "203.0.113.7");
+
+        DependencyInjectionExtensions.RegistrarRejeicaoAuth(ctx, new ColetorLog(), alertaSeguranca.Object);
+
+        alertaSeguranca.Verify(a => a.Registrar(
+            "rate_limit_rejection",
+            It.IsAny<string>(),
+            It.Is<IReadOnlyDictionary<string, string>>(t =>
+                t["Politica"] == politica && t["Rota"] == "/auth/login" && t["Ip"] == "203.0.113.7")),
+            Times.Once);
     }
 
     [Theory]
@@ -31,11 +52,13 @@ public class RateLimitRejeicaoLogTests
     public void RegistrarRejeicaoAuth_PoliticaNaoSensivel_NaoLoga(string? politica)
     {
         var coletor = new ColetorLog();
+        var alertaSeguranca = new Mock<IAlertaSegurancaSentry>();
         var ctx = ContextoComPolitica(politica, "/admin/x", "GET", "203.0.113.7");
 
-        DependencyInjectionExtensions.RegistrarRejeicaoAuth(ctx, coletor);
+        DependencyInjectionExtensions.RegistrarRejeicaoAuth(ctx, coletor, alertaSeguranca.Object);
 
         coletor.Mensagens.Should().BeEmpty();
+        alertaSeguranca.Verify(a => a.Registrar(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IReadOnlyDictionary<string, string>>()), Times.Never);
     }
 
     private static HttpContext ContextoComPolitica(string? politica, string path, string metodo, string ip)

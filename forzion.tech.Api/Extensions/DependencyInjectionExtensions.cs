@@ -155,7 +155,9 @@ public static class DependencyInjectionExtensions
                     var logger = context.HttpContext.RequestServices
                         .GetRequiredService<ILoggerFactory>()
                         .CreateLogger("RateLimit.AuthAbuse");
-                    RegistrarRejeicaoAuth(context.HttpContext, logger);
+                    var alertaSeguranca = context.HttpContext.RequestServices
+                        .GetRequiredService<IAlertaSegurancaSentry>();
+                    RegistrarRejeicaoAuth(context.HttpContext, logger, alertaSeguranca);
                     return ValueTask.CompletedTask;
                 };
 
@@ -477,7 +479,7 @@ public static class DependencyInjectionExtensions
         });
     }
 
-    internal static void RegistrarRejeicaoAuth(HttpContext httpContext, ILogger logger)
+    internal static void RegistrarRejeicaoAuth(HttpContext httpContext, ILogger logger, IAlertaSegurancaSentry alertaSeguranca)
     {
         var politica = httpContext.GetEndpoint()?
             .Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName;
@@ -485,11 +487,24 @@ public static class DependencyInjectionExtensions
         if (politica is not ("auth" or "mfa"))
             return;
 
+        var rota = httpContext.Request.Path.Value;
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
         logger.LogWarning(
             "Rate limit excedido — Politica: {Politica} Rota: {Rota} Metodo: {Metodo} Ip: {Ip}",
             politica,
-            httpContext.Request.Path.Value,
+            rota,
             httpContext.Request.Method,
-            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+            ip);
+
+        alertaSeguranca.Registrar(
+            "rate_limit_rejection",
+            $"Rate limit excedido — Politica: {politica} Rota: {rota} Ip: {ip}",
+            new Dictionary<string, string>
+            {
+                ["Politica"] = politica,
+                ["Rota"] = rota ?? "unknown",
+                ["Ip"] = ip
+            });
     }
 }
