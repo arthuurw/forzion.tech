@@ -86,10 +86,10 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 - `openapi-drift.yml` — `openapi:check` (tipos MSW vs OpenAPI; `git diff --exit-code`). **PR-only** (+ dispatch).
 - `semgrep.yml` (SAST), `hygiene.yml` (`knip` dead code + `madge` ciclos) — **PR-only** (+ dispatch). `zap.yml` (DAST), `lighthouse.yml` (perf/a11y LHCI) — schedule/dispatch. `smoke.yml` — Playwright smoke pós-deploy homolog (`workflow_run`).
 
-### GAPS CONHECIDOS / NÃO-ENFORÇADO (auditoria 2026-08-08 — nenhum corrigido)
-- **`security` VERMELHO hoje** — `npm run audit` (`--omit=dev --audit-level=high`) falha em `nanoid@3.3.16` (via `next@16.3.0`→`postcss@8.5.25`, GHSA-2v37-7h3g-55p8, high). `security` é gate crítico do deploy (push→homolog) ⇒ enquanto vermelho, `deploy-homolog` fica bloqueado (§10 skipped-upstream-trap). Backend segue limpo: `dotnet list package --vulnerable --include-transitive` = zero nos 6 projetos.
-- **`semgrep.yml` não gateia merge nenhum** — dispara só em `pull_request: branches:[homolog]`, workflow separado do `gate`; o único required check de `main` é `Gate`, do qual semgrep não faz parte ([specification-git] §CONTEXTO).
-- **`gitleaks` varre só a working tree** (`--no-git`, ver tabela acima) — NUNCA o histórico git. Repo é PÚBLICO.
+### GAPS CONHECIDOS / NÃO-ENFORÇADO (auditoria 2026-08-08 — fechados por `secprod-supply-chain-gates`, exceto onde marcado)
+- **`security` estava VERMELHO** (`npm run audit` acusava `nanoid@3.3.16` via `next`→`postcss`, GHSA-2v37-7h3g-55p8, high) — **corrigido** por bump anterior; `npm run audit` = 0 vulnerabilidades (reverificado 2026-08-09).
+- **`semgrep.yml` agora gateia `main`** — `pull_request.branches` inclui `main` (antes só `homolog`) e `"Semgrep scan"` é o 2º required status check de `main`, ao lado de `"Gate"` (`required_status_checks.contexts`). Continua workflow separado do `gate` de `ci.yml` (decisão preservada — evita queimar minuto em todo push→`homolog`).
+- **`gitleaks` no CI segue varrendo só a working tree** (`--no-git`) — decisão mantida (scan de histórico completo é one-shot local, não recorrente no CI; ver `.specs/features/secprod-supply-chain-gates/gitleaks-historico.md`).
 - **Produção nunca passou por DAST** — `zap.yml` (schedule/dispatch) aponta só pra `homologacao.forzion.tech`; `zap-baseline` (PR) roda contra imagem efêmera do frontend, sem nginx.
 
 ## 8. THRESHOLDS DE COBERTURA (detectado — NÃO abaixar sem aprovação humana)
