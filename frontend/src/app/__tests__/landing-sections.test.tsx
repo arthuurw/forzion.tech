@@ -37,6 +37,12 @@ describe("LandingPage — seções montadas", () => {
     await renderLanding([]);
     expect(screen.getByText("Meu aluno precisa pagar para usar?")).toBeInTheDocument();
   }, 20000);
+
+  it("rodapé tem link para /privacidade", async () => {
+    await renderLanding([]);
+    const link = screen.getByRole("link", { name: /privacidade/i });
+    expect(link).toHaveAttribute("href", "/privacidade");
+  }, 20000);
 });
 
 describe("LandingPage — descrição do plano (fonte: seed)", () => {
