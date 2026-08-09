@@ -10,6 +10,7 @@ services:
       Auth__JwtAudience: ${JWT_AUDIENCE:-forzion.tech}
       Mfa__EncryptionKey: ${MFA_ENCRYPTION_KEY}
       DataProtection__EncryptionKey: ${DATA_PROTECTION_KEY}
+      ForwardedHeaders__KnownNetworks: ${FORWARDED_KNOWN_NETWORKS}
       Cors__AllowedOrigins: ${CORS_ORIGINS}
       DeliveryLog__RecipientHashKey: ${DELIVERY_LOG_HASH_KEY}
       Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}

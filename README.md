@@ -4,7 +4,9 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 
 **Backend**: ASP.NET Core 10 · **Frontend**: Next.js 16 + MUI v9 · **Banco**: PostgreSQL 17 (Supabase)
 
-**Status**: ✅ 3.378 testes unit backend (0 falhas, sem Docker) + suíte de integração via Testcontainers (Postgres real, no CI) + suíte frontend (Vitest + Playwright + Storybook) | Clean Architecture | DDD tático (43 entidades, 35 domain events, 4 value objects) | Result<T> pattern (erros de negócio sem exceção) | Auth próprio: JWT HMAC + refresh token rotativo (famílias/detecção de reuso) + MFA TOTP (recovery codes, trusted devices, step-up) + verificação HIBP de senha | Isolamento por TreinadorId | Stripe Connect (Pix + cartão, refund/dispute, reconciliação por cursor, inadimplência) | Billing recorrente treinador↔plataforma | NFS-e Nacional (SEFIN gov.br: assinatura + comissão mensal, cancelamento, reconciliação) | Transactional Outbox | Notificações multicanal (e-mail Resend + WhatsApp Meta Cloud + in-app) com gate por tier | LGPD (exportação XLSX, anonimização, purga, consentimento) | Health report | Harness de testes completo (arch, property-based, mutation, snapshot, E2E real, Pact) | Segurança OWASP (DAST ZAP, SAST Semgrep, gitleaks, SBOM)
+**Produção ATIVA** desde 2026-08-06 em [forzion.tech](https://forzion.tech) (Stripe em modo live) · **Homologação** em `homologacao.forzion.tech`
+
+**Status**: ✅ 3.378 testes unit backend (0 falhas, sem Docker) + suíte de integração via Testcontainers (Postgres real, no CI) + suíte frontend (Vitest + Playwright + Storybook) | Clean Architecture | DDD tático (42 entidades, 33 domain events, 4 value objects) | Result<T> pattern (erros de negócio sem exceção) | Auth próprio: JWT HMAC + refresh token rotativo (famílias/detecção de reuso) + MFA TOTP (recovery codes, trusted devices, step-up) + verificação HIBP de senha | Isolamento por TreinadorId | Stripe Connect (Pix + cartão, refund/dispute, reconciliação por cursor, inadimplência) | Billing recorrente treinador↔plataforma | Dados fiscais do treinador retidos (emissão de NFS-e feita por software terceiro — ver [Fiscal](#fiscal--dados-do-treinador)) | Transactional Outbox | Notificações multicanal (e-mail Resend + WhatsApp Meta Cloud + in-app) com gate por tier | LGPD (exportação XLSX, anonimização, purga, consentimento) | Health report | Harness de testes completo (arch, property-based, mutation, snapshot, E2E real, Pact) | Segurança OWASP (DAST ZAP, SAST Semgrep, gitleaks, SBOM)
 
 ---
 
@@ -24,7 +26,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
   - [Segurança](#segurança-backend)
   - [Notificações](#notificações)
   - [Outbox e Reconciliação](#outbox-e-reconciliação)
-  - [Fiscal — NFS-e](#fiscal--nfs-e)
+  - [Fiscal — Dados do Treinador](#fiscal--dados-do-treinador)
   - [Endpoints](#endpoints)
   - [Regras de Negócio](#regras-de-negócio)
   - [Tratamento de Erros](#tratamento-de-erros)
@@ -45,7 +47,7 @@ Plataforma de gestão de treinos para personal trainers e alunos.
 | Node.js | 22 |
 | Docker + Docker Compose plugin | 24+ |
 | EF Core CLI | `dotnet tool install -g dotnet-ef` |
-| PostgreSQL | 17 (via Supabase ou local) |
+| PostgreSQL | 17 em Supabase (homolog/produção); o `docker compose` local (Opção A) sobe `postgres:16-alpine` para desenvolvimento |
 
 ---
 
@@ -63,14 +65,15 @@ forzion.tech/
 ├── nginx/                      # nginx.conf da borda única (HTTPS + proxy homolog/prod)
 ├── infra/                      # Config de infraestrutura versionada (ex.: fail2ban jail p/ auth nginx)
 ├── scripts/                    # setup-vm.sh, init-ssl.sh, reload-edge.sh, gen-openapi.sh, lint-migrations.sh,
-│                               # migrate-dryrun.sh, check-coverage.sh, setup-firewall.sh, perf/, systemd/
+│                               # migrate-dryrun.sh, check-coverage.sh, setup-firewall.sh, setup-git.sh,
+│                               # docker-prune.sh, perf/, systemd/
 ├── presentation/               # Deck/pitch do projeto (PRESENTATION.md + presentation.html)
 ├── docker-compose.yml          # Stack local (Postgres local + backend + frontend)
 ├── docker-compose.homolog.yml  # Stack de homologação (build-on-VM; deploy ativo)
 ├── docker-compose.server.yml   # Stack por imagem de registry (GHCR — usado no fluxo de produção)
 ├── docker-compose.edge.yml     # Borda única (nginx + certbot) — serve homolog + prod
 ├── docker-compose.dryrun.yml   # Migrate dry-run contra cópia do schema (gate de deploy)
-├── .github/workflows/          # CI/CD + crons de billing/NFS-e/LGPD + segurança + backup
+├── .github/workflows/          # CI/CD + crons de billing/LGPD + segurança + backup
 ├── AGENTS.md                   # Guia macro para agentes (referenciado por CLAUDE.md)
 ├── .env.example                # Variáveis do docker-compose
 ├── global.json                 # SDK .NET pinado (floor 10.0.100)
@@ -215,7 +218,8 @@ forzion.tech.Api/
 │   ├── Alunos/           # /alunos — JWT
 │   ├── Exercicios/       # /exercicios — JWT (legado; subconjunto de /treinador/exercicios)
 │   ├── Notificacoes/     # /notificacoes — in-app
-│   ├── Pagamentos/       # /aluno/pagamentos, /treinador/pagamentos, /internal, /webhooks
+│   ├── Pagamentos/       # /aluno/pagamentos, /treinador/pagamentos, /webhooks
+│   ├── Internal/         # /internal — X-Internal-Key
 │   ├── Suporte/          # /suporte/mensagens
 │   ├── Treinador/        # /treinador, /treinador/plano, /treinador/dados-fiscais
 │   └── Treinos/          # /treinos
@@ -224,8 +228,8 @@ forzion.tech.Api/
 │                         # RequireAssinaturaAtivaFilter, RequireAssinaturaTreinadorAtivaFilter
 ├── Middleware/           # GlobalExceptionHandler (RFC 7807)
 ├── Startup/              # MigrationStartup (migrate one-shot / auto-migrate no boot em Dev)
-└── Services/             # Hosted services: LimparTokensRevogados, OutboxProcessor, OutboxLimpeza,
-                          # RelatorioSaudeDiario, ErrorLogDbSinkDreno
+└── Services/             # Hosted services: LimparTokensRevogadosService, OutboxProcessorService,
+                          # OutboxLimpezaService, RelatorioSaudeDiarioService
 
 forzion.tech.Application/
 ├── Auth/                 # MfaScopes (mfa_pending / step_up)
@@ -236,19 +240,20 @@ forzion.tech.Application/
 ├── Services/             # LimiteTreinadorService (valida MaxAlunos ao aprovar vínculo)
 └── UseCases/             # Handler CQRS-like por domínio: Admin, Auth (Login, RenovarSessao, Mfa, StepUp),
                           # Conta (Mfa, Logout, AlterarSenha, TrocaEmail), Alunos, AssinaturaAlunos,
-                          # Exercicios, Pacotes, Pagamentos (inclui ReconciliarPagamentosStripe),
-                          # Planos, Treinadores, Treinos, Vinculos, Nfse, Notificacoes, Suporte
+                          # Engajamento (Nudge, Digest), Exercicios, Pacotes,
+                          # Pagamentos (inclui ReconciliarPagamentosStripe),
+                          # Planos, Treinadores, Treinos, Vinculos, Suporte
 
 forzion.tech.Domain/
-├── Entities/             # 43 entidades (ver Modelo de Domínio)
-├── Shared/               # Result, Result<T>, Error, ErrorType + Errors/*Errors.cs (33 agregados de erro tipado)
-├── Enums/                # 32 enums (ver Domain Events)
-├── Events/               # IDomainEvent, IHasDomainEvents + 35 eventos concretos
+├── Entities/             # 42 entidades (ver Modelo de Domínio)
+├── Shared/               # Result, Result<T>, Error, ErrorType + Errors/*Errors.cs (32 agregados de erro tipado)
+├── Enums/                # 31 enums (ver Domain Events)
+├── Events/               # IDomainEvent, IHasDomainEvents + 33 eventos concretos
 └── ValueObjects/         # Email, DadosFiscais, EnderecoFiscal, YouTubeVideoId
 
 forzion.tech.Infrastructure/
 ├── DependencyInjection/  # InfrastructureExtensions (gate real/null das integrações)
-├── Migrations/           # 55 EF Core migrations (schema-agnostic)
+├── Migrations/           # 58 EF Core migrations (schema-agnostic)
 ├── Handlers/             # Handlers de domain events em Infra (cria AssinaturaAluno, sincroniza Assinante, etc.)
 ├── Notifications/
 │   ├── Email/            # ResendEmailService gate + EnvironmentEmailDecorator + EmailTemplates + ~30 handlers
@@ -256,21 +261,20 @@ forzion.tech.Infrastructure/
 │   │                     # + PhoneNumberNormalizer (E.164) + WhatsAppTemplates + 17 handlers (paridade e-mail)
 │   ├── InApp/            # Handlers da entidade Notificacao
 │   └── PlanoNotificationPolicy.cs  # Gate de canais por tier (e-mail ≥Pro, WhatsApp ≥ProPlus)
-├── Outbox/               # OutboxDispatcher, OutboxEnfileirador, handlers fx:* (NFS-e emitir/cancelar)
+├── Outbox/               # IOutboxEfeitoHandler, OutboxErroClassifier, OutboxOptions + Handlers/ (ex.: evidência de disputa Stripe)
 ├── Persistence/
 │   ├── AppDbContext.cs   # DbContext + IUnitOfWork (despacha eventos e outbox no CommitAsync)
-│   ├── Configurations/   # Fluent API por entidade (43 arquivos)
+│   ├── Configurations/   # Fluent API por entidade (42 arquivos)
 │   ├── Repositories/     # Implementações concretas
 │   └── Seeders/          # DataSeeder — conta admin + planos no startup (Dev)
-├── Logging/              # ErrorLogDbSinkProvider (dreno de logs de erro p/ error_logs)
+├── Logging/              # ErrorLogDbSinkProvider + ErrorLogDbSinkDrenoService (dreno de logs de erro p/ error_logs)
 └── Services/
     ├── JwtService.cs / RefreshTokenService.cs / SessaoConfig.cs
-    ├── BcryptPasswordHasher.cs / PwnedPasswordsService.cs (HIBP)
-    ├── MfaSecretProtector.cs / OtpNetTotpService.cs / RecoveryCodeGenerator.cs
+    ├── BcryptPasswordHasher.cs / HibpPwnedPasswordsService.cs (HIBP)
+    ├── MfaSecretProtector.cs / OtpNetTotpService.cs
     ├── ResendEmailService.cs / NullEmailService.cs
     ├── StripeService.cs (Connect, Pix/Cartão PaymentIntent, webhook, reconciliação)
-    ├── EmissorNfseNacionalService.cs / NullEmissorNfseService.cs (NFS-e SEFIN)
-    ├── OutboxProcessor.cs
+    ├── OutboxDispatcher.cs / OutboxEnfileirador.cs / OutboxProcessor.cs
     └── DomainEventDispatcher.cs
 
 forzion.tech.Tests/
@@ -288,52 +292,23 @@ forzion.tech.Tests/
 
 ### Modelo de Domínio
 
-43 entidades. Padrão DDD: factory `Criar`, máquinas de estado com transições guardadas por `Result`, domain events despachados no `CommitAsync`.
+42 entidades. Padrão DDD: factory `Criar`, máquinas de estado com transições guardadas por `Result`, domain events despachados no `CommitAsync`. Catálogo completo (invariantes, métodos, eventos por entidade) em [`specs/specification-model.md`](specs/specification-model.md) §2.
+
+Principais agregados:
 
 | Entidade | Descrição |
 |----------|-----------|
-| `Conta` | Raiz de auth. `Email` VO + `PasswordHash` (BCrypt). `TipoConta`: `SystemAdmin`/`Treinador`/`Aluno`. `EmailVerificado`/`VerificadoEm`. `SessoesInvalidasAntesDeUtc` (epoch — access tokens com `nbf` anterior são rejeitados). Emite `ContaRegistradaEvent`; `Anonimizar()` (LGPD). |
-| `SystemUser` | Perfil admin de uma `Conta` `SystemAdmin`. `Role` (`SystemRole`: SuperAdmin/Support/Operator), `Status`. |
-| `Treinador` | Perfil de treinador. Status: `AguardandoPagamento → AguardandoAprovacao → Ativo/Inativo`. Embute VO **`DadosFiscais?`** (CNPJ/CPF + endereço, para NFS-e). `PlanoPlataformaId`, `PlanoCortesiaId?` (plano de cortesia do admin), `AlunosAcimaDoCapDesde?` (carimbo da janela de graça), `ModoPagamentoAluno` (`Plataforma`/`Externo`, cooldown 90d). Stripe Connect vive em `ContaRecebimento`. |
-| `Aluno` | Perfil de aluno. `Email` VO, `Telefone`, campos de anamnese (consentimento LGPD). Máquina: `AguardandoAprovacao → Ativo ⇌ Inativo`. `Anonimizar()`. |
-| `VinculoTreinadorAluno` | Relação treinador↔aluno. `PacoteId`, `PreservarNoLimite` (protege da apara automática, dentro do cap). Status: `AguardandoAprovacao → Ativo → Inativo`. Emite `VinculoPendenteCriado`/`VinculoAprovado`. |
-| `PlanoPlataforma` | Plano global (admin). `Tier` (`TierPlano`: Free/Basic/Pro/ProPlus/Elite), `MaxAlunos`, `Preco`, `Descricao?`, `IsAtivo`. |
-| `Pacote` | Pacote do treinador (nome, descrição, `Preco`, `IsAtivo`). Sem limite de fichas. |
-| `Treino` | Ficha (nome, objetivo, dificuldade, datas) + lista de `TreinoExercicio`. `Duplicar`/`DuplicarPara`; edição bloqueada se já executada. |
-| `TreinoExercicio` | Slot de exercício na ficha: `Ordem`, lista de `SerieConfig`. Referencia `Exercicio` por ID (sem nav prop). |
-| `SerieConfig` | Série de um `TreinoExercicio` (qtd, reps mín/máx, carga, descanso, ordem). Filho owned. |
-| `TreinoAluno` | Atribuição ficha × aluno. Status: `Ativo/Inativo`. Emite `TreinoDisponibilizadoEvent`. |
-| `Exercicio` | Global (`TreinadorId = null`) ou privado. FK `GrupoMuscularId`. Extrai `VideoId` via VO `YouTubeVideoId`; `ComoExecutar`. |
-| `GrupoMuscular` | Catálogo global (admin), fonte da verdade referenciada por FK em `Exercicio`. |
-| `ExecucaoTreino` | Sessão realizada pelo aluno + lista de `ExecucaoExercicio`. `IdempotencyKey` opcional (dedupe). Emite `ExecucaoRegistradaEvent`. |
-| `ExecucaoExercicio` | Item filho de `ExecucaoTreino` (séries/reps/carga executadas). |
-| `LogAprovacao` | Auditoria (`TipoAcaoAprovacao`). `EntidadeId` sem FK — sobrevive a hard deletes. Imutável. |
-| `ContaRecebimento` | Conta Stripe Connect do treinador (`StripeConnectAccountId`, `OnboardingCompleto`). Contexto Billing. |
-| `AssinaturaAluno` | Cobrança recorrente mensal do aluno (`VinculoId`/`PacoteId`). Status: `Pendente → Ativa ⇌ Inadimplente → Cancelada`. Limite de 3 falhas consecutivas → `Inadimplente`; chargeback pula direto. |
-| `AssinaturaTreinador` | Assinatura treinador→plataforma (`PlanoPlataforma`). Mesma máquina de `AssinaturaAluno`. `DataProximaCobranca`, `PlanoPlataformaIdAgendado` (troca agendada); downgrade p/ Free encerra. |
-| `Pagamento` | Cobrança de `AssinaturaAluno`. `MetodoPagamento`. Status: `Pendente → Pago/Falhou/Expirado`, `Pago → Estornado/EmDisputa`. Armazena `StripePaymentIntentId`, QR Pix ou `ClientSecret`; limpa dados sensíveis em transição terminal. |
-| `PagamentoTreinador` | Cobrança treinador→plataforma. `Finalidade` (`Cadastro`/`Renovacao`/`TrocaPlano`/`Contratacao`). Mesma máquina de `Pagamento`. `MarcarPago` emite `PagamentoTreinadorPagoEvent`. |
-| `Assinante` | Projeção read-side de billing do aluno (nome/email). Sincronizada por eventos. Unique por `AlunoId`. |
-| `ContaMfa` | Config MFA TOTP por conta (1:1). `TotpSecretCifrado` (AES-256-GCM, **cifrado** não hasheado), `Habilitado`, `UltimoTimeStep` (anti-replay). |
-| `MfaChallenge` | Desafio MFA de uso único (OTP e-mail). `CodigoHash`, `Proposito` (`LoginFallback`/`StepUp`), lockout em 5 tentativas, expiração. |
-| `MfaRecoveryCode` | Backup code MFA. `CodigoHash`, single-use, sem expiração. |
-| `TrustedDevice` | Cookie "lembrar dispositivo" p/ pular MFA. `TokenHash`, 30 dias, `RevogadoEm`/`UltimoUsoEm`. |
-| `RefreshToken` | Refresh token rotativo de uso único de uma `RefreshTokenFamily`. `TokenHash` (SHA-256). Rotação encadeada; reuso = sinal de roubo. |
-| `RefreshTokenFamily` | Sessão/dispositivo — agrupa a cadeia de `RefreshToken`. `AbsolutoExpiraEm` (teto), `RevogadaEm`/`MotivoRevogacaoFamilia`, `Rotulo`. |
-| `TokenRevogado` | Blocklist de JWT (jti + `ExpiraEm`). Checado em todo request. Limpo ao expirar. |
-| `EmailVerificationToken` | Verificação de e-mail. `TokenHash` (SHA-256), expiração 24h, single-use. |
-| `PasswordResetToken` | Reset de senha. `TokenHash`, expiração 1h, single-use. |
-| `TrocaEmailToken` | Troca de e-mail. `NovoEmail` em claro (alvo) + `TokenHash`, single-use. |
-| `RedefinicaoSenhaSegundoFator` | Lockout do 2º fator no reset de senha (janela 15min, 5 tentativas). |
-| `MensagemSuporte` | Ticket de suporte (`Categoria`, `Assunto`, `Descricao`). Emite `MensagemSuporteCriadaEvent`. Imutável. |
-| `Notificacao` | Notificação in-app (`Tipo`, `Titulo`, `Corpo`, `LinkRelativo?`, `DiaReferencia?` p/ dedupe, `Lida`). |
-| `OutboxEfeito` | Transactional outbox. `Tipo` (`evt:<CLR>` re-dispatch durável / `fx:<nome>` efeito nomeado), `ChaveIdempotencia` única, Status `Pendente → Processando → Concluido/Falhou`, retry com backoff. |
-| `ReconciliacaoStripeEstado` | Cursor singleton (`UltimoEventoReconciliadoUtc`, avanço monotônico). |
-| `EmailDeliveryLog` | Auditoria de entrega de e-mail (webhook Resend/Svix). `RecipientEmailHash` (**hasheado**, LGPD). |
-| `WhatsAppDeliveryLog` | Auditoria de entrega WhatsApp (webhook Meta). `RecipientPhoneHash` (**hasheado**). |
-| `HealthReportConfig` | Config (singleton) do relatório de saúde: destinatários, flags `Incluir*`. |
-| `HealthSnapshot` | Snapshot histórico de saúde (`StatusSaude`, `PayloadJson`). Imutável. |
-| `ErrorLogEntry` | Log de erro estruturado (`Nivel`/`Origem`/`Mensagem`). Sem FK. |
+| `Conta` | Raiz de auth. `Email` VO + `PasswordHash` (BCrypt). `TipoConta`: `SystemAdmin`/`Treinador`/`Aluno`. `SessoesInvalidasAntesDeUtc` (epoch de revogação). `Anonimizar()` (LGPD). |
+| `Treinador` | Perfil de treinador. Status: `AguardandoPagamento → AguardandoAprovacao → Ativo/Inativo`. `PlanoPlataformaId`, `PlanoCortesiaId?`, `ModoPagamentoAluno` (`Plataforma`/`Externo`, cooldown 90d). Stripe Connect vive em `ContaRecebimento`. |
+| `Aluno` | Perfil de aluno + campos de anamnese (consentimento LGPD). Máquina: `AguardandoAprovacao → Ativo ⇌ Inativo`. |
+| `VinculoTreinadorAluno` | Relação treinador↔aluno. `PreservarNoLimite` protege da apara automática de excedente (dentro do cap). |
+| `Treino` / `TreinoExercicio` / `SerieConfig` | Ficha de treino + exercícios ordenados + séries (agregado dono); edição bloqueada se já executada. |
+| `ExecucaoTreino` / `ExecucaoExercicio` | Sessão executada pelo aluno; `IdempotencyKey` opcional (dedupe). |
+| `AssinaturaAluno` / `Pagamento` | Cobrança recorrente aluno→treinador. Máquina `Pendente → Ativa ⇌ Inadimplente → Cancelada`; 3 falhas consecutivas ou chargeback → `Inadimplente`. |
+| `AssinaturaTreinador` / `PagamentoTreinador` | Assinatura treinador→plataforma. Mesma máquina; troca de plano pode ser agendada. |
+| `RefreshToken` / `RefreshTokenFamily` | Sessão rotativa por dispositivo; reuso de token já usado revoga a família inteira. |
+| `ContaMfa` / `MfaChallenge` / `MfaRecoveryCode` / `TrustedDevice` | MFA TOTP + OTP e-mail + recovery codes + dispositivos confiáveis. |
+| `OutboxEfeito` | Transactional outbox — efeitos que não podem ser perdidos, despachados no mesmo commit do agregado de origem. |
 
 **Value Objects**: `Email` (normaliza + valida, regex ReDoS-safe), `DadosFiscais` (CPF/CNPJ com dígito verificador + `EnderecoFiscal`), `EnderecoFiscal` (UF/IBGE/CEP validados), `YouTubeVideoId` (extrai ID de URL).
 
@@ -341,34 +316,9 @@ forzion.tech.Tests/
 
 ### Domain Events
 
-33 eventos concretos (a tabela abaixo agrupa famílias correlatas). `Conta`, `Treinador`, `Vinculo`, `Aluno`, `Treino`/`TreinoAluno`, `ExecucaoTreino`, `AssinaturaAluno`/`Pagamento`, `AssinaturaTreinador`/`PagamentoTreinador`, `MensagemSuporte` implementam `IHasDomainEvents`. Despacho via `IDomainEventDispatcher` (interface genérica tipada, sem reflection). Eventos best-effort são consumidos em paralelo por e-mail + WhatsApp + in-app (gate por tier via `PlanoNotificationPolicy`); eventos que **não podem ser perdidos** (criação de assinatura, e-mail crítico, submissão de evidência de disputa Stripe) passam pelo **outbox** (durável).
+33 eventos concretos. Despacho via `IDomainEventDispatcher` (tipado, sem reflection) **após** `SaveChangesAsync` — os eventos da entidade são limpos antes do dispatch, evitando re-entrância. Eventos best-effort são consumidos em paralelo por e-mail + WhatsApp + in-app (gate por tier via `PlanoNotificationPolicy`); os que **não podem ser perdidos** (criação de assinatura, e-mail crítico, submissão de evidência de disputa Stripe) passam pelo **outbox** (durável). Catálogo completo (evento × origem × consumidor) em [`specs/specification-model.md`](specs/specification-model.md) §5.
 
-| Evento | Levantado em | Consumido por |
-|--------|-------------|---------------|
-| `ContaRegistradaEvent` | `Conta.Criar()` | e-mail de verificação |
-| `ContaAnonimizadaEvent` | `Conta.Anonimizar()` | — |
-| `EmailCriticoSolicitadoEvent` | `EmailCriticoDispatcher` (MFA/reset/troca-email) | e-mail crítico (payload cifrado, durável) |
-| `TreinadorAprovadoEvent` / `TreinadorReprovadoEvent` / `TreinadorInativadoEvent` | `Treinador.Aprovar/Reprovar/Inativar()` | e-mail + WhatsApp |
-| `VinculoPendenteCriadoEvent` | `Vinculo.Criar()` | e-mail + WhatsApp ao treinador |
-| `VinculoAprovadoEvent` | `Vinculo.Aprovar()` | e-mail + WhatsApp + **cria `AssinaturaAluno`** |
-| `AlunoRegistradoEvent` | `Aluno.Criar()` | e-mail + WhatsApp + sincroniza `Assinante` |
-| `AlunoAtualizadoEvent` | `Aluno.Atualizar()` | sincroniza `Assinante` |
-| `AlunoInativadoEvent` | `Aluno.Inativar()` | e-mail + WhatsApp |
-| `TreinoDisponibilizadoEvent` | `TreinoAluno.Criar()` | in-app + e-mail + WhatsApp (engajamento) |
-| `ExecucaoRegistradaEvent` | `ExecucaoTreino.Criar()` | in-app ao treinador |
-| `AssinaturaAlunoCriadaEvent` / `...Cancelada` / `...Reativada` / `...MarcadaInadimplente` | `AssinaturaAluno.*` | e-mail + WhatsApp (cancelamento: aluno **e** treinador) |
-| `PagamentoCriadoEvent` | `Pagamento.Criar()` | e-mail + WhatsApp ao aluno |
-| `PagamentoFalhouEvent` | `AssinaturaAluno.RegistrarPagamentoFalho()` | e-mail + WhatsApp |
-| `PagamentoEstornadoEvent` | `Pagamento.MarcarEstornado()` | e-mail + WhatsApp |
-| `PagamentoEmDisputaEvent` | `Pagamento.MarcarEmDisputa()` | e-mail + WhatsApp + alerta ao treinador |
-| `AssinaturaTreinadorCriada/Cancelada/Reativada/PlanoTrocado` | `AssinaturaTreinador.*` | — (sem consumidor) |
-| `AssinaturaTreinadorMarcadaInadimplenteEvent` / `...PagamentoFalhouEvent` | `AssinaturaTreinador.*` | e-mail ao treinador |
-| `CobrancaProximaAlunoEvent` / `CobrancaProximaTreinadorEvent` | job de pré-aviso (3d antes) | e-mail |
-| `PagamentoTreinadorPagoEvent` | `PagamentoTreinador.MarcarPago()` | ativa/atualiza assinatura |
-| `PagamentoTreinadorEstornadoEvent` / `...EmDisputaEvent` | `PagamentoTreinador.*` | — (sem consumidor) |
-| `MensagemSuporteCriadaEvent` | `MensagemSuporte.Criar()` | e-mail ao suporte (durável) |
-
-Eventos são despachados **após** `SaveChangesAsync`; a entidade tem os eventos limpos (snapshot + `ClearDomainEvents`) antes do dispatch, evitando re-entrância (handler que chama `CommitAsync` não re-despacha). Handlers in-process compartilham o `AppDbContext` do escopo.
+Exemplos: `ContaRegistradaEvent` dispara o e-mail de verificação; `VinculoAprovadoEvent` cria a `AssinaturaAluno`; `PagamentoFalhouEvent`/`PagamentoEmDisputaEvent` acionam e-mail+WhatsApp e podem marcar a assinatura inadimplente; `TreinoDisponibilizadoEvent` alimenta o feed in-app e o engajamento.
 
 ---
 
@@ -468,7 +418,7 @@ Dois canais externos + in-app. Cada integração segue o padrão **real/null**: 
 
 `ResendEmailService` (ativo com `Resend:ApiKey`) / `NullEmailService`. Sempre embrulhado por `EnvironmentEmailDecorator`: fora de produção prefixa assunto, injeta banner de teste e redireciona destinatários (allowlist). ~30 templates em `EmailTemplates.cs`.
 
-Disparos por domain event: ciclo do treinador, vínculo, assinatura (criada/cancelada/reativada/inadimplente), boas-vindas/inativação do aluno, pagamentos (criado/falhou/estornado/disputa), billing do plano do treinador, NFS-e (emitida/bloqueada), suporte, pré-aviso de renovação. Fluxos sob demanda (não-evento): verificação de e-mail, reset de senha, troca de e-mail (OTP ao **novo** endereço), OTP de login/step-up, nudge de engajamento, digest diário do treinador, relatório de saúde. Login bloqueia com **403 `EMAIL_NAO_VERIFICADO`** até verificar.
+Disparos por domain event: ciclo do treinador, vínculo, assinatura (criada/cancelada/reativada/inadimplente), boas-vindas/inativação do aluno, pagamentos (criado/falhou/estornado/disputa), billing do plano do treinador, suporte, pré-aviso de renovação. Fluxos sob demanda (não-evento): verificação de e-mail, reset de senha, troca de e-mail (OTP ao **novo** endereço), OTP de login/step-up, nudge de engajamento, digest diário do treinador, relatório de saúde. Login bloqueia com **403 `EMAIL_NAO_VERIFICADO`** até verificar.
 
 E-mails de segurança (verificação/reset/MFA) e do ciclo do treinador são **ungated**; os operacionais respeitam o gate por tier. Opt-out de engajamento via `PATCH /conta/preferencias-notificacao` (só suprime engajamento). Entrega: `POST /webhooks/resend` (assinatura Svix) grava `delivered/bounced/complained/spam_complaint` em `email_delivery_logs` (destinatário **hasheado**).
 
@@ -506,89 +456,23 @@ Emissão de NFS-e foi **removida** deste backend (feature `remocao-emissao-nfse`
 
 ### Endpoints
 
-Auth por grupo indicada no cabeçalho. Endpoints paginados validam `pagina`/`tamanhoPagina` via `PaginacaoFilter`. `[step-up]` = exige `X-Step-Up-Token`.
+Contrato completo (rotas, request/response, códigos de erro): UI **Scalar** em `/scalar` (só Development) ou o baseline versionado [`docs/api/openapi.v1.json`](docs/api/openapi.v1.json). Endpoints paginados validam `pagina`/`tamanhoPagina` via `PaginacaoFilter`. Ações sensíveis (trocar senha/e-mail, desabilitar MFA, onboarding Stripe, aprovar/reprovar/inativar treinador) exigem o header `X-Step-Up-Token` (`RequerStepUpFilter`).
 
-#### Auth — `/auth` (público · rate `auth`)
-
-| Método | Rota | Body | Resposta |
-|--------|------|------|----------|
-| `POST` | `/auth/login` | `{ email, senha }` | `200` sessão, ou scope token `mfa_pending` se MFA |
-| `POST` | `/auth/refresh` | — (cookie `refresh`) | `200` renova (rotaciona) · `401` genérico |
-| `POST` | `/auth/register/treinador` | `{ nome, email, senha, planoPlataformaId, modoPagamentoAluno, telefone? }` | `201 TreinadorResponse` |
-| `POST` | `/auth/register/aluno` | `{ nome, email, senha, treinadorId, pacoteId, telefone?, anamnese*, consentimento* }` | `201 AlunoResponse` |
-| `POST` | `/auth/treinador/{id}/pagamento` | `{ metodo }` | `200` (1ª cobrança do plano no cadastro) |
-| `POST` | `/auth/verify-email` | `{ token }` | `200` · `400` |
-| `POST` | `/auth/resend-verification` | `{ email }` | `200` (não vaza existência) |
-| `POST` | `/auth/forgot-password` | `{ email }` | `200` (não vaza existência) |
-| `POST` | `/auth/reset-password` | `{ token, novaSenha, codigoTotp? }` | `200` · `400` |
-| `GET` | `/auth/planos` | — | `[PlanoPlataformaResponse]` |
-| `GET` | `/auth/treinadores` · `/auth/treinadores/{id}/pacotes` | — | listas públicas p/ cadastro |
-
-#### MFA / Step-up — `/auth/mfa`, `/auth/step-up` (rate `mfa`)
-
-| Método | Rota | Escopo | Resposta |
-|--------|------|--------|----------|
-| `POST` | `/auth/mfa/verificar` | `MfaPendente` | `200` completa login (TOTP/recovery, `lembrarDispositivo?`) |
-| `POST` | `/auth/mfa/email/enviar` | `MfaPendente` | `200` envia OTP de login por e-mail |
-| `POST` | `/auth/step-up/iniciar` | JWT | `200` (TOTP se habilitado, senão OTP e-mail) |
-| `POST` | `/auth/step-up/verificar` | JWT | `200` emite scope token `step_up` (5min) |
-
-#### Conta — `/conta` (JWT · rate `write`)
-
-| Método | Rota | Body | Resposta |
-|--------|------|------|----------|
-| `GET`/`PATCH` | `/conta/perfil` | `{ nome }` | `200`/`204` |
-| `PATCH` | `/conta/preferencias-notificacao` | `{ emailEngajamentoOptOut }` | `204` |
-| `POST` | `/conta/senha` | `{ senhaAtual, novaSenha }` | `204` `[step-up]` |
-| `POST` | `/conta/email/trocar` | `{ novoEmail }` | `202` `[step-up]` (OTP ao novo e-mail) |
-| `POST` | `/conta/email/confirmar` | `{ codigo }` | `204` · `400` |
-| `POST` | `/conta/logout` | — | `204` (revoga família + jti) |
-| `GET` | `/conta/lgpd/exportar` | `?formato=xlsx?` | `200` JSON ou `.xlsx` |
-| `DELETE` | `/conta/lgpd` | `{ senha }` | `204` anonimização self-service |
-
-#### MFA da conta — `/conta/mfa` (JWT · rate `auth`)
-
-`POST /conta/mfa/totp/iniciar` · `POST /conta/mfa/totp/confirmar` · `GET /conta/mfa/status` · `POST /conta/mfa/desabilitar` `[step-up]` · `POST /conta/mfa/recovery/regenerar` `[step-up]`.
-
-#### Admin — `/admin` (política `SystemAdmin`)
-
-Treinadores: `GET /admin/treinadores`, `GET /admin/treinadores/{id}`, `POST .../aprovar|reprovar|inativar` `[step-up]`, `DELETE /admin/treinadores/{id}` (só Inativo; hard delete), `PATCH .../plano` (define/remove **cortesia** de plano — `{ planoId? }`, `null` remove). Planos: `GET/POST /admin/planos`, `PATCH/DELETE /admin/planos/{id}`. Grupos musculares e exercícios globais: CRUD sob `/admin/grupos-musculares` e `/admin/exercicios`. Visibilidade (read-only): `/admin/alunos*`, `/admin/fichas/{id}`, `/admin/treinadores/{id}/{alunos|vinculos|treinos|pacotes}`, `/admin/treinos/{id}`. Dashboards: `GET /admin/stats/dashboard`, `GET /admin/dashboard`. Health report: `GET/PUT /admin/health-report/config`, `GET /admin/health-report/snapshots`, `POST /admin/health-report/run`. LGPD: `GET /admin/contas/{id}/lgpd/exportar`, `DELETE /admin/contas/{id}/lgpd` (sem senha). `/admin/test-data/*` existe apenas fora de Production.
-
-#### Treinador — `/treinador` (política `Treinador`)
-
-Vínculos: `GET /treinador/vinculos`, `POST .../{id}/aprovar` `{ pacoteId, trarFichas? }`, `POST .../{id}/desvincular`, `POST /treinador/alunos/{id}/reativar`, `PATCH /treinador/alunos/{vinculoId}/preservar` `{ preservar }` (protege da apara). Alunos/fichas/progressão: `GET /treinador/alunos*`, atribuir/remover ficha. Exercícios (próprios + globais) e pacotes: CRUD + `POST /treinador/exercicios/{id}/copiar`. Dashboard: `GET /treinador/dashboard`. Modo de pagamento: `POST /treinador/modo-pagamento`, `GET .../preview`. Stripe: `POST /treinador/onboarding` `[step-up]`, `GET /treinador/onboarding/status`, `POST /treinador/pagamentos/cobrar/{assinaturaId}`, `GET /treinador/pagamentos/recebimentos`. Plano (billing): `GET /treinador/plano/assinatura`, `GET /treinador/plano/pagamento/{id}`, `POST /treinador/plano/{contratar|trocar|cobrar|cancelar}`. Fiscal: `GET/PUT /treinador/dados-fiscais`, `GET /treinador/cep/{cep}` (autofill).
-
-#### Treinos — `/treinos` (política `Treinador`)
-
-`POST /treinos`, `GET/PATCH/DELETE /treinos/{id}` (delete proibido se executado), `GET /treinos/{id}/alunos`, `POST /treinos/{id}/vincular-aluno`, `POST/PUT/DELETE` de exercícios da ficha, `PATCH .../observacao`, `POST /treinos/{id}/duplicar`. Criar/vincular/duplicar exigem assinatura de treinador ativa.
-
-#### Área do Aluno — `/aluno` (política `Aluno`)
-
-`GET /aluno/assinatura`, `POST /aluno/assinatura/cancelar`, `GET /aluno/vinculo`, `GET /aluno/dashboard`, `POST /aluno/troca-treinador`, `GET /aluno/fichas*`, `GET /aluno/execucoes`, `POST /aluno/execucoes` (header `Idempotency-Key`; exige assinatura ativa), `GET /aluno/progressao`, `PUT /aluno/anamnese`. Pagamentos: `GET /aluno/pagamentos/{id}`, `GET /aluno/pagamentos/assinatura/{id}` (rate `read`).
-
-#### Alunos / Exercícios (JWT)
-
-`/alunos` (`GET` lista/detalhe/treinos, `PATCH /alunos/{id}`, `PATCH /alunos/{id}/status` só SystemAdmin). `/exercicios` (`GET`/`POST` — legado, subconjunto de `/treinador/exercicios`).
-
-#### Notificações — `/notificacoes` (JWT)
-
-`GET /notificacoes` · `GET /notificacoes/nao-lidas/contador` · `PATCH /notificacoes/{id}/lida`.
-
-#### Suporte — `/suporte` (JWT)
-
-`POST /suporte/mensagens` `{ categoria, assunto, descricao }` → `202` (identidade vem do token).
-
-#### Webhooks (público — verificação por assinatura · rate `webhook` · body ≤64 KB)
-
-`POST /webhooks/stripe` (`Stripe-Signature`) · `POST /webhooks/resend` (Svix) · `GET /webhooks/whatsapp` (handshake Meta) · `POST /webhooks/whatsapp` (`X-Hub-Signature-256`).
-
-#### Internal — `X-Internal-Key` (rate `internal`)
-
-`POST /internal/processar-renovacoes` · `/internal/processar-renovacoes-treinador` · `/internal/processar-pre-avisos` · `/internal/processar-pre-avisos-treinador` · `/internal/processar-engajamento` · `/internal/reconciliar-pagamentos` (503 se truncado) · `/internal/processar-limite-alunos` (graça/apara) · `/internal/lgpd/contas-elegiveis` · `DELETE /internal/lgpd/contas/{id}`.
-
-#### Infra
-
-`GET /health` (liveness) · `GET /health/ready` (readiness — db + schema + integrações).
+| Grupo | Base path | Auth · rate | Resumo |
+|-------|-----------|-------------|--------|
+| Auth | `/auth` | público · `auth` | Login, refresh, cadastro de treinador/aluno, verificação de e-mail, reset de senha, listas públicas (planos, treinadores) |
+| MFA / Step-up | `/auth/mfa`, `/auth/step-up` | scope token (`mfa_pending`) / JWT · `mfa` | Completa login com 2º fator (TOTP/recovery/e-mail); emite scope token `step_up` (5min) |
+| Conta | `/conta`, `/conta/mfa` | JWT · `write`/`auth` | Perfil, senha, troca de e-mail, preferências, exportação/anonimização LGPD self-service, enroll e gestão de MFA |
+| Admin | `/admin` | `SystemAdmin` | Aprovação/inativação de treinadores, cortesia de plano, planos globais, grupos musculares/exercícios, visibilidade read-only, dashboards, health report, LGPD administrativo. `/admin/test-data/*` só fora de Production |
+| Treinador | `/treinador` | `Treinador` | Vínculos, alunos/fichas/progressão, exercícios/pacotes, onboarding Stripe Connect, billing do plano, dados fiscais |
+| Treinos | `/treinos` | `Treinador` | CRUD de fichas + exercícios/séries da ficha, duplicação (exige assinatura ativa) |
+| Área do Aluno | `/aluno` | `Aluno` | Assinatura, vínculo, fichas, execuções (`Idempotency-Key`), progressão, anamnese, pagamentos |
+| Alunos / Exercícios (legado) | `/alunos`, `/exercicios` | JWT | Subconjunto legado, mantido por compatibilidade das áreas acima |
+| Notificações | `/notificacoes` | JWT | Feed in-app, contador de não-lidas |
+| Suporte | `/suporte` | JWT | Abertura de ticket de suporte |
+| Webhooks | `/webhooks/*` | público, verificação por assinatura · `webhook`, body ≤64 KB | Stripe (`Stripe-Signature`), Resend (Svix), WhatsApp (handshake Meta + `X-Hub-Signature-256`) |
+| Internal | `/internal/*` | `X-Internal-Key` · `internal` | Jobs de cron: renovações, pré-avisos, engajamento, reconciliação Stripe (503 se truncada), graça/apara de limite de alunos, elegibilidade/purga LGPD |
+| Infra | `/health`, `/health/ready` | — | Liveness / readiness (db + schema + integrações) |
 
 ---
 
@@ -667,7 +551,7 @@ Caminho **primário**: `Result<T>` — handlers retornam falha tipada e os endpo
 | `ValidationException` (FluentValidation) | 400 | Payload inválido (erros por campo) |
 | `Qualquer outra` | 500 | Mensagem interna nunca exposta |
 
-O core do pattern: `enum ErrorType { Business, Validation, NotFound, Conflict, ExternalService }`, `record Error(Code, Message, Type)`, `Result`/`Result<T>` em `Domain/Shared`. 33 agregados `*Errors.cs` (um `Error` por caso de falha).
+O core do pattern: `enum ErrorType { Business, Validation, NotFound, Conflict, ExternalService }`, `record Error(Code, Message, Type)`, `Result`/`Result<T>` em `Domain/Shared`. 32 agregados `*Errors.cs` (um `Error` por caso de falha).
 
 ```json
 {
@@ -712,10 +596,12 @@ User Secrets ID: `forzion-prod`. Seções adicionais suportadas via env: `Outbox
 
 | Ambiente | Schema | Scalar (UI) | Seeder | Modo |
 |----------|--------|---------|--------|------|
-| `Development` | `homolog` (via search_path) | ✅ | ✅ (auto-migrate + seed no boot) | `dotnet run` |
+| `Development` | `homolog` (via search_path, se apontado p/ Supabase — Setup Manual) | ✅ | ✅ (auto-migrate + seed no boot) | `dotnet run` |
 | `Homolog` | `homolog` | ❌ | migrate one-shot | `ASPNETCORE_ENVIRONMENT=Homolog` |
 | `Production` | `public` | ❌ | migrate one-shot | Container Docker |
 | `Test` | in-memory (Infra não registrada) | ❌ | ❌ | `dotnet test` |
+
+> Homolog e Production são **projetos Supabase distintos** (não só schemas diferentes no mesmo projeto): homolog roda em `sa-east-1`, produção em `us-east-1`. O `docker compose up` local (Setup Local, Opção A) não usa Supabase — sobe um Postgres local próprio com schema `develop`, isolado de homolog/produção.
 
 **Hosted services** (fora de `Test`): `LimparTokensRevogadosService` (purga tokens/famílias/MFA/logs expirados, 1h), `OutboxProcessorService` (~10s), `OutboxLimpezaService` (1h), `RelatorioSaudeDiarioService` (poll 15min, envia 1x/dia), `ErrorLogDbSinkDrenoService` (dreno de logs de erro).
 
@@ -743,7 +629,7 @@ Copie o `whsec_*` efêmero para `Stripe:WebhookSecret` enquanto o tunnel roda. D
 
 ### Migrations
 
-55 migrations, schema-agnostic. As primeiras 29 montam o domínio; da 30 em diante entram MFA, NFS-e, refresh tokens, outbox, notificações e endurecimentos.
+58 migrations, schema-agnostic. As primeiras 29 montam o domínio; da 30 em diante entram MFA, NFS-e (depois removida), refresh tokens, outbox, notificações e endurecimentos.
 
 | # | Migration | O que faz |
 |---|-----------|-----------|
@@ -870,11 +756,13 @@ docker compose up --build
 
 ### Produção — VPS Hostinger + Supabase
 
-- **VPS Hostinger** (Ubuntu) com Docker Compose
-- **Supabase** como banco (PostgreSQL managed) — schema `homolog` (staging) / `public` (produção)
+**Produção está ATIVA** desde 2026-08-06: `forzion.tech`, `www.forzion.tech` e `app.forzion.tech` servem tráfego real, com Stripe em modo **live**.
+
+- **VPS Hostinger** (Ubuntu) com Docker Compose, compartilhada entre homolog e produção
+- **Supabase** como banco (PostgreSQL managed) — **projetos separados por ambiente**: homolog (região `sa-east-1`, schema `homolog`) e produção (região `us-east-1`, schema `public`)
 - **Nginx** como borda ÚNICA (`docker-compose.edge.yml`) — um só reverse proxy com TLS (Let's Encrypt via Certbot) serve homolog + produção, roteando por `server_name`; `infra/fail2ban` protege o endpoint de auth
 
-> **Homologação** (`homologacao.forzion.tech`, schema `homolog`) tem deploy automatizado no push para `homolog`. **Produção** (`forzion.tech`/`app.forzion.tech`, schema `public`) tem pipeline de imagem e deploy prontos — o merge `homolog → main` dispara `release-images` (build + push das imagens para o GHCR) que, ao concluir, aciona `deploy-prod`. O deploy real é **gated por `PROD_DEPLOY_ENABLED`**. Referência: [`specs/specification-infrastructure.md`](specs/specification-infrastructure.md).
+> **Homologação** (`homologacao.forzion.tech`, schema `homolog`) tem deploy automatizado no push para `homolog`. **Produção** (`forzion.tech`/`www.forzion.tech`/`app.forzion.tech`, schema `public`) é promovida pelo merge `homolog → main`, que dispara `release-images` (build + push das imagens para o GHCR) e, ao concluir, `deploy-prod` — gated pela variável de ambiente `PROD_DEPLOY_ENABLED`. Referência: [`specs/specification-infrastructure.md`](specs/specification-infrastructure.md).
 
 #### Deploy de homologação (automatizado)
 
@@ -921,7 +809,7 @@ DNS gerenciado no **Hostinger** (hPanel). E-mail transacional via **Resend** (do
 
 ```
 forzion.tech (DNS no Hostinger)
-  ├── A     homologacao → IP da VPS Hostinger
+  ├── A     @, www, app, homologacao → IP da VPS Hostinger (borda Nginx única)
   ├── (send.forzion.tech)  MX + TXT SPF → Resend (Amazon SES)
   └── TXT   resend._domainkey → DKIM Resend
 ```

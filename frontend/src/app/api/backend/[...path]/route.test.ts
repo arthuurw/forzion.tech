@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
 import {
@@ -161,6 +161,135 @@ describe("Backend proxy /api/backend/[...path]", () => {
       await POST(req, makeCtx(["admin", "x"]));
 
       expect(received).toBeNull();
+    });
+  });
+
+  describe("Bloqueio do prefixo internal", () => {
+    let fetchSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      setupCookies({});
+      fetchSpy = vi.spyOn(globalThis, "fetch");
+    });
+
+    afterEach(() => {
+      fetchSpy.mockRestore();
+    });
+
+    it.each(["internal", "Internal", "INTERNAL", "%69nternal", "%2569nternal"])(
+      "primeiro segmento '%s' → 404 sem chamar o backend",
+      async (segment) => {
+        const req = createMockRequest({ method: "GET" });
+        const res = await GET(req, makeCtx([segment, "lgpd", "contas-elegiveis"]));
+
+        expect(res.status).toBe(404);
+        expect(fetchSpy).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([
+      ["POST", POST],
+      ["PUT", PUT],
+      ["PATCH", PATCH],
+      ["DELETE", DELETE],
+    ] as const)("bloqueia internal em %s também", async (method, handler) => {
+      const req = createMockRequest({ method, body: { a: 1 } });
+      const res = await handler(req, makeCtx(["internal", "billing", "cobrar"]));
+
+      expect(res.status).toBe(404);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("codificação malformada no primeiro segmento → 400 sem chamar o backend", async () => {
+      const req = createMockRequest({ method: "GET" });
+      const res = await GET(req, makeCtx(["%zz", "foo"]));
+
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe("Invalid path");
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("'internal' fora do primeiro segmento não é bloqueado", async () => {
+      server.use(
+        http.get("*/contas/internal-teste", () => HttpResponse.json({ ok: true })),
+      );
+
+      const req = createMockRequest({ method: "GET" });
+      const res = await GET(req, makeCtx(["contas", "internal-teste"]));
+
+      expect(res.status).toBe(200);
+    });
+
+    it("primeiro segmento que só começa com 'internal' não é bloqueado", async () => {
+      server.use(
+        http.get("*/internal-teste/contas", () => HttpResponse.json({ ok: true })),
+      );
+
+      const req = createMockRequest({ method: "GET" });
+      const res = await GET(req, makeCtx(["internal-teste", "contas"]));
+
+      expect(res.status).toBe(200);
+    });
+  });
+
+  describe("Repasse do IP real ao backend", () => {
+    it("emite X-Forwarded-For com o IP resolvido de X-Real-IP", async () => {
+      setupCookies({});
+      let received: string | null = null;
+
+      server.use(
+        http.get("*/admin/x", ({ request }) => {
+          received = request.headers.get("x-forwarded-for");
+          return HttpResponse.json({});
+        }),
+      );
+
+      const req = createMockRequest({
+        method: "GET",
+        headers: { "x-real-ip": "203.0.113.7" },
+      });
+      await GET(req, makeCtx(["admin", "x"]));
+
+      expect(received).toBe("203.0.113.7");
+    });
+
+    it("X-Forwarded-For forjado pelo cliente é substituído pelo IP resolvido", async () => {
+      setupCookies({});
+      let received: string | null = null;
+
+      server.use(
+        http.get("*/admin/x", ({ request }) => {
+          received = request.headers.get("x-forwarded-for");
+          return HttpResponse.json({});
+        }),
+      );
+
+      const req = createMockRequest({
+        method: "GET",
+        headers: { "x-real-ip": "203.0.113.7", "x-forwarded-for": "198.51.100.9" },
+      });
+      await GET(req, makeCtx(["admin", "x"]));
+
+      expect(received).toBe("203.0.113.7");
+      expect(received).not.toBe("198.51.100.9");
+    });
+
+    it("sem IP resolvível → header ausente e request segue normal", async () => {
+      setupCookies({});
+      let received: string | null = "sentinel";
+
+      server.use(
+        http.get("*/admin/x", ({ request }) => {
+          received = request.headers.get("x-forwarded-for");
+          return HttpResponse.json({});
+        }),
+      );
+
+      const req = createMockRequest({ method: "GET" });
+      const res = await GET(req, makeCtx(["admin", "x"]));
+
+      expect(received).toBeNull();
+      expect(res.status).toBe(200);
     });
   });
 

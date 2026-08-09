@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { forwardedForHeader } from "@/lib/security/forwardedFor";
 
 const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
 
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
 
   const res = await fetch(`${API_BASE}/auth/forgot-password`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...forwardedForHeader(request) },
     body: JSON.stringify(body),
   });
 

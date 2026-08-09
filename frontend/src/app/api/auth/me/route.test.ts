@@ -26,8 +26,12 @@ async function makeJwt(payload: Record<string, unknown>): Promise<string> {
 const FUTURE = Math.floor(Date.now() / 1000) + 3600;
 const PAST = Math.floor(Date.now() / 1000) - 3600;
 
-function makeRequest(cookies: Record<string, string>): NextRequest {
+function makeRequest(
+  cookies: Record<string, string>,
+  headers: Record<string, string> = {},
+): NextRequest {
   return {
+    headers: new Headers(headers),
     cookies: {
       get: (name: string) => {
         const val = cookies[name];
@@ -121,6 +125,25 @@ describe("GET /api/auth/me — renovação silenciosa", () => {
     const user = await res.json();
     expect(user).not.toBeNull();
     expect(user.contaId).toBe("c1");
+  });
+
+  it("renovação silenciosa emite X-Forwarded-For com o IP real ao backend", async () => {
+    let received: string | null = null;
+    server.use(
+      http.post("*/auth/refresh", ({ request }) => {
+        received = request.headers.get("x-forwarded-for");
+        return HttpResponse.json(novoPar);
+      }),
+    );
+
+    await GET(
+      makeRequest(
+        { refresh: "raw-antigo" },
+        { "x-real-ip": "203.0.113.7", "x-forwarded-for": "198.51.100.9" },
+      ),
+    );
+
+    expect(received).toBe("203.0.113.7");
   });
 
   it("refresh inválido (backend 401) → null limpando cookies", async () => {

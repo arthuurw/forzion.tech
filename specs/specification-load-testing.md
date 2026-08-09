@@ -2,8 +2,8 @@
 
 DOC PARA AGENTES. Como REPRODUZIR a medição empírica de performance que fecha a lacuna do
 [specification-performance §6] (enforcement fraco; perf budget backend = ALVO, sem load gate).
-A fase 2 da auditoria INFERIU ganhos por leitura de código; esta fase PROVA/refuta com EXPLAIN,
-load e Web Vitals reais. Scripts vivem em `scripts/perf/` (infra, fora do código de app).
+Complementa achados inferidos por leitura de código com PROVA/refutação via EXPLAIN, load e Web
+Vitals reais. Scripts vivem em `scripts/perf/` (infra, fora do código de app).
 Formato denso. Cross-ref: [specification-performance], [specification-db], [specification-observability],
 [specification-concurrency], [specification-local-ci-repro].
 
@@ -13,8 +13,12 @@ outro tier (ex.: Supabase de teste). NÃO duplicar índices/schema de [specifica
 
 ## 0. PRINCÍPIOS (invariantes)
 - **Schema ISOLADO, dados SINTÉTICOS.** Tudo num Postgres efêmero (Docker) no schema dedicado
-  `perf_bench` (via `search_path`), populado por `seed-bench.sql` (sem PII real). NUNCA apontar p/
-  homolog/develop/public nem produção. Segurança = isolamento; [specification-security] (PII).
+  `perf_bench` (via `search_path`), populado por `seed-bench.sql` (sem PII real). **NUNCA** apontar p/
+  homolog, develop, `public` OU produção — os dois são projetos Supabase reais e SEPARADOS
+  ([specification-infrastructure]), nenhum efêmero: homolog é recurso compartilhado (storage cap),
+  produção é ambiente ativo desde 2026-08-06. DB pesado (seed/EXPLAIN/pgbench) roda LOCAL/efêmero ou
+  projeto Supabase de TESTE dedicado — nunca os dois de cima. Segurança = isolamento;
+  [specification-security] (PII).
 - **Honestidade do número.** Bench LOCAL (disco rápido, dados quentes, sem RTT) ≠ Supabase Free
   (vCPU compartilhado, cache frio, RTT). O sinal DURÁVEL é o **delta** (plano de query, buffers,
   forma da curva), não o ms absoluto. Cada `resultados-*.md` declara seu ambiente.
@@ -62,13 +66,13 @@ outro tier (ex.: Supabase de teste). NÃO duplicar índices/schema de [specifica
   20/20 em 91% do run** + cauda do dashboard 3.8× (233→877 ms); gate=8 nunca satura (teto 16) e fica
   estável. CONFIRMA o achado ALTO. 0 falhas HTTP LOCAL (cache quente drena rápido) → caveat: Supabase
   Free (cache frio+RTT+pool menor) converte a fixação do pool em timeout de aquisição (HTTP 500).
-- **MEDIDO (AC-2.3 ENDURECIDO, fase4 FR-6):** o local quente da fase3 não estourava HTTP (reads sub-ms
+- **MEDIDO (AC-2.3 ENDURECIDO):** o local quente do bullet anterior não estourava HTTP (reads sub-ms
   drenam rápido). Repetido sob **toxiproxy latência +50 ms/conn no Postgres + pool=10** (emula cache-frio/
   RTT do tier alvo): **unbounded materializa o cliff DURO** — `http_req_failed = 6.66%` (timeout de
   aquisição/500), dashboard p95→60s, throughput colapsa 5.6×; **gate=8 = 0 falha** (p95 568 ms) sob o MESMO
-  lote (18.000 events). Prova que o número da fase3 SUBESTIMAVA: não é só cauda, é falha dura do request-path.
+  lote (18.000 events). Prova que o número anterior SUBESTIMAVA: não é só cauda, é falha dura do request-path.
   `resultados-load.md §3`. Fix de medição: `setupTimeout`+`startTime` (logins do setup antes do storm).
-- **MEDIDO (AC-2.4 isolamento de provider, fase4 FR-5 / PERF-04):** `k6-provider-isolation.js` martela o
+- **MEDIDO (AC-2.4 isolamento de provider, PERF-04):** `k6-provider-isolation.js` martela o
   request-path quente + `POST /suporte/mensagens` (enfileira e-mail DURÁVEL via outbox), com e-mail (Resend)
   atrás de toxiproxy. p95 do POST: **12.8 ms (lat0) vs 9.2 ms (+2.000 ms de provider) = FLAT** → a chamada
   externa está diferida (outbox/worker), NÃO vaza pro request-path. Se fosse síncrona, p95→~2.012 ms.
@@ -102,7 +106,7 @@ outro tier (ex.: Supabase de teste). NÃO duplicar índices/schema de [specifica
   → TBT=0). Heavy chunks: exceljs 256 kB gz e recharts 103 kB gz CORRETAMENTE route-split (fora do
   público); zod 75 kB + stripe+sentry 87 kB carregam em TODA rota pública. Lighthouse é LAB (TBT, não
   INP de campo); localhost ≠ CDN.
-- **MEDIDO (AC-3.1 autenticado, fase4 FR-4):** `scripts/perf/lighthouse-auth.mjs` (preset desktop, 3 runs→
+- **MEDIDO (AC-3.1 autenticado):** `scripts/perf/lighthouse-auth.mjs` (preset desktop, 3 runs→
   mediana) nas 5 rotas LOGADAS pesadas contra full-app (backend perf_bench :5080 + frontend prod :3000),
   sessão injetada via cookie (JWT bench + `session_guard` + `consent`) sem login interativo. Resultado:
   TBT=0 em todas; LCP warm 1.0–1.3s, perf 95–98. **1 achado de budget REAL (pós dupla-validação):**
@@ -125,7 +129,7 @@ outro tier (ex.: Supabase de teste). NÃO duplicar índices/schema de [specifica
   por-URL (o JSON é escrito ANTES do cleanup → sobrevive). O `lighthouse` por-URL **sai com código 1**
   nesse cleanup APÓS escrever o relatório → o runner (`lighthouse-auth.mjs`) TOLERA o exit code e valida
   pelo arquivo de saída, não pelo código. `next start` com `output:standalone` emite warning mas serve
-  200 (fase4 usou `-p 3000` sem problema; se 3000 ocupada, `-p 3100`).
+  200 (`-p 3000` sem problema; se 3000 ocupada, `-p 3100`).
 - **Auth do Lighthouse sem login interativo**: o front verifica o JWT no middleware com `JWT_SECRET`/
   `JWT_ISSUER`/`JWT_AUDIENCE` (env de runtime). Setando-os = `Auth:JwtSecret`/issuer/audience do backend
   bench, um JWT mintado em `/auth/login` das contas bench passa → basta injetar `token`+`session_guard`+

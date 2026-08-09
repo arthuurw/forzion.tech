@@ -92,9 +92,11 @@ Endpoints/contratos na §API ROUTES DE AUTH; aqui só os fatos não-óbvios de c
 - Proxeia todos os métodos HTTP (GET/POST/PUT/PATCH/DELETE) para `API_BASE/<path>?<query>`.
 - `API_BASE`: env `API_BASE_URL` ?? `https://localhost:7220`.
 - Sanitiza path: rejeita segmentos `.` ou `..` (400).
-- Repassa apenas headers `content-type` e `accept` do cliente (nunca Cookie, Authorization, etc.).
+- Repassa apenas headers `content-type`, `accept`, `x-step-up-token` do cliente (allowlist `ALLOWED_REQUEST_HEADERS`; nunca Cookie, Authorization, etc.).
 - Injeta `Authorization: Bearer <token>` do cookie httpOnly.
 - Nunca expõe o token ao cliente.
+- **Emite `X-Forwarded-For` com o IP real do cliente** (`forwardedForHeader(request)` de `src/lib/security/forwardedFor.ts`, valor de `getClientIp`). É EMITIDO pelo proxy, não repassado: o XFF do cliente continua fora da allowlist acima. IP não-parseável (`"unknown"`) ⇒ header omitido, senão o backend descartaria a entrada e cairia no IP do peer sem sinal. Mesmo helper em `src/app/api/auth/*` e em `fetchBackendRefresh`; guard de regressão em `src/app/api/__tests__/forwarded-for-guard.test.ts`, com 3 exceções de rota cacheada. Cross-ref [specification-security] §4.
+- **Bloqueia o prefixo `internal` com 404 sem encaminhar.** `path[0]` é decodificado em laço (`decodeFully` — uma passada só deixaria passar `%2569nternal`) e comparado case-insensitive contra `"internal"`; decodificação malformada (`%zz`) ⇒ 400. Fecha o caminho que o `location /internal/` do nginx não cobria.
 
 ## API ROUTES DE AUTH (Next.js Route Handlers)
 Enumeração de rotas re-derivável por `ls src/app/api/auth/`; contratos de cookie/sessão na §AUTH FLOW. Aqui só os fatos não-óbvios que a listagem não carrega:
@@ -103,7 +105,7 @@ Enumeração de rotas re-derivável por `ls src/app/api/auth/`; contratos de coo
 - `planos` (GET, proxy `/auth/planos`) usa `cache: "no-store"` e **sem rate limit** (wizard de cadastro).
 - `treinador/[id]/pagamento` (POST, body `{ metodo }`) inicia pagamento do plano no signup.
 
-**Rate limit** (`src/lib/rateLimit.ts`): 10 req/60s por IP. Mapa em memória por processo (não persistido entre restarts). Aplicado em login e register.
+**Rate limit** (`src/lib/rateLimit.ts`): 10 req/60s por IP real (`getClientIp`: `X-Real-IP` → 1º hop de `X-Forwarded-For`, nunca o último hop — evita spoofing por concatenação). Mapa em memória por processo, bounded (`MAX_ENTRIES`, eviction por `resetAt` expirado), não persistido entre restarts. Aplicado em login e register. É a ÚNICA camada no caminho de autenticação que enxerga o IP real do cliente — o rate-limit do backend, atrás do proxy `/api/backend`, não vê (ver §API PROXY, `[GAP]`).
 
 **Cliente das auth routes** (`src/lib/api/auth.ts`): módulo `authApi` (wrapper `fetch` fino — NÃO `apiClient`, pois estas rotas setam cookie httpOnly e não usam Bearer). Páginas públicas (login, cadastro aluno/treinador) chamam `authApi.*` em vez de `fetch("/api/auth/...")` cru. Erros via `AuthApiError` (carrega `status` + `ProblemDetails`).
 
@@ -205,14 +207,14 @@ Fluxos de cadastro/cobrança e como o `modoPagamentoAluno` muda a UI. Regra de n
 ### `PagamentoSignup` (`components/pagamento/PagamentoSignup.tsx`)
 Componente ANÔNIMO, props-driven `{ pagamento: IniciarPagamentoPlanoResponse, onPagoCartao }` — NÃO usa `apiClient` autenticado (signup pré-conta).
 - **Pix**: QR (`pixQrCodeUrl`) + copia-e-cola (`pixQrCode`, botão copiar) + expiração. SEM polling — webhook backend finaliza e dispara e-mail de verificação (Alert informa).
-- **Cartão**: Stripe `<Elements>` com `clientSecret` + `<PaymentElement>` → `stripe.confirmPayment({ redirect: "if_required" })` → `onPagoCartao()`. Sem `clientSecret` → Alert de erro. `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (ausente → `stripePromise=null`) é **congelada no `next build`**: chega por build-arg (`frontend/Dockerfile` + `build.args` do compose + `build-args` do `release-images.yml`), NUNCA por `environment:` de runtime — como env de container a imagem nascia com o cartão morto (`getStripe()` null), confirmado no bundle de homolog e corrigido em 2026-08-06; `publicEnvBuildArgs.test.ts` trava toda `NEXT_PUBLIC_*` nova ao ARG correspondente. Erro de recusa exibido via `mapStripeError(error)` (`lib/pagamento/stripeErro`): mapeia `decline_code`/`code` conhecidos → cópia pt-BR curada; desconhecido → SEMPRE `FALLBACK` pt-BR (NUNCA ecoa `error.message` em inglês do Stripe ao usuário).
+- **Cartão**: Stripe `<Elements>` com `clientSecret` + `<PaymentElement>` → `stripe.confirmPayment({ redirect: "if_required" })` → `onPagoCartao()`. Sem `clientSecret` → Alert de erro. `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (ausente → `stripePromise=null`) é **congelada no `next build`**: chega por build-arg (`frontend/Dockerfile` + `build.args` do compose + `build-args` do `release-images.yml`), NUNCA por `environment:` de runtime — passá-la como env de container nasce com o cartão morto (`getStripe()` null), pois o build já rodou sem o valor; `publicEnvBuildArgs.test.ts` trava toda `NEXT_PUBLIC_*` nova ao ARG correspondente. Erro de recusa exibido via `mapStripeError(error)` (`lib/pagamento/stripeErro`): mapeia `decline_code`/`code` conhecidos → cópia pt-BR curada; desconhecido → SEMPRE `FALLBACK` pt-BR (NUNCA ecoa `error.message` em inglês do Stripe ao usuário).
 
 ### Contratar / Trocar plano (`(treinador)/treinador/plano/page.tsx`)
-Plano atual (`GET /treinador/plano/assinatura` via `pagamentoApi.obterAssinaturaTreinador`) + chip status (Ativa=success, Inadimplente=error, Cancelada=default, demais=warning). `opcoesTroca` listadas SÓ quando `assinatura!=null` (guarda que corrige bug 404 anterior). Catch de ações usa `extractApiError(err, fallback)` (exibe mensagem real do backend; NÃO hardcoda fallback descartando `detail`).
+Plano atual (`GET /treinador/plano/assinatura` via `pagamentoApi.obterAssinaturaTreinador`) + chip status (Ativa=success, Inadimplente=error, Cancelada=default, demais=warning). `opcoesTroca` listadas SÓ quando `assinatura!=null` (guarda contra 404 quando não há assinatura). Catch de ações usa `extractApiError(err, fallback)` (exibe mensagem real do backend; NÃO hardcoda fallback descartando `detail`).
 - **`assinatura==null` (sem assinatura ativa)**: seção "Contratar plano" com lista de planos elegíveis (ativos, não-Elite) + botão "Contratar" → `pagamentoApi.contratarPlano(planoId, metodo)`; exibe dialog Pix/Cartão reutilizando `PagamentoPix`/`PagamentoCartao` existentes + polling até `Pago`.
 - **`assinatura!=null` (já tem assinatura)**: seção "Trocar plano" (`pagamentoApi.trocarPlano`):
   - `Downgrade`/`UpgradeImediato` → aplica direto, recarrega.
-  - Upgrade c/ proração via Pix → exibe QR + **polling** 5s (`obterStatusPagamentoTreinador` até `Pago`) → sucesso. **Proração (T9)**: `estimarProracao` (renomeado de `calcularProracao`) calcula `(novoPlano.preco - planoAtual.preco) * diasRestantes / 30` client-side — exibida como **estimativa** (label "Proração estimada: R$ X") nos cards de plano para UX de preview. O **valor autoritativo** é o que o backend retorna em `TrocarPlanoTreinadorResponse.valorPagamento` após `confirmarTroca()` — exibido no dialog de pagamento. O frontend nunca envia o valor calculado ao backend (só `novoPlanoId`).
+  - Upgrade c/ proração via Pix → exibe QR + **polling** 5s (`obterStatusPagamentoTreinador` até `Pago`) → sucesso. **Proração (T9)**: `estimarProracao` calcula `(novoPlano.preco - planoAtual.preco) * diasRestantes / 30` client-side — exibida como **estimativa** (label "Proração estimada: R$ X") nos cards de plano para UX de preview. O **valor autoritativo** é o que o backend retorna em `TrocarPlanoTreinadorResponse.valorPagamento` após `confirmarTroca()` — exibido no dialog de pagamento. O frontend nunca envia o valor calculado ao backend (só `novoPlanoId`).
   - Inadimplente → Alert no card + regularização via mesma lista.
 
 ### Dashboard treinador (`(treinador)/treinador/page.tsx`)

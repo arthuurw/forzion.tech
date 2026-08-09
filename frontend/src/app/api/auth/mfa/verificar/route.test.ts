@@ -86,6 +86,26 @@ describe("POST /api/auth/mfa/verificar", () => {
     expect(setCookie).toContain("HttpOnly");
   });
 
+  it("emite X-Forwarded-For com o IP resolvido, ignorando o header forjado pelo cliente", async () => {
+    let received: string | null = null;
+    server.use(
+      http.post("*/auth/mfa/verificar", ({ request }) => {
+        received = request.headers.get("x-forwarded-for");
+        return HttpResponse.json(loginPayload(null));
+      }),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      headers: { "x-forwarded-for": "198.51.100.9" },
+      cookies: { mfa_pending: "pending-tok" },
+      body: { codigo: "123456", fator: 0, lembrarDispositivo: false },
+    });
+    await POST(req);
+
+    expect(received).toBe("127.0.0.1");
+  });
+
   it("backend recusa o código → propaga status sem setar sessão", async () => {
     server.use(
       http.post("*/auth/mfa/verificar", () =>

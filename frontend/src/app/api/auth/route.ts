@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { LoginResponse } from "@/types";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+import { forwardedForHeader } from "@/lib/security/forwardedFor";
 import { applySessionCookies, applyMfaPendingCookie } from "@/lib/auth/sessionCookies";
 
 const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
@@ -26,6 +27,7 @@ export async function POST(request: NextRequest) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...forwardedForHeader(request),
       ...(trustedDevice ? { Cookie: `trusted_device=${trustedDevice}` } : {}),
     },
     body: JSON.stringify(body),

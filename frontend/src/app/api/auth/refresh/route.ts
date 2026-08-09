@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { applySessionCookies, clearSessionCookies, fetchBackendRefresh } from "@/lib/auth/sessionCookies";
+import { forwardedForHeader } from "@/lib/security/forwardedFor";
 
 /**
  * Proxy de renovação silenciosa. Repassa o cookie httpOnly `refresh` ao backend
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
     return res;
   }
 
-  const data = await fetchBackendRefresh(refresh);
+  const data = await fetchBackendRefresh(refresh, forwardedForHeader(request));
   if (!data) {
     const res = NextResponse.json(null, { status: 401 });
     clearSessionCookies(res);

@@ -128,7 +128,7 @@ describe("fetchBackendRefresh", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await fetchBackendRefresh("raw-123");
+    const result = await fetchBackendRefresh("raw-123", {});
 
     expect(result).toEqual(par);
     const init = fetchMock.mock.calls[0][1];
@@ -137,11 +137,38 @@ describe("fetchBackendRefresh", () => {
 
   it("backend 401 → null (sessão morta)", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 401 })));
-    expect(await fetchBackendRefresh("raw")).toBeNull();
+    expect(await fetchBackendRefresh("raw", {})).toBeNull();
   });
 
   it("erro de rede → null", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("network"); }));
-    expect(await fetchBackendRefresh("raw")).toBeNull();
+    expect(await fetchBackendRefresh("raw", {})).toBeNull();
+  });
+
+  it("emite o X-Forwarded-For fornecido pelo caller junto do cookie de refresh", async () => {
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) => new Response(JSON.stringify(par), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchBackendRefresh("raw-123", { "X-Forwarded-For": "203.0.113.7" });
+
+    const init = fetchMock.mock.calls[0][1];
+    expect(init?.headers).toMatchObject({
+      Cookie: "refresh=raw-123",
+      "X-Forwarded-For": "203.0.113.7",
+    });
+  });
+
+  it("caller sem IP resolvido → nenhum X-Forwarded-For é emitido", async () => {
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) => new Response(JSON.stringify(par), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchBackendRefresh("raw-123", {});
+
+    const init = fetchMock.mock.calls[0][1];
+    expect(init?.headers).not.toHaveProperty("X-Forwarded-For");
   });
 });

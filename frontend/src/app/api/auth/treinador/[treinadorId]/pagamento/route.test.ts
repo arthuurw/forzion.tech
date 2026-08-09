@@ -62,6 +62,25 @@ describe("POST /api/auth/treinador/[treinadorId]/pagamento", () => {
     expect(backendCalled).toBe(false);
   });
 
+  it("emite X-Forwarded-For com o IP resolvido, ignorando o header forjado pelo cliente", async () => {
+    let received: string | null = null;
+    server.use(
+      http.post("*/auth/treinador/:id/pagamento", ({ request }) => {
+        received = request.headers.get("x-forwarded-for");
+        return HttpResponse.json({ pagamentoId: "pg-1" }, { status: 200 });
+      }),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      headers: { "x-forwarded-for": "198.51.100.9" },
+      body: { metodo: "Pix" },
+    });
+    await POST(req, { params });
+
+    expect(received).toBe("127.0.0.1");
+  });
+
   it("backend 404 → propaga status", async () => {
     server.use(
       http.post("*/auth/treinador/:id/pagamento", () =>

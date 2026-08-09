@@ -1,6 +1,6 @@
 # specification-seo — SEO & metadata (forzion.tech)
 
-DOC AGENTES (denso). Fonte de verdade de SEO/metadata frontend (metadata por rota, OpenGraph, crawl control, structured data). Base impl (T5): metadataBase/title-template/OG dinâmica/robots/sitemap/JSON-LD/canonical/noindex. Aberto: perfil público de treinador + gate SEO `warn`→`error`. Atualizar NA MESMA TAREFA ao mudar `metadata`/`generateMetadata`/`sitemap.ts`/`robots.ts`/OG/JSON-LD/`lang`/`metadataBase`/threshold SEO lighthouse. Rótulos OBRIGATÓRIOS por afirmação: `[ATUAL]` (existe hoje) / `[REC]`/`[GAP]` (recomendação/ausência); ao implementar `[REC]`/`[GAP]` reclassificar p/ `[ATUAL]` + path. NÃO duplicar rotas/headers — referenciar [specification-frontend]. Cross-ref: [specification-frontend-ui] (landing/componentes), [specification-observability] (perf budgets), [specification-tests] (gate lighthouse CI).
+DOC AGENTES (denso). Fonte de verdade de SEO/metadata frontend (metadata por rota, OpenGraph, crawl control, structured data). Base implementada: metadataBase/title-template/OG dinâmica/robots/sitemap/JSON-LD/canonical/noindex. Aberto: perfil público de treinador + gate SEO `warn`→`error`. Atualizar NA MESMA TAREFA ao mudar `metadata`/`generateMetadata`/`sitemap.ts`/`robots.ts`/OG/JSON-LD/`lang`/`metadataBase`/threshold SEO lighthouse. Rótulos OBRIGATÓRIOS por afirmação: `[ATUAL]` (existe hoje) / `[REC]`/`[GAP]` (recomendação/ausência); ao implementar `[REC]`/`[GAP]` reclassificar p/ `[ATUAL]` + path. NÃO duplicar rotas/headers — referenciar [specification-frontend]. Cross-ref: [specification-frontend-ui] (landing/componentes), [specification-observability] (perf budgets), [specification-tests] (gate lighthouse CI).
 
 ## 1. ESTADO ATUAL
 
@@ -8,16 +8,16 @@ DOC AGENTES (denso). Fonte de verdade de SEO/metadata frontend (metadata por rot
 `frontend/src/app/layout.tsx`:
 | Campo | Valor atual |
 |-------|-------------|
-| `metadata.title` | `{ default: "forzion.tech — Gestão para Personal Trainers", template: "%s | forzion.tech" }` `[ATUAL]` (T5) |
+| `metadata.title` | `{ default: "forzion.tech — Gestão para Personal Trainers", template: "%s | forzion.tech" }` `[ATUAL]` |
 | `metadata.description` | `"Plataforma de gestão de treinos para personal trainers"` |
-| `metadata.metadataBase` | `new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech")` `[ATUAL]` (T5) |
-| `metadata.openGraph` | `type=website, siteName=forzion.tech, locale=pt_BR, url="/", title, description` `[ATUAL]` (T5) |
-| `metadata.twitter` | `{ card: "summary_large_image" }` `[ATUAL]` (T5) |
+| `metadata.metadataBase` | `new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech")` `[ATUAL]` |
+| `metadata.openGraph` | `type=website, siteName=forzion.tech, locale=pt_BR, url="/", title, description` `[ATUAL]` |
+| `metadata.twitter` | `{ card: "summary_large_image" }` `[ATUAL]` |
 | `viewport` | `width=device-width, initialScale=1, viewportFit=cover` (export `Viewport` separado) |
 | `<html lang>` | `"pt-BR"` `[ATUAL]` |
 
-OG image por CONVENÇÃO de arquivo `frontend/src/app/opengraph-image.tsx` (`next/og` `ImageResponse`, 1200×630, `runtime="nodejs"`) — não listada em `openGraph.images`. ÚNICA referência canônica desta convenção (demais seções só apontam aqui). `[ATUAL]` (T5)
-Env `NEXT_PUBLIC_SITE_URL` (default `https://forzion.tech`, documentada em `frontend/.env.example`) é a base de `metadataBase`/`sitemap`/`robots`/JSON-LD — fonte única deste default. `[ATUAL]` (T5)
+OG image por CONVENÇÃO de arquivo `frontend/src/app/opengraph-image.tsx` (`next/og` `ImageResponse`, 1200×630, `runtime="nodejs"`) — não listada em `openGraph.images`. ÚNICA referência canônica desta convenção (demais seções só apontam aqui). `[ATUAL]`
+Env `NEXT_PUBLIC_SITE_URL` (default `https://forzion.tech`, documentada em `frontend/.env.example`) é a base de `metadataBase`/`sitemap`/`robots`/JSON-LD — fonte única deste default. `[ATUAL]`
 Metadata por rota via `layout.tsx` server por rota (§2.2). Nenhuma rota usa `generateMetadata` ainda (só `export const metadata` estático).
 
 ### Lighthouse SEO — `[ATUAL]`
@@ -26,14 +26,14 @@ Metadata por rota via `layout.tsx` server por rota (§2.2). Nenhuma rota usa `ge
 ### Artefatos SEO — estado pós-T5
 | Artefato | Status | Path / nota |
 |----------|--------|-------------|
-| `sitemap.ts` | `[ATUAL]` (T5) | `frontend/src/app/sitemap.ts` → gera `/sitemap.xml` (build confirmou rota) |
-| `robots.ts` | `[ATUAL]` (T5+A1) | `frontend/src/app/robots.ts` → `/robots.txt`. ENV-GATED `NEXT_PUBLIC_INDEXABLE` (default noindex total; allow só em prod). §4.1 |
+| `sitemap.ts` | `[ATUAL]` | `frontend/src/app/sitemap.ts` → gera `/sitemap.xml` (build confirmou rota) |
+| `robots.ts` | `[ATUAL]` | `frontend/src/app/robots.ts` → `/robots.txt`. ENV-GATED `NEXT_PUBLIC_INDEXABLE` (default noindex total; allow só em prod). §4.1 |
 | `generateMetadata` em rota | AUSENTE `[GAP]` | só `export const metadata` estático (suficiente p/ superfície atual; dinâmico fica p/ perfil de treinador §5.2) |
-| `openGraph` / `twitter` | `[ATUAL]` (T5) | root `layout.tsx` |
-| `robots` (campo metadata) | `[ATUAL]` (T5) | noindex em grupos auth + transacionais (§4.2) |
-| `alternates`/`canonical` | `[ATUAL]` (T5) | `/`, `/login`, `/cadastro/treinador`, `/cadastro/aluno` |
-| `application/ld+json` (structured data) | `[ATUAL]` (T5) | Organization na landing `page.tsx` (§5.1) |
-| OG image | `[ATUAL]` (T5) | `app/opengraph-image.tsx` (dinâmica next/og) → rota `/opengraph-image` no build |
+| `openGraph` / `twitter` | `[ATUAL]` | root `layout.tsx` |
+| `robots` (campo metadata) | `[ATUAL]` | noindex em grupos auth + transacionais (§4.2) |
+| `alternates`/`canonical` | `[ATUAL]` | `/`, `/login`, `/cadastro/treinador`, `/cadastro/aluno` |
+| `application/ld+json` (structured data) | `[ATUAL]` | Organization na landing `page.tsx` (§5.1) |
+| OG image | `[ATUAL]` | `app/opengraph-image.tsx` (dinâmica next/og) → rota `/opengraph-image` no build |
 | `favicon` | `[ATUAL]` | `app/favicon.ico` presente — Next.js App Router serve automaticamente como `/favicon.ico`. Sem `app/icon.*` nem `app/apple-icon.*` (ícones adicionais ausentes — `[GAP]`). |
 
 ### Superfície pública indexável — `[ATUAL]`

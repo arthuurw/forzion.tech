@@ -80,4 +80,23 @@ describe("POST /api/auth/verify-email", () => {
       status: 400,
     });
   });
+
+  it("emite X-Forwarded-For com o IP real, ignorando o header forjado pelo cliente", async () => {
+    let received: string | null = null;
+    server.use(
+      http.post("*/auth/verify-email", ({ request }) => {
+        received = request.headers.get("x-forwarded-for");
+        return HttpResponse.json({}, { status: 200 });
+      }),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      headers: { "x-real-ip": "203.0.113.7", "x-forwarded-for": "198.51.100.9" },
+      body: { token: "a".repeat(64) },
+    });
+    await POST(req);
+
+    expect(received).toBe("203.0.113.7");
+  });
 });

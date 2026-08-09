@@ -18,6 +18,33 @@ describe("POST /api/auth/refresh", () => {
     expect(setCookie).toContain("refresh=;");
   });
 
+  it("emite X-Forwarded-For com o IP real, ignorando o header forjado pelo cliente", async () => {
+    let received: string | null = null;
+    server.use(
+      http.post("*/auth/refresh", ({ request }) => {
+        received = request.headers.get("x-forwarded-for");
+        return HttpResponse.json({
+          token: fakeJwt,
+          refreshToken: "refresh-rotacionado",
+          tipoConta: "Aluno",
+          contaId: "c1",
+          perfilId: "p1",
+          nome: "João",
+        });
+      }),
+    );
+
+    await POST(
+      createMockRequest({
+        method: "POST",
+        headers: { "x-real-ip": "203.0.113.7", "x-forwarded-for": "198.51.100.9" },
+        cookies: { refresh: "refresh-antigo" },
+      }),
+    );
+
+    expect(received).toBe("203.0.113.7");
+  });
+
   it("refresh válido → rotaciona cookies e não vaza refresh no corpo", async () => {
     let cookieRecebido: string | null = null;
     server.use(

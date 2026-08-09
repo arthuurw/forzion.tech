@@ -1,0 +1,183 @@
+name: Supabase Exposure Guard
+
+# Guarda contra regressão da exposição de dados via Data API/PostgREST nos 2 projetos Supabase.
+# Origem: auditoria 2026-08-08 (SUPA-10). Contexto em specs/specification-db.md §DATA API.
+#
+# DUAS asserções, porque uma só engana:
+#   A1 (probe HTTP) detecta EXPOSIÇÃO REAL — um 2xx com linhas é prova de que dado está sendo servido.
+#      Mas a ausência de 2xx NÃO prova fechamento: o PostgREST continua no caminho da requisição mesmo
+#      com a Data API desligada (doc oficial), e responde 503 PGRST002 tanto por config fechada quanto
+#      por schema cache quebrado. Sozinha, A1 dá falsa tranquilidade.
+#   A2 (SQL) mede a BARREIRA que de fato segura: privilégio de tabela de anon/authenticated e as
+#      default privileges. É o que continua valendo se alguém religar a Data API.
+#
+# supabase_admin fica FORA de A2 de propósito: o default privilege desse criador concede anon=arwdDxtm
+# e NÃO é revogável (ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin => 42501, exige membership que o
+# postgres gerenciado não tem). Incluí-lo deixaria o gate permanentemente vermelho sem ação possível.
+# É justamente esse buraco irrevogável que torna o desligamento da Data API obrigatório — e A1 o cobre.
+#
+# Config exigida (variables do repo, não secrets — chave publicável é pública por design):
+#   SUPABASE_PUBLISHABLE_KEY_PROD, SUPABASE_PUBLISHABLE_KEY_HMG
+# Secrets reusados do db-backup (Session pooler :5432, conecta como forzion_api):
+#   BACKUP_DATABASE_URL_PROD, BACKUP_DATABASE_URL
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: supabase-exposure-guard
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    name: probe HTTP + privilégios SQL
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar psql
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+          psql --version
+
+      - name: A1 — nenhum dado servido pela Data API
+        env:
+          KEY_PROD: ${{ vars.SUPABASE_PUBLISHABLE_KEY_PROD }}
+          KEY_HMG: ${{ vars.SUPABASE_PUBLISHABLE_KEY_HMG }}
+          REF_PROD: zdmgqnostkqiolutrbwq
+          REF_HMG: fdpdbtiuuitndbeujcbj
+        run: |
+          set -euo pipefail
+          falhou=0
+
+          # $1=rótulo $2=ref $3=chave $4=schema via Accept-Profile ("" = schema default do projeto)
+          probe() {
+            local rotulo="$1" ref="$2" chave="$3" profile="$4"
+            local url="https://${ref}.supabase.co/rest/v1/contas?select=id&limit=1"
+            # SEM --retry: 503 é o estado SAUDÁVEL esperado aqui, e --retry o trata como transitório —
+            # retentaria toda execução verde. Uma requisição, um veredito.
+            local args=(-s -o /dev/null -w '%{http_code}' -m 20 -H "apikey: ${chave}")
+            # if/then, não `[ ] && `: sob set -e o teste falso derruba o job inteiro.
+            if [ -n "$profile" ]; then args+=(-H "Accept-Profile: ${profile}"); fi
+            local code
+            code=$(curl "${args[@]}" "$url" || echo "000")
+            if [ "$code" = "000" ]; then
+              echo "  ::error::${rotulo} — sem resposta do endpoint (rede/timeout); asserção não concluída"
+              falhou=1
+              return
+            fi
+            # NUNCA ecoar o corpo: seria vazar a própria PII que o guard existe para proteger.
+            echo "  ${rotulo}${profile:+ [schema ${profile}]}: HTTP ${code}"
+            if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then
+              echo "  ::error::EXPOSIÇÃO — ${rotulo}${profile:+ schema ${profile}} serviu ${code} pela Data API"
+              falhou=1
+            fi
+          }
+
+          if [ -z "${KEY_PROD}" ] || [ -z "${KEY_HMG}" ]; then
+            echo "::error::A1 NÃO EXECUTADA — defina as variables SUPABASE_PUBLISHABLE_KEY_PROD e _HMG."
+            echo "::error::Guard sem A1 não detecta exposição; falha proposital em vez de passar em silêncio."
+            exit 1
+          fi
+
+          echo "prod (forzion_p):"
+          probe "prod" "$REF_PROD" "$KEY_PROD" ""
+          echo "homolog (forzion):"
+          probe "homolog" "$REF_HMG" "$KEY_HMG" ""
+          # public do projeto homolog está vazio; a regressão que importa é o schema homolog virar exposto.
+          probe "homolog" "$REF_HMG" "$KEY_HMG" "homolog"
+
+          [ "$falhou" -eq 0 ] || exit 1
+
+      - name: A2 — anon/authenticated sem privilégio
+        env:
+          URL_PROD: ${{ secrets.BACKUP_DATABASE_URL_PROD }}
+          URL_HMG: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          falhou=0
+
+          # $1=rótulo $2=connection string $3=schemas separados por vírgula
+          checar() {
+            local rotulo="$1" url="$2" schemas="$3"
+
+            local leituras
+            leituras=$(psql "$url" -X -A -t -v ON_ERROR_STOP=1 -v schemas="$schemas" -c "
+              select count(*)
+              from pg_class c
+              join pg_namespace n on n.oid = c.relnamespace
+              where c.relkind in ('r','v','m','p')
+                and n.nspname = any(string_to_array(:'schemas', ','))
+                and (has_table_privilege('anon', c.oid, 'SELECT')
+                  or has_table_privilege('authenticated', c.oid, 'SELECT'));")
+
+            # supabase_admin excluído: irrevogável (42501) — ver cabeçalho.
+            local defaults
+            defaults=$(psql "$url" -X -A -t -v ON_ERROR_STOP=1 -v schemas="$schemas" -c "
+              select count(*)
+              from pg_default_acl d
+              join pg_namespace n on n.oid = d.defaclnamespace
+              where n.nspname = any(string_to_array(:'schemas', ','))
+                and d.defaclrole::regrole::text <> 'supabase_admin'
+                and d.defaclacl::text ~ '(anon|authenticated)=';")
+
+            echo "  ${rotulo} [${schemas}]: objetos legíveis=${leituras}, default ACLs abertas=${defaults}"
+            if [ "$leituras" -ne 0 ]; then
+              echo "  ::error::${rotulo} — ${leituras} objeto(s) legível(is) por anon/authenticated"
+              falhou=1
+            fi
+            if [ "$defaults" -ne 0 ]; then
+              echo "  ::error::${rotulo} — ${defaults} default ACL concede a anon/authenticated (fora supabase_admin)"
+              echo "  ::error::Re-rodar scripts/provision-forzion_p-grants.sql (reset de senha do dashboard as restaura)"
+              falhou=1
+            fi
+          }
+
+          if [ -z "${URL_PROD}" ] || [ -z "${URL_HMG}" ]; then
+            echo "::error::A2 NÃO EXECUTADA — BACKUP_DATABASE_URL_PROD e/ou BACKUP_DATABASE_URL ausentes."
+            exit 1
+          fi
+
+          checar "prod" "$URL_PROD" "public"
+          checar "homolog" "$URL_HMG" "homolog,develop,public"
+
+          [ "$falhou" -eq 0 ] || exit 1
+
+      - name: Notificar falha via issue
+        if: failure()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const title = `[supabase-guard] Falha em ${new Date().toISOString().slice(0, 10)}`;
+            const body = [
+              '⚠️ **Supabase Exposure Guard** falhou — possível regressão de exposição de dados.',
+              '',
+              `**Run:** ${runUrl}`,
+              `**Trigger:** ${context.eventName} (${context.ref})`,
+              '',
+              'O log diz qual asserção caiu e em qual projeto. **Nenhuma linha de dado é registrada** — nem no log, nem aqui.',
+              '',
+              '**A1 (probe HTTP) vermelha = INCIDENTE.** Dado real sendo servido pela Data API a uma chave pública.',
+              'Conter primeiro: desabilitar a Data API do projeto afetado (Settings → API). Depois investigar a janela',
+              'de exposição e avaliar o art. 48 da LGPD (`specs/specification-lgpd.md`).',
+              '',
+              '**A2 (SQL) vermelha = barreira caiu, sem exposição confirmada.** Causa mais provável: "Reset database',
+              'password" no dashboard, que restaura os grants default. Fix: re-rodar `scripts/provision-forzion_p-grants.sql`.',
+              '',
+              '**Passo NÃO executado** (config ausente) também reprova de propósito — guard que não asserta nada',
+              'não é guard. Conferir as variables `SUPABASE_PUBLISHABLE_KEY_*` e os secrets `BACKUP_DATABASE_URL*`.',
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['ops', 'security']
+            });
