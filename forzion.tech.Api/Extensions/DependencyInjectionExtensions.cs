@@ -98,10 +98,12 @@ using forzion.tech.Application.UseCases.Auth.RedefinirSenha;
 using forzion.tech.Application.UseCases.Auth.VerificarEmail;
 using forzion.tech.Application.Settings;
 using forzion.tech.Infrastructure.Notifications.Email;
+using forzion.tech.Infrastructure.Common;
 using forzion.tech.Infrastructure.Logging;
 using forzion.tech.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Sentry;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace forzion.tech.Api.Extensions;
@@ -230,9 +232,60 @@ public static class DependencyInjectionExtensions
             services.AddSingleton<ErrorLogDbSinkProvider>();
             services.AddSingleton<ILoggerProvider>(sp => sp.GetRequiredService<ErrorLogDbSinkProvider>());
             services.AddHostedService<ErrorLogDbSinkDrenoService>();
+            services.AddSentryLogging(configuration, environment);
         }
 
         return services;
+    }
+
+    // Coexiste com ErrorLogDbSinkProvider — nenhum substitui o outro. Ausente = no-op (padrão
+    // NullEmailService); Sentry é observabilidade, não faz sentido fail-fast como o e-mail.
+    // Breadcrumb desligado: só o evento final passa por MascaraPii.Scrub, log intermediário não é.
+    internal static IServiceCollection AddSentryLogging(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
+    {
+        var sentryDsn = configuration["Sentry:Dsn"];
+        if (!DsnValido(sentryDsn))
+            return services;
+
+        return services.AddLogging(logging => logging.AddSentry(options =>
+        {
+            options.Dsn = sentryDsn;
+            options.Environment = environment.EnvironmentName;
+            options.SendDefaultPii = false;
+            options.MinimumEventLevel = LogLevel.Error;
+            options.MinimumBreadcrumbLevel = LogLevel.None;
+            options.SetBeforeSend((@event, _) => ScrubPii(@event));
+        }));
+    }
+
+    // Sentry.Dsn.Parse lança UriFormatException/ArgumentException pra DSN malformado na 1ª
+    // resolução do ILoggerProvider, no boot do host — não lazily no 1º log. Replica as 3
+    // checagens reais do Parse (scheme, public key antes de ':' no userinfo, project id no
+    // path) via API pública — Sentry.Dsn é internal, TryParse não é chamável daqui. Verificado
+    // empiricamente contra Sentry 6.8.0 (scratch probe, ver commit).
+    internal static bool DsnValido(string? dsn)
+    {
+        if (string.IsNullOrWhiteSpace(dsn) || !Uri.TryCreate(dsn, UriKind.Absolute, out var uri))
+            return false;
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            return false;
+        var publicKey = uri.UserInfo.Split(':')[0];
+        return !string.IsNullOrEmpty(publicKey) && !string.IsNullOrEmpty(uri.AbsolutePath.TrimEnd('/'));
+    }
+
+    // Tags vem de argumentos estruturados de ILogger (ex.: LogError("... {Email}", email)) —
+    // Sentry.Extensions.Logging grava o valor cru em SentryEvent.Tags, fora do Message/exception
+    // que o resto deste método escrutina. Sem isso aqui, PII passada como argumento estruturado
+    // vaza pro Sentry sem passar pelo scrub (verificado empiricamente).
+    internal static SentryEvent ScrubPii(SentryEvent @event)
+    {
+        if (@event.Message is { } message)
+            @event.Message = new SentryMessage { Message = message.Message, Formatted = MascaraPii.Scrub(message.Formatted) };
+        foreach (var excecao in @event.SentryExceptions ?? [])
+            excecao.Value = MascaraPii.Scrub(excecao.Value);
+        foreach (var chave in @event.Tags.Keys.ToList())
+            @event.SetTag(chave, MascaraPii.Scrub(@event.Tags[chave]) ?? string.Empty);
+        return @event;
     }
 
     public static IServiceCollection AddApplicationHandlers(this IServiceCollection services)

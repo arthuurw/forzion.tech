@@ -219,6 +219,7 @@ Idempotente (insere só o que falta). Contagens (grupos/exercícios/planos/admin
 
 ### Outros
 - `Infrastructure/Logging/ErrorLogDbSinkProvider`: `ILoggerProvider` que persiste erros (registrado fora de Test como singleton concreto + forward p/ `ILoggerProvider`). O dreno no shutdown é ligado por `ErrorLogDbSinkDrenoService` (`IHostedService`) via `RegistrarDrenoNoShutdown(IHostApplicationLifetime)` — NÃO no ctor (injetar lifetime no ctor de um `ILoggerProvider` fecha ciclo de DI que aborta `host.Build()`). Detalhe em [specification-observability].
+- `Api/Extensions/DependencyInjectionExtensions.AddSentryLogging`: `ILoggerProvider` de Sentry (`Sentry.Extensions.Logging`), coexiste com o de cima. Detalhe em [specification-observability].
 - `Infrastructure/Health/` (`HealthReportCollector`/`HealthReportSender`), `Persistence/AppDbContextFactory` (design-time para migrations).
 
 ## 6. CONVENÇÕES

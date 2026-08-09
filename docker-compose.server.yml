@@ -26,6 +26,8 @@ services:
       Seed__AdminPassword: ${SEED_ADMIN_PASSWORD:-}
       Seed__ZapTestEmail: ${SEED_ZAP_TEST_EMAIL:-zap-test@forzion.tech}
       Seed__ZapTestPassword: ${SEED_ZAP_TEST_PASSWORD:-}
+      # Environment do evento vem de ASPNETCORE_ENVIRONMENT — sem var própria aqui.
+      Sentry__Dsn: ${BACKEND_SENTRY_DSN:-}
       WhatsApp__Habilitado: ${WHATSAPP_HABILITADO:-false}
       WhatsApp__PhoneNumberId: ${WHATSAPP_PHONE_NUMBER_ID:-}
       WhatsApp__AccessToken: ${WHATSAPP_ACCESS_TOKEN:-}
