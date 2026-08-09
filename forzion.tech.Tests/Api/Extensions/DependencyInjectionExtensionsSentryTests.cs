@@ -63,16 +63,21 @@ public class DependencyInjectionExtensionsSentryTests
             "AddSentry deve registrar pelo menos um ILoggerProvider próprio");
     }
 
-    [Fact]
-    public void AddSentryLogging_DsnMalformado_NaoRegistraILoggerProviderENaoLanca()
+    [Theory]
+    [InlineData("isto-nao-e-uma-url-valida")]
+    [InlineData("https://key@o0.ingest.sentry.io")]
+    [InlineData("https://:secret@o0.ingest.sentry.io/1")]
+    public void AddSentryLogging_DsnMalformado_NaoRegistraILoggerProviderENaoLanca(string dsn)
     {
         var services = new ServiceCollection();
 
-        var act = () => services.AddSentryLogging(CriarConfig(dsn: "isto-nao-e-uma-url-valida"), CriarEnv());
+        services.AddSentryLogging(CriarConfig(dsn), CriarEnv());
 
-        act.Should().NotThrow("um Sentry:Dsn mal configurado não pode derrubar o boot da app");
         using var provider = services.BuildServiceProvider();
-        provider.GetServices<ILoggerProvider>().Should().BeEmpty("DSN sintaticamente inválido deve cair no mesmo no-op do DSN ausente");
+        var act = () => provider.GetServices<ILoggerProvider>().ToList();
+
+        act.Should().NotThrow("resolver o provider é onde Sentry.Dsn.Parse lançaria pra um DSN malformado");
+        act().Should().BeEmpty("DSN sintaticamente inválido deve cair no mesmo no-op do DSN ausente");
     }
 
     [Fact]
@@ -95,6 +100,9 @@ public class DependencyInjectionExtensionsSentryTests
     [InlineData("   ")]
     [InlineData("isto-nao-e-uma-url-valida")]
     [InlineData("ftp://key@o0.ingest.sentry.io/0")]
+    [InlineData("https://key@o0.ingest.sentry.io")] // sem project id — Sentry.Dsn.Parse lança
+    [InlineData("https://key@o0.ingest.sentry.io/")]
+    [InlineData("https://:secret@o0.ingest.sentry.io/1")] // public key vazia antes do ':'
     public void DsnValido_DsnAusenteVazioOuMalformado_RetornaFalse(string? dsn)
     {
         DependencyInjectionExtensions.DsnValido(dsn).Should().BeFalse();
@@ -120,6 +128,31 @@ public class DependencyInjectionExtensionsSentryTests
         resultado.Message.Formatted.Should().NotContain("11987654321");
         resultado.Message.Formatted.Should().Contain("[email]");
         resultado.Message.Formatted.Should().Contain("[num]");
+    }
+
+    [Fact]
+    public void ScrubPii_MensagemComTemplate_PreservaMessageParaAgrupamentoDoSentry()
+    {
+        var evento = new SentryEvent
+        {
+            Message = new SentryMessage { Message = "falha para {Email}", Formatted = "falha para user@example.com" }
+        };
+
+        var resultado = DependencyInjectionExtensions.ScrubPii(evento);
+
+        resultado.Message!.Message.Should().Be("falha para {Email}");
+    }
+
+    [Fact]
+    public void ScrubPii_TagComEmail_MascaraAntesDeSair()
+    {
+        var evento = new SentryEvent();
+        evento.SetTag("Email", "user@example.com");
+
+        var resultado = DependencyInjectionExtensions.ScrubPii(evento);
+
+        resultado.Tags["Email"].Should().NotContain("user@example.com");
+        resultado.Tags["Email"].Should().Contain("[email]");
     }
 
     [Fact]
