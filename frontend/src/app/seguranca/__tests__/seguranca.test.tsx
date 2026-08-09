@@ -71,7 +71,7 @@ describe("/seguranca — desativação", () => {
     let headerEnviado: string | null = "missing";
     server.use(
       statusHandler(true),
-      http.post("*/auth/step-up/iniciar", () => HttpResponse.json({ fator: 0 })),
+      http.post("*/auth/step-up/iniciar", () => HttpResponse.json({ fator: "Totp" })),
       http.post("*/auth/step-up/verificar", () =>
         HttpResponse.json({ token: "su-token-xyz", expiraEm: "2026-06-17T13:00:00Z" }),
       ),
@@ -92,5 +92,20 @@ describe("/seguranca — desativação", () => {
 
     await waitFor(() => expect(headerEnviado).toBe("su-token-xyz"));
     expect(await screen.findByText(/desativada/i)).toBeInTheDocument();
+  });
+
+  it("step-up por e-mail: mostra a instrução de e-mail, não a de autenticador", async () => {
+    server.use(
+      statusHandler(true),
+      http.post("*/auth/step-up/iniciar", () => HttpResponse.json({ fator: "Email" })),
+    );
+
+    renderWithProviders(<SegurancaPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /desativar 2fa/i }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText(/enviamos um código para o seu e-mail/i)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/aplicativo autenticador/i)).not.toBeInTheDocument();
   });
 });
