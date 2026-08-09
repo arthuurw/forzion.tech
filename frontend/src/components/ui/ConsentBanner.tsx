@@ -81,8 +81,8 @@ export default function ConsentBanner({ forceOpen, onClose }: ConsentBannerProps
               <strong>Perfil → Privacidade (LGPD)</strong>.
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Compartilhamos dados com terceiros (Resend, Stripe, Meta) para
-              operar o serviço. Detalhes na{" "}
+              Compartilhamos dados com terceiros (Resend, Stripe, Supabase,
+              Sentry) para operar o serviço. Detalhes na{" "}
               <MuiLink component={Link} href="/privacidade">
                 política de privacidade
               </MuiLink>

@@ -157,11 +157,26 @@ export default function LandingPage() {
 
       <Box
         component="footer"
-        sx={{ py: 3, textAlign: "center", borderTop: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}
+        sx={{
+          py: 3,
+          textAlign: "center",
+          borderTop: "1px solid",
+          borderColor: "divider",
+          bgcolor: "background.paper",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 1,
+        }}
       >
         <Typography variant="caption" color="text.secondary">
           © {new Date().getFullYear()} forzion.tech — Todos os direitos reservados
         </Typography>
+        <Link href="/privacidade">
+          <Typography variant="caption" color="text.secondary" sx={{ textDecoration: "underline" }}>
+            Privacidade
+          </Typography>
+        </Link>
       </Box>
     </Box>
   );
