@@ -238,12 +238,9 @@ public static class DependencyInjectionExtensions
         return services;
     }
 
-    // Sink adicional, coexiste com o de DB (ErrorLogDbSinkProvider) acima — nenhum substitui o
-    // outro. Ausente = no-op silencioso (padrão NullEmailService) — Sentry é observabilidade, não
-    // caminho de negócio, não faz sentido fail-fast igual e-mail. Breadcrumb desligado
-    // (MinimumBreadcrumbLevel=None): só o próprio evento de erro sai da app, nenhum log
-    // Info/Debug intermediário não escrutinado por PII. Extraído de AddApiServices pra ser
-    // testável sem levantar o grafo de DI inteiro.
+    // Coexiste com ErrorLogDbSinkProvider — nenhum substitui o outro. Ausente = no-op (padrão
+    // NullEmailService); Sentry é observabilidade, não faz sentido fail-fast como o e-mail.
+    // Breadcrumb desligado: só o evento final passa por MascaraPii.Scrub, log intermediário não é.
     internal static IServiceCollection AddSentryLogging(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
     {
         var sentryDsn = configuration["Sentry:Dsn"];
@@ -261,10 +258,9 @@ public static class DependencyInjectionExtensions
         }));
     }
 
-    // Sentry.Dsn.Parse lança UriFormatException pra string malformada, sem proteção, na
-    // primeira resolução do ILoggerProvider (durante o boot do host, não lazily no 1º log) —
-    // um Sentry:Dsn mal configurado derrubaria a app inteira. Validar antes evita isso, mesma
-    // postura de no-op do DSN ausente. Internal: reusado pelo warning de boot em Program.cs.
+    // Sentry.Dsn.Parse lança UriFormatException pra string malformada na 1ª resolução do
+    // ILoggerProvider, no boot do host — não lazily no 1º log. DSN mal configurado derrubaria
+    // a app inteira sem essa validação.
     internal static bool DsnValido(string? dsn) =>
         !string.IsNullOrWhiteSpace(dsn)
         && Uri.TryCreate(dsn, UriKind.Absolute, out var uri)

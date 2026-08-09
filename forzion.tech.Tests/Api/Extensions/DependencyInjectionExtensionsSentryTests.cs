@@ -49,7 +49,7 @@ public class DependencyInjectionExtensionsSentryTests
     {
         var services = new ServiceCollection();
         var dbSinkFalso = Mock.Of<ILoggerProvider>();
-        services.AddSingleton(dbSinkFalso); // simula o sink de DB já registrado
+        services.AddSingleton(dbSinkFalso);
 
         services.AddSentryLogging(CriarConfig(dsn: "https://key@o0.ingest.sentry.io/0"), CriarEnv());
 
