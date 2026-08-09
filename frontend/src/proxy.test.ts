@@ -95,12 +95,6 @@ describe("middleware — rotas públicas", () => {
     expect(NextResponse.redirect).not.toHaveBeenCalled();
   });
 
-  it("/seguranca sem auth → pass-through", async () => {
-    await middleware(makeRequest("/seguranca"));
-    expect(NextResponse.next).toHaveBeenCalled();
-    expect(NextResponse.redirect).not.toHaveBeenCalled();
-  });
-
   it("/cadastro/aluno sem auth → pass-through", async () => {
     await middleware(makeRequest("/cadastro/aluno"));
     expect(NextResponse.next).toHaveBeenCalled();
@@ -120,6 +114,7 @@ describe("middleware — sem auth em área protegida", () => {
     ["/treinador/alunos"],
     ["/aluno/fichas"],
     ["/perfil"],
+    ["/seguranca"],
   ])("%s → redirect /login", async (path) => {
     await middleware(makeRequest(path));
     expect(NextResponse.redirect).toHaveBeenCalledOnce();
