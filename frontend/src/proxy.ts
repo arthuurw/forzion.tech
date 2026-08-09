@@ -3,7 +3,7 @@ import { jwtVerify } from "jose";
 import type { TipoConta } from "@/types";
 import { parseTipoConta } from "@/lib/auth/jwt";
 
-const PUBLIC_PATHS = ["/", "/login", "/cadastro", "/forgot-password", "/reset-password", "/verify-email", "/resend-verification", "/privacidade", "/seguranca"];
+const PUBLIC_PATHS = ["/", "/login", "/cadastro", "/forgot-password", "/reset-password", "/verify-email", "/resend-verification", "/privacidade"];
 
 const AREA_BY_TIPO: Record<TipoConta, string> = {
   SystemAdmin: "/admin",
