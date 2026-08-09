@@ -31,6 +31,9 @@ services:
       DeliveryLog__RecipientHashKey: ${DELIVERY_LOG_HASH_KEY:-}
       Seed__ZapTestEmail: ${SEED_ZAP_TEST_EMAIL:-zap-test@forzion.tech}
       Seed__ZapTestPassword: ${SEED_ZAP_TEST_PASSWORD:-}
+      # Ausente = no-op (DependencyInjectionExtensions.AddSentryLogging) — erros seguem só no
+      # sink de DB (error_logs). Environment vem de ASPNETCORE_ENVIRONMENT, não repetido aqui.
+      Sentry__Dsn: ${BACKEND_SENTRY_DSN:-}
       # WhatsApp via Meta Cloud API (opcional — PhoneNumberId+AccessToken vazios → NullWhatsAppNotifier)
       WhatsApp__Habilitado: ${WHATSAPP_HABILITADO:-false}
       WhatsApp__PhoneNumberId: ${WHATSAPP_PHONE_NUMBER_ID:-}
