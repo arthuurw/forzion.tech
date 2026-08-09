@@ -1,4 +1,6 @@
 using forzion.tech.Api.Extensions;
+using forzion.tech.Application.Interfaces;
+using forzion.tech.Infrastructure.Logging;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -168,6 +170,43 @@ public class DependencyInjectionExtensionsSentryTests
         resultado.SentryExceptions.Should().NotBeNullOrEmpty();
         resultado.SentryExceptions!.Should().OnlyContain(e => e.Value != null && !e.Value.Contains("user@example.com"));
         resultado.SentryExceptions!.Should().OnlyContain(e => e.Value != null && e.Value.Contains("[email]"));
+    }
+
+    // Espelha a ordem real de AddApiServices: Nulo registrado incondicional primeiro,
+    // AddSentryLogging depois — só sobrescreve quando o DSN é válido.
+    [Fact]
+    public void IAlertaSegurancaSentry_DsnValido_ResolveSentrySecurityAlertSink()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IAlertaSegurancaSentry, AlertaSegurancaSentryNulo>();
+
+        services.AddSentryLogging(CriarConfig(dsn: "https://key@o0.ingest.sentry.io/0"), CriarEnv());
+
+        using var provider = services.BuildServiceProvider();
+        provider.GetRequiredService<IAlertaSegurancaSentry>().Should().BeOfType<SentrySecurityAlertSink>();
+    }
+
+    [Fact]
+    public void IAlertaSegurancaSentry_DsnAusente_MantemAlertaSegurancaSentryNulo()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IAlertaSegurancaSentry, AlertaSegurancaSentryNulo>();
+
+        services.AddSentryLogging(CriarConfig(dsn: null), CriarEnv());
+
+        using var provider = services.BuildServiceProvider();
+        provider.GetRequiredService<IAlertaSegurancaSentry>().Should().BeOfType<AlertaSegurancaSentryNulo>();
+    }
+
+    [Fact]
+    public void IAlertaSegurancaSentry_SemChamarAddSentryLogging_ResolveAlertaSegurancaSentryNulo()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IAlertaSegurancaSentry, AlertaSegurancaSentryNulo>();
+
+        using var provider = services.BuildServiceProvider();
+        provider.GetRequiredService<IAlertaSegurancaSentry>().Should().BeOfType<AlertaSegurancaSentryNulo>(
+            "ambiente Test pula AddSentryLogging inteiro (guard em AddApiServices) — só o default incondicional sobra");
     }
 
     [Fact]

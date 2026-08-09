@@ -220,6 +220,12 @@ public static class DependencyInjectionExtensions
         services.AddTransient<RequireAssinaturaAtivaFilter>();
         services.AddTransient<RequireAssinaturaTreinadorAtivaFilter>();
 
+        // Default incondicional — RefreshTokenService/RegistrarRejeicaoAuth resolvem
+        // IAlertaSegurancaSentry mesmo em Test (fixtures E2E chamam AddInfrastructure fora
+        // deste guard). AddSentryLogging, abaixo, sobrescreve por SentrySecurityAlertSink
+        // só quando DSN válido — GetRequiredService pega o último registro.
+        services.AddSingleton<IAlertaSegurancaSentry, AlertaSegurancaSentryNulo>();
+
         if (!environment.IsEnvironment("Test"))
         {
             services.AddInfrastructure(configuration, environment);
@@ -246,6 +252,8 @@ public static class DependencyInjectionExtensions
         var sentryDsn = configuration["Sentry:Dsn"];
         if (!DsnValido(sentryDsn))
             return services;
+
+        services.AddSingleton<IAlertaSegurancaSentry, SentrySecurityAlertSink>();
 
         return services.AddLogging(logging => logging.AddSentry(options =>
         {
