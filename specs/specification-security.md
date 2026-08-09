@@ -188,7 +188,7 @@ Nenhum dos itens abaixo tem correção implementada. Backlog rastreável em card
 - **OSV report-only** (deps dev não gateadas); gate de vuln frontend é só `npm audit --omit=dev >= high`.
 - **Produção nunca passou por DAST**: `zap.yaml` aponta só para homolog; o baseline de PR roda contra imagem efêmera do frontend, sem nginx ⇒ headers de borda e superfície de prod nunca varridos.
 - **Branch protection** (2026-08-09): `main` exige PR + checks `Gate`+`Semgrep scan` (strict), `required_approving_review_count: 0`, sem force-push/delete, **`enforce_admins: true`** ⇒ nem admin pula os checks. `homolog` (branch de deploy de staging) **sem proteção alguma** (decisão consciente — push direto é o fluxo, ver `secprod-supply-chain-gates` GATE-05 Out of Scope). Cross-ref [specification-infrastructure §CI-CD].
-- **Environments sem protection rule**: `production` e `homolog` têm ZERO regras — sem required reviewer e **sem deployment branch policy** ⇒ um workflow de QUALQUER branch pode ler `PROD_SSH_KEY`/`INTERNAL_API_KEY`. Repo público, default branch `main`.
+- **Deployment branch policy nos environments** (2026-08-09): `production` restrito a `main`; `homolog` restrito a `homolog`+`main`. Workflow de branch fora da lista não lê `PROD_SSH_KEY`/`INTERNAL_API_KEY`. Sem required reviewer (repo solo). Repo público, default branch `main`.
 - **ZAP full autenticado fora do `gate`** (custo ~30 min): regressão pós-login só pega no schedule semanal.
 
 **Não verificado**
