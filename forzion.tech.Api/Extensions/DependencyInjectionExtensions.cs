@@ -232,35 +232,42 @@ public static class DependencyInjectionExtensions
             services.AddSingleton<ErrorLogDbSinkProvider>();
             services.AddSingleton<ILoggerProvider>(sp => sp.GetRequiredService<ErrorLogDbSinkProvider>());
             services.AddHostedService<ErrorLogDbSinkDrenoService>();
-
-            // Sink adicional, coexiste com o de DB acima (nenhum substitui o outro). Ausente =
-            // no-op silencioso (padrão NullEmailService) — Sentry é observabilidade, não caminho
-            // de negócio, não faz sentido fail-fast igual e-mail. Breadcrumb desligado
-            // (MinimumBreadcrumbLevel=None): só o próprio evento de erro sai da app, nenhum log
-            // Info/Debug intermediário não escrutinado por PII.
-            var sentryDsn = configuration["Sentry:Dsn"];
-            if (!string.IsNullOrWhiteSpace(sentryDsn))
-            {
-                services.AddLogging(logging => logging.AddSentry(options =>
-                {
-                    options.Dsn = sentryDsn;
-                    options.Environment = environment.EnvironmentName;
-                    options.SendDefaultPii = false;
-                    options.MinimumEventLevel = LogLevel.Error;
-                    options.MinimumBreadcrumbLevel = LogLevel.None;
-                    options.SetBeforeSend((@event, _) =>
-                    {
-                        if (@event.Message is { } message)
-                            @event.Message = new SentryMessage { Formatted = MascaraPii.Scrub(message.Formatted) };
-                        foreach (var excecao in @event.SentryExceptions ?? [])
-                            excecao.Value = MascaraPii.Scrub(excecao.Value);
-                        return @event;
-                    });
-                }));
-            }
+            services.AddSentryLogging(configuration, environment);
         }
 
         return services;
+    }
+
+    // Sink adicional, coexiste com o de DB (ErrorLogDbSinkProvider) acima — nenhum substitui o
+    // outro. Ausente = no-op silencioso (padrão NullEmailService) — Sentry é observabilidade, não
+    // caminho de negócio, não faz sentido fail-fast igual e-mail. Breadcrumb desligado
+    // (MinimumBreadcrumbLevel=None): só o próprio evento de erro sai da app, nenhum log
+    // Info/Debug intermediário não escrutinado por PII. Extraído de AddApiServices pra ser
+    // testável sem levantar o grafo de DI inteiro.
+    internal static IServiceCollection AddSentryLogging(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
+    {
+        var sentryDsn = configuration["Sentry:Dsn"];
+        if (string.IsNullOrWhiteSpace(sentryDsn))
+            return services;
+
+        return services.AddLogging(logging => logging.AddSentry(options =>
+        {
+            options.Dsn = sentryDsn;
+            options.Environment = environment.EnvironmentName;
+            options.SendDefaultPii = false;
+            options.MinimumEventLevel = LogLevel.Error;
+            options.MinimumBreadcrumbLevel = LogLevel.None;
+            options.SetBeforeSend((@event, _) => ScrubPii(@event));
+        }));
+    }
+
+    internal static SentryEvent ScrubPii(SentryEvent @event)
+    {
+        if (@event.Message is { } message)
+            @event.Message = new SentryMessage { Formatted = MascaraPii.Scrub(message.Formatted) };
+        foreach (var excecao in @event.SentryExceptions ?? [])
+            excecao.Value = MascaraPii.Scrub(excecao.Value);
+        return @event;
     }
 
     public static IServiceCollection AddApplicationHandlers(this IServiceCollection services)
