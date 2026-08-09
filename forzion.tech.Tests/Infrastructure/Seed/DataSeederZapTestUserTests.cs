@@ -3,6 +3,7 @@ using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Infrastructure.Seed;
 using forzion.tech.Infrastructure.Services;
 using forzion.tech.Tests.Infrastructure;
+using forzion.tech.Tests.TestDoubles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -32,7 +33,8 @@ public class DataSeederZapTestUserTests(InfrastructureTestFixture fixture)
 
         await using var ctx = fixture.CreateContext();
         var seeder = new DataSeeder(
-            ctx, new BcryptPasswordHasher(), config, env, time, NullLogger<DataSeeder>.Instance);
+            ctx, new BcryptPasswordHasher(), config, env, time, NullLogger<DataSeeder>.Instance,
+            new FakePwnedPasswordsService());
 
         await seeder.SeedAsync();
     }

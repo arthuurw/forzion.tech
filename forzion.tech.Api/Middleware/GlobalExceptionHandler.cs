@@ -26,7 +26,7 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
         var (statusCode, title, detail) = MapException(exception);
 
         if (statusCode >= 500)
-            LogErroInesperado(_logger, exception, exception.Message);
+            LogErroInesperado(_logger, exception, exception.Message, httpContext.TraceIdentifier);
         else
             LogErroDominio(_logger, exception.GetType().Name, exception.Message);
 
@@ -135,8 +135,8 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
             _ => (StatusCodes.Status500InternalServerError, ProblemDetailsTitulos.PtBr[StatusCodes.Status500InternalServerError], "Ocorreu um erro inesperado. Tente novamente mais tarde.")
         };
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Erro inesperado: {Message}")]
-    private static partial void LogErroInesperado(ILogger logger, Exception exception, string message);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Erro inesperado [{RequestId}]: {Message}")]
+    private static partial void LogErroInesperado(ILogger logger, Exception exception, string message, string requestId);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Erro de domínio [{Type}]: {Message}")]
     private static partial void LogErroDominio(ILogger logger, string type, string message);

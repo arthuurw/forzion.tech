@@ -14,7 +14,8 @@ public class RefreshTokenService(
     IRefreshTokenFamilyRepository familyRepository,
     IContaRepository contaRepository,
     IConfiguration configuration,
-    ILogger<RefreshTokenService> logger) : IRefreshTokenService
+    ILogger<RefreshTokenService> logger,
+    IAlertaSegurancaSentry alertaSeguranca) : IRefreshTokenService
 {
     public async Task<RefreshEmitido> EmitirNovaFamiliaAsync(Conta conta, DateTime agora, string? rotulo, CancellationToken cancellationToken = default)
     {
@@ -65,7 +66,13 @@ public class RefreshTokenService(
     private RotacaoResultado Reuse(RefreshTokenFamily familia, DateTime agora)
     {
         familia.Revogar(MotivoRevogacaoFamilia.ReuseDetectado, agora);
+        var mensagem = $"Reuse de refresh token detectado — família {familia.Id} revogada (conta {familia.ContaId}).";
         logger.LogWarning("Reuse de refresh token detectado — família {FamiliaId} revogada (conta {ContaId}).", familia.Id, familia.ContaId);
+        alertaSeguranca.Registrar("refresh_reuse", mensagem, new Dictionary<string, string>
+        {
+            ["FamiliaId"] = familia.Id.ToString(),
+            ["ContaId"] = familia.ContaId.ToString()
+        });
         return RotacaoResultado.Reuse(familia.Id);
     }
 

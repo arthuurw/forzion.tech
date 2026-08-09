@@ -18,6 +18,7 @@ public class RefreshTokenServiceTests
     private readonly Mock<IRefreshTokenRepository> _tokenRepo = new();
     private readonly Mock<IRefreshTokenFamilyRepository> _familyRepo = new();
     private readonly Mock<IContaRepository> _contaRepo = new();
+    private readonly Mock<IAlertaSegurancaSentry> _alertaSeguranca = new();
     private readonly RefreshTokenService _service;
     private static readonly DateTime Agora = new(2026, 6, 10, 12, 0, 0, DateTimeKind.Utc);
 
@@ -25,7 +26,7 @@ public class RefreshTokenServiceTests
     {
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
         _service = new RefreshTokenService(_tokenRepo.Object, _familyRepo.Object, _contaRepo.Object, config,
-            new Mock<ILogger<RefreshTokenService>>().Object);
+            new Mock<ILogger<RefreshTokenService>>().Object, _alertaSeguranca.Object);
     }
 
     private static string Hash(string raw) =>
@@ -81,6 +82,7 @@ public class RefreshTokenServiceTests
         usadoEmNoClaim.Should().Be(Agora.AddMinutes(30));
         sucessorNoClaim.Should().NotBeNull();
         _tokenRepo.Verify(r => r.RotacionarAtomicoAsync(token.Id, It.IsAny<DateTime>(), It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Once);
+        _alertaSeguranca.Verify(a => a.Registrar(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IReadOnlyDictionary<string, string>>()), Times.Never);
     }
 
     [Fact]
@@ -102,6 +104,12 @@ public class RefreshTokenServiceTests
         familia.RevogadaEm.Should().NotBeNull();
         familia.MotivoRevogacao.Should().Be(MotivoRevogacaoFamilia.ReuseDetectado);
         _tokenRepo.Verify(r => r.AdicionarAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
+        _alertaSeguranca.Verify(a => a.Registrar(
+            "refresh_reuse",
+            It.IsAny<string>(),
+            It.Is<IReadOnlyDictionary<string, string>>(t =>
+                t["FamiliaId"] == familia.Id.ToString() && t["ContaId"] == familia.ContaId.ToString())),
+            Times.Once);
     }
 
     [Fact]
@@ -122,6 +130,12 @@ public class RefreshTokenServiceTests
         familia.MotivoRevogacao.Should().Be(MotivoRevogacaoFamilia.ReuseDetectado);
         // Não emite sucessor num reuse.
         _tokenRepo.Verify(r => r.AdicionarAsync(It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
+        _alertaSeguranca.Verify(a => a.Registrar(
+            "refresh_reuse",
+            It.IsAny<string>(),
+            It.Is<IReadOnlyDictionary<string, string>>(t =>
+                t["FamiliaId"] == familia.Id.ToString() && t["ContaId"] == familia.ContaId.ToString())),
+            Times.Once);
     }
 
     [Fact]
