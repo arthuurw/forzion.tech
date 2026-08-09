@@ -108,6 +108,9 @@ migration_public_schema.sql
 # Dumps de crash do MSYS/Git-Bash no Windows (gerados por tooling, nao versionar).
 *.stackdump
 
+# Residuo de redirecionamento do PowerShell (ex.: `cmd > file;C`) capturado por engano.
+*;C
+
 # Scaffolding e2e local (não versionar): override de compose, creds/IDs de teste,
 # config Playwright e scripts de provisionamento/seed local.
 docker-compose.override.yml
