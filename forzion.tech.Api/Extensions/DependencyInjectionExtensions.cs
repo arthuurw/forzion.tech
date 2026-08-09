@@ -247,7 +247,7 @@ public static class DependencyInjectionExtensions
     internal static IServiceCollection AddSentryLogging(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
     {
         var sentryDsn = configuration["Sentry:Dsn"];
-        if (string.IsNullOrWhiteSpace(sentryDsn))
+        if (!DsnValido(sentryDsn))
             return services;
 
         return services.AddLogging(logging => logging.AddSentry(options =>
@@ -260,6 +260,16 @@ public static class DependencyInjectionExtensions
             options.SetBeforeSend((@event, _) => ScrubPii(@event));
         }));
     }
+
+    // Sentry.Dsn.Parse lança UriFormatException pra string malformada, sem proteção, na
+    // primeira resolução do ILoggerProvider (durante o boot do host, não lazily no 1º log) —
+    // um Sentry:Dsn mal configurado derrubaria a app inteira. Validar antes evita isso, mesma
+    // postura de no-op do DSN ausente. Internal: reusado pelo warning de boot em Program.cs.
+    internal static bool DsnValido(string? dsn) =>
+        !string.IsNullOrWhiteSpace(dsn)
+        && Uri.TryCreate(dsn, UriKind.Absolute, out var uri)
+        && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+        && !string.IsNullOrEmpty(uri.UserInfo);
 
     internal static SentryEvent ScrubPii(SentryEvent @event)
     {

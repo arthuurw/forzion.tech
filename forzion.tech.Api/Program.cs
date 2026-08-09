@@ -15,8 +15,8 @@ builder.Services
 
 var app = builder.Build();
 
-if (!app.Environment.IsEnvironment("Test") && string.IsNullOrWhiteSpace(app.Configuration["Sentry:Dsn"]))
-    app.Logger.LogWarning("Sentry (backend) não configurado (Sentry:Dsn ausente). Erros seguem só no sink de DB (error_logs).");
+if (!app.Environment.IsEnvironment("Test") && !DependencyInjectionExtensions.DsnValido(app.Configuration["Sentry:Dsn"]))
+    app.Logger.LogWarning("Sentry (backend) não configurado (Sentry:Dsn ausente ou inválido). Erros seguem só no sink de DB (error_logs).");
 
 // R1 (deploy-safety): `app migrate` aplica schema+seed e SAI, fora do web host (step one-shot
 // pré-deploy; falha aborta o deploy). Ver MigrationStartup.

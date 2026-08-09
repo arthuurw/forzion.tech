@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Sentry;
+using Sentry.Extensions.Logging;
 using Sentry.Protocol;
 
 namespace forzion.tech.Tests.Api.Extensions;
@@ -43,13 +45,65 @@ public class DependencyInjectionExtensionsSentryTests
     }
 
     [Fact]
-    public void AddSentryLogging_DsnPresente_NaoLanca()
+    public void AddSentryLogging_DsnValido_RegistraILoggerProviderCoexistindoComOutros()
+    {
+        var services = new ServiceCollection();
+        var dbSinkFalso = Mock.Of<ILoggerProvider>();
+        services.AddSingleton(dbSinkFalso); // simula o sink de DB já registrado
+
+        services.AddSentryLogging(CriarConfig(dsn: "https://key@o0.ingest.sentry.io/0"), CriarEnv());
+
+        using var provider = services.BuildServiceProvider();
+        var act = () => provider.GetServices<ILoggerProvider>().ToList();
+
+        act.Should().NotThrow("resolver o provider é onde Sentry.Dsn.Parse lançaria pra um DSN malformado");
+        var providers = act();
+        providers.Should().Contain(dbSinkFalso, "o sink de DB já registrado não pode ser substituído pelo de Sentry");
+        providers.Should().Contain(p => p.GetType().Namespace!.StartsWith("Sentry", StringComparison.Ordinal),
+            "AddSentry deve registrar pelo menos um ILoggerProvider próprio");
+    }
+
+    [Fact]
+    public void AddSentryLogging_DsnMalformado_NaoRegistraILoggerProviderENaoLanca()
     {
         var services = new ServiceCollection();
 
-        var act = () => services.AddSentryLogging(CriarConfig(dsn: "https://key@o0.ingest.sentry.io/0"), CriarEnv());
+        var act = () => services.AddSentryLogging(CriarConfig(dsn: "isto-nao-e-uma-url-valida"), CriarEnv());
 
-        act.Should().NotThrow("Sentry nunca deve derrubar o boot da app, mesmo com DSN sintaticamente estranho");
+        act.Should().NotThrow("um Sentry:Dsn mal configurado não pode derrubar o boot da app");
+        using var provider = services.BuildServiceProvider();
+        provider.GetServices<ILoggerProvider>().Should().BeEmpty("DSN sintaticamente inválido deve cair no mesmo no-op do DSN ausente");
+    }
+
+    [Fact]
+    public void AddSentryLogging_DsnValido_ConfiguraOpcoesDePii()
+    {
+        var services = new ServiceCollection();
+
+        services.AddSentryLogging(CriarConfig(dsn: "https://key@o0.ingest.sentry.io/0"), CriarEnv());
+
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<IOptions<SentryLoggingOptions>>().Value;
+
+        options.SendDefaultPii.Should().BeFalse("SendDefaultPii deve ficar explicitamente false, não depender do default do SDK");
+        options.MinimumEventLevel.Should().Be(LogLevel.Error, "mesmo teto do sink de DB — Warning/Info não devem virar evento Sentry");
+        options.MinimumBreadcrumbLevel.Should().Be(LogLevel.None, "breadcrumb desligado — nenhum log intermediário deve sair como breadcrumb");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    [InlineData("isto-nao-e-uma-url-valida")]
+    [InlineData("ftp://key@o0.ingest.sentry.io/0")]
+    public void DsnValido_DsnAusenteVazioOuMalformado_RetornaFalse(string? dsn)
+    {
+        DependencyInjectionExtensions.DsnValido(dsn).Should().BeFalse();
+    }
+
+    [Fact]
+    public void DsnValido_DsnBemFormado_RetornaTrue()
+    {
+        DependencyInjectionExtensions.DsnValido("https://key@o0.ingest.sentry.io/0").Should().BeTrue();
     }
 
     [Fact]
