@@ -39,7 +39,7 @@ describe("ConsentBanner", () => {
 
   it("discloses third parties and links to the privacy policy", () => {
     render(<ConsentBanner />);
-    expect(screen.getByText(/terceiros \(Resend, Stripe, Meta\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/terceiros \(Resend, Stripe, Supabase, Sentry\)/i)).toBeInTheDocument();
     const link = screen.getByRole("link", { name: /política de privacidade/i });
     expect(link).toHaveAttribute("href", "/privacidade");
   });
