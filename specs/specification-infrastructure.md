@@ -73,7 +73,7 @@ Zona `forzion.tech` (hPanel) apontada pra VM (`2.24.104.224`), cert emitido, cut
 - **`secrets.INTERNAL_API_KEY` (GitHub) NÃO é lido por workflow nenhum** (incl. ausência de acesso dinâmico `secrets[...]`): os 6 crons extraem a chave do `.env` da VM (`KEY="$(grep -E '^INTERNAL_API_KEY=' "$EF" ...)"`). O que importa é o valor em `/opt/forzion{,/prod}/.env` — os secrets homônimos nos environments são resíduo inócuo. Runbook que mande "espelhar no GitHub" está obsoleto.
 - **Branch default + crons (`schedule`/`workflow_dispatch`)**: branch default = **`main`** (prod, imagem GHCR); `homolog` = staging (build-on-VM). **PR de DEV → base `homolog` EXPLÍCITO** (`gh pr create --base homolog`); sem `--base` o default mira `main` (só promoção homolog→main usa base=main). `schedule`/`workflow_dispatch` disparam da branch default.
 - **Branch protection e environments — estado REAL (gaps)**:
-  - `main`: required check `Gate` (strict/up-to-date), PR obrigatório, `required_approving_review_count: 0`, sem force-push/delete, **`enforce_admins: false`** ⇒ admin empurra direto e PULA o `Gate`.
+  - `main`: required checks `Gate` + `Semgrep scan` (strict/up-to-date), PR obrigatório, `required_approving_review_count: 0`, sem force-push/delete, **`enforce_admins: true`** (2026-08-09) ⇒ admin também precisa de PR + checks verdes, sem bypass.
   - `homolog`: **SEM proteção alguma** — e é a branch cujo `push` dispara o deploy de staging.
   - Environments `production` e `homolog`: **ZERO protection rule** — sem required reviewer e **sem deployment branch policy** ⇒ workflow de QUALQUER branch pode ler `PROD_SSH_KEY`/`INTERNAL_API_KEY`. Repo é **PÚBLICO**.
   - Detalhe/impacto de segurança: [specification-security §8].
