@@ -172,11 +172,18 @@ export default function LandingPage() {
         <Typography variant="caption" color="text.secondary">
           © {new Date().getFullYear()} forzion.tech — Todos os direitos reservados
         </Typography>
-        <Link href="/privacidade">
-          <Typography variant="caption" color="text.secondary" sx={{ textDecoration: "underline" }}>
-            Privacidade
-          </Typography>
-        </Link>
+        <Box sx={{ display: "flex", gap: 2 }}>
+          <Link href="/privacidade">
+            <Typography variant="caption" color="text.secondary" sx={{ textDecoration: "underline" }}>
+              Privacidade
+            </Typography>
+          </Link>
+          <Link href="/acessibilidade">
+            <Typography variant="caption" color="text.secondary" sx={{ textDecoration: "underline" }}>
+              Acessibilidade
+            </Typography>
+          </Link>
+        </Box>
       </Box>
     </Box>
   );
