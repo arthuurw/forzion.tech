@@ -97,6 +97,12 @@ Verificar uma vez por role (não exige repetir os 3 fluxos):
 
 ## Vereditos
 
+**Evidência dos critérios de percurso manual**: relato verbal do executor
+(sem gravação/transcript de sessão) — limitação aceita do método, não
+substituto automatizado confiável existe hoje. Se este documento vier a
+embasar auditoria externa/jurídica formal, considerar gravação de tela +
+narração da próxima rodada como evidência mais forte.
+
 Compilado em 2026-08-09: (a) relato do usuário do percurso manual com NVDA +
 VoiceOver (2026-08-09, sem achado nos 3 fluxos nem nos critérios avulsos),
 (b) `frontend/e2e/specs/a11y/manual-checklist-automatizavel.spec.ts`

@@ -1,6 +1,7 @@
 import { test, expect } from "../../fixtures/test-base";
 import { authStatePath, hasAuthState } from "../../fixtures/auth";
 import { runAxe } from "../../utils/axe";
+import { PUBLIC_PAGES } from "./public-pages";
 
 /**
  * A11y 1/1 — varre paginas-chave com @axe-core/playwright.
@@ -14,18 +15,6 @@ import { runAxe } from "../../utils/axe";
  * (E2E_FICHA_ID/E2E_ALUNO_ID/E2E_TREINO_ID); ausencia FALHA explicita.
  */
 
-const PUBLIC_PAGES = [
-  "/",
-  "/login",
-  "/cadastro/aluno",
-  "/cadastro/treinador",
-  "/forgot-password",
-  "/resend-verification",
-  "/reset-password?token=e2e-token-invalido",
-  "/verify-email?token=e2e-token-invalido",
-  "/privacidade",
-  "/acessibilidade",
-];
 const ADMIN_PAGES = ["/admin", "/admin/alunos", "/admin/treinadores"];
 const ALUNO_PAGES = [
   "/aluno",

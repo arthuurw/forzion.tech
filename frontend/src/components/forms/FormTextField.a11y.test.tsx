@@ -1,38 +1,29 @@
 import { render, screen } from "@testing-library/react";
 import { axe } from "vitest-axe";
 import { describe, it, expect } from "vitest";
-import { useForm, FormProvider } from "react-hook-form";
-import type { ReactNode } from "react";
+import { RhfHarness } from "@/test/rhfHarness";
 import FormTextField from "./FormTextField";
 
 type Values = { nome: string };
 
-function Harness({
-  children,
-  errors,
-}: {
-  children: ReactNode;
-  errors?: Record<string, { type: string; message: string }>;
-}) {
-  const methods = useForm<Values>({ defaultValues: { nome: "" }, errors });
-  return <FormProvider {...methods}>{children}</FormProvider>;
-}
-
 describe("FormTextField a11y", () => {
   it("estado default sem violações", async () => {
     const { container } = render(
-      <Harness>
+      <RhfHarness<Values> defaultValues={{ nome: "" }}>
         <FormTextField name="nome" label="Nome" />
-      </Harness>,
+      </RhfHarness>,
     );
     expect(await axe(container)).toHaveNoViolations();
   });
 
   it("estado de erro: campo aria-invalid e mensagem associada por aria-describedby, sem violações", async () => {
     const { container } = render(
-      <Harness errors={{ nome: { type: "manual", message: "Nome obrigatório." } }}>
+      <RhfHarness<Values>
+        defaultValues={{ nome: "" }}
+        errors={{ nome: { type: "manual", message: "Nome obrigatório." } }}
+      >
         <FormTextField name="nome" label="Nome" />
-      </Harness>,
+      </RhfHarness>,
     );
 
     const input = screen.getByLabelText("Nome");
@@ -49,9 +40,9 @@ describe("FormTextField a11y", () => {
 
   it("rótulo associado ao campo por nome acessível", () => {
     render(
-      <Harness>
+      <RhfHarness<Values> defaultValues={{ nome: "" }}>
         <FormTextField name="nome" label="Nome" />
-      </Harness>,
+      </RhfHarness>,
     );
     expect(screen.getByRole("textbox", { name: "Nome" })).toBeInTheDocument();
   });

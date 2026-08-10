@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs";
-import { useForm, FormProvider } from "react-hook-form";
+import { rhfStoryWrapper } from "@/test/rhfStoryWrapper";
 import FormSwitch from "./FormSwitch";
 
 const meta: Meta<typeof FormSwitch> = {
@@ -12,20 +12,10 @@ export default meta;
 
 type Story = StoryObj<typeof FormSwitch>;
 
-function Wrapper(
-  props: React.ComponentProps<typeof FormSwitch> & { defaultChecked?: boolean },
-) {
-  const { defaultChecked, ...rest } = props;
-  const methods = useForm({ defaultValues: { [props.name]: defaultChecked ?? false } });
-  return (
-    <FormProvider {...methods}>
-      <FormSwitch {...rest} />
-    </FormProvider>
-  );
-}
+const Wrapper = rhfStoryWrapper(FormSwitch);
 
 export const Desligado: Story = {
-  render: (args) => <Wrapper {...args} defaultChecked={false} />,
+  render: (args) => <Wrapper {...args} defaultValue={false} />,
   args: {
     name: "notificacoes",
     label: "Receber notificações por e-mail",
@@ -33,7 +23,7 @@ export const Desligado: Story = {
 };
 
 export const Ligado: Story = {
-  render: (args) => <Wrapper {...args} defaultChecked />,
+  render: (args) => <Wrapper {...args} defaultValue />,
   args: {
     name: "notificacoes",
     label: "Receber notificações por e-mail",

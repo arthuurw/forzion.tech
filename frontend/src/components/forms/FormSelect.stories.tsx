@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs";
-import { useForm, FormProvider } from "react-hook-form";
+import { rhfStoryWrapper } from "@/test/rhfStoryWrapper";
 import FormSelect from "./FormSelect";
 
 const meta: Meta<typeof FormSelect> = {
@@ -12,14 +12,7 @@ export default meta;
 
 type Story = StoryObj<typeof FormSelect>;
 
-function Wrapper(props: React.ComponentProps<typeof FormSelect>) {
-  const methods = useForm({ defaultValues: { [props.name]: "" } });
-  return (
-    <FormProvider {...methods}>
-      <FormSelect {...props} />
-    </FormProvider>
-  );
-}
+const Wrapper = rhfStoryWrapper(FormSelect);
 
 export const Default: Story = {
   render: (args) => <Wrapper {...args} />,

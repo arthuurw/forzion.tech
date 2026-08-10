@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs";
-import { useForm, FormProvider } from "react-hook-form";
+import { rhfStoryWrapper } from "@/test/rhfStoryWrapper";
 import PasswordField from "./PasswordField";
 
 const meta: Meta<typeof PasswordField> = {
@@ -12,17 +12,7 @@ export default meta;
 
 type Story = StoryObj<typeof PasswordField>;
 
-function Wrapper(
-  props: React.ComponentProps<typeof PasswordField> & { initialValue?: string },
-) {
-  const { initialValue, ...rest } = props;
-  const methods = useForm({ defaultValues: { [props.name]: initialValue ?? "" } });
-  return (
-    <FormProvider {...methods}>
-      <PasswordField {...rest} />
-    </FormProvider>
-  );
-}
+const Wrapper = rhfStoryWrapper(PasswordField);
 
 export const Default: Story = {
   render: (args) => <Wrapper {...args} />,
@@ -33,7 +23,7 @@ export const Default: Story = {
 };
 
 export const Preenchido: Story = {
-  render: (args) => <Wrapper {...args} initialValue="minhasenha123" />,
+  render: (args) => <Wrapper {...args} defaultValue="minhasenha123" />,
   args: {
     name: "senha",
     label: "Senha",

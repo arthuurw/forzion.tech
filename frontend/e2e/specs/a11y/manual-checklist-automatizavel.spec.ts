@@ -47,9 +47,8 @@ async function assertVisibleFocus(page: Page) {
   expect(hasOutline || hasBoxShadowRing, `foco sem indicador visivel: ${JSON.stringify(style)}`).toBe(true);
 }
 
-async function overflowAtWidth(page: Page, path: string, width: number) {
+async function overflowAtWidth(page: Page, width: number) {
   await page.setViewportSize({ width, height: 800 });
-  await page.goto(path, { waitUntil: "domcontentloaded" });
   return page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
@@ -99,14 +98,16 @@ for (const route of ROUTES) {
       await assertVisibleFocus(page);
     });
 
-    test("reflow a 320px sem overflow horizontal", async ({ page }) => {
-      const overflow = await overflowAtWidth(page, route.path, 320);
-      expect(overflow, `overflow horizontal a 320px: ${overflow}px`).toBeLessThanOrEqual(1);
-    });
+    test("reflow a 320px e zoom 200% (viewport reduzido equivalente) sem overflow horizontal", async ({
+      page,
+    }) => {
+      await page.goto(route.path, { waitUntil: "domcontentloaded" });
 
-    test("zoom 200% sem perda de conteudo (viewport reduzido equivalente)", async ({ page }) => {
-      const overflow = await overflowAtWidth(page, route.path, 640);
-      expect(overflow, `overflow horizontal simulando zoom 200%: ${overflow}px`).toBeLessThanOrEqual(1);
+      const overflow320 = await overflowAtWidth(page, 320);
+      expect(overflow320, `overflow horizontal a 320px: ${overflow320}px`).toBeLessThanOrEqual(1);
+
+      const overflow640 = await overflowAtWidth(page, 640);
+      expect(overflow640, `overflow horizontal simulando zoom 200%: ${overflow640}px`).toBeLessThanOrEqual(1);
     });
 
     test("prefers-reduced-motion honrado", async ({ page }) => {

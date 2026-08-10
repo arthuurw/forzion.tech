@@ -25,6 +25,15 @@ const targets = [
   ...discoverComponentFiles(FORMS_DIR).map((file) => ({ dir: FORMS_DIR, dirLabel: "forms", file })),
 ];
 
+function expectCoverageOrExemption(dir: string, file: string, suffix: string, kind: string) {
+  if (file in EXEMPTIONS) {
+    expect(EXEMPTIONS[file].length).toBeGreaterThan(0);
+    return;
+  }
+  const path = join(dir, file.replace(/\.tsx$/, suffix));
+  expect(existsSync(path), `${kind} ausente: ${path}`).toBe(true);
+}
+
 describe("inventory de acessibilidade: ui/ e forms/", () => {
   it("descobriu ao menos 1 componente em cada diretório", () => {
     expect(targets.some((t) => t.dirLabel === "ui")).toBe(true);
@@ -32,20 +41,10 @@ describe("inventory de acessibilidade: ui/ e forms/", () => {
   });
 
   it.each(targets)("$dirLabel/$file tem story dedicada ou isenção declarada", ({ dir, file }) => {
-    if (file in EXEMPTIONS) {
-      expect(EXEMPTIONS[file].length).toBeGreaterThan(0);
-      return;
-    }
-    const storyPath = join(dir, file.replace(/\.tsx$/, ".stories.tsx"));
-    expect(existsSync(storyPath), `story ausente: ${storyPath}`).toBe(true);
+    expectCoverageOrExemption(dir, file, ".stories.tsx", "story");
   });
 
   it.each(targets)("$dirLabel/$file tem a11y test dedicado ou isenção declarada", ({ dir, file }) => {
-    if (file in EXEMPTIONS) {
-      expect(EXEMPTIONS[file].length).toBeGreaterThan(0);
-      return;
-    }
-    const testPath = join(dir, file.replace(/\.tsx$/, ".a11y.test.tsx"));
-    expect(existsSync(testPath), `a11y test ausente: ${testPath}`).toBe(true);
+    expectCoverageOrExemption(dir, file, ".a11y.test.tsx", "a11y test");
   });
 });

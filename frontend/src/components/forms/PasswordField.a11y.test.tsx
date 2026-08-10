@@ -1,38 +1,26 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { axe } from "vitest-axe";
 import { describe, it, expect } from "vitest";
-import { useForm, FormProvider } from "react-hook-form";
-import type { ReactNode } from "react";
+import { RhfHarness } from "@/test/rhfHarness";
 import PasswordField from "./PasswordField";
 
 type Values = { senha: string };
 
-function Harness({
-  children,
-  errors,
-}: {
-  children: ReactNode;
-  errors?: Record<string, { type: string; message: string }>;
-}) {
-  const methods = useForm<Values>({ defaultValues: { senha: "minhasenha123" }, errors });
-  return <FormProvider {...methods}>{children}</FormProvider>;
-}
-
 describe("PasswordField a11y", () => {
   it("estado default (senha oculta) sem violações", async () => {
     const { container } = render(
-      <Harness>
+      <RhfHarness<Values> defaultValues={{ senha: "minhasenha123" }}>
         <PasswordField name="senha" label="Senha" />
-      </Harness>,
+      </RhfHarness>,
     );
     expect(await axe(container)).toHaveNoViolations();
   });
 
   it("botão de alternar visibilidade tem aria-label dinâmico e nenhuma violação após alternar", async () => {
     const { container } = render(
-      <Harness>
+      <RhfHarness<Values> defaultValues={{ senha: "minhasenha123" }}>
         <PasswordField name="senha" label="Senha" />
-      </Harness>,
+      </RhfHarness>,
     );
 
     const toggle = screen.getByRole("button", { name: "Mostrar senha" });
@@ -45,9 +33,12 @@ describe("PasswordField a11y", () => {
 
   it("estado de erro: campo aria-invalid e mensagem associada por aria-describedby, sem violações", async () => {
     const { container } = render(
-      <Harness errors={{ senha: { type: "manual", message: "Senha muito curta." } }}>
+      <RhfHarness<Values>
+        defaultValues={{ senha: "minhasenha123" }}
+        errors={{ senha: { type: "manual", message: "Senha muito curta." } }}
+      >
         <PasswordField name="senha" label="Senha" />
-      </Harness>,
+      </RhfHarness>,
     );
 
     const input = screen.getByLabelText("Senha");
