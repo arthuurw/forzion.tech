@@ -99,6 +99,7 @@ export default defineConfig({
             "src/hooks/**/*.property.test.ts",
             "src/proxy.test.ts",
             "src/proxy.signature.test.ts",
+            "src/components/ui/inventory.a11y.test.ts",
           ],
           exclude: [
             // Testes em src/lib/** que dependem de DOM rodam no project integration
