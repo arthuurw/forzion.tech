@@ -4,14 +4,11 @@ import { authStatePath, hasAuthState } from "../../fixtures/auth";
 import { seedConsent } from "../../utils/consent";
 
 /**
- * A11y — checklist manual automatizavel: ordem de foco, foco visivel,
- * navegacao por teclado sem armadilha, reflow 320px, zoom 200%,
- * prefers-reduced-motion (A11Y-07, A11Y-08, A11Y-09).
- *
  * Complementa (nao substitui) o percurso manual com NVDA/VoiceOver
  * registrado em docs/accessibility-conformance.md — os criterios aqui sao
  * os automatizaveis por engine de browser; anuncio de leitor de tela exige
- * humano.
+ * humano. "Zoom 200%" e aproximado via resize de viewport (mesmo mecanismo
+ * do reflow 320px) — nao exerce zoom de browser real (SC 1.4.4).
  */
 
 const ROUTES: { label: string; path: string; role?: "aluno" | "treinador" }[] = [

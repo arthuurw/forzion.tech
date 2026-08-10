@@ -111,7 +111,7 @@ T13 DESVIO).
 | Foco visível | E2E automatizado | pendente confirmação CI | idem |
 | Navegação por teclado sem armadilha | E2E automatizado | pendente confirmação CI | idem |
 | Reflow a 320px | E2E automatizado | pendente confirmação CI | idem |
-| Zoom 200% | E2E automatizado | pendente confirmação CI | idem |
+| Zoom 200% | E2E automatizado (aproximado via resize de viewport, não zoom real de browser — cobre SC 1.4.10 Reflow, não SC 1.4.4 Resize Text) | pendente confirmação CI | idem |
 | `prefers-reduced-motion` | E2E automatizado | pendente confirmação CI | idem |
 | Qualidade do texto alternativo | Percurso manual | conforme | relato do usuário, 2026-08-09, rotas amostradas |
 | Hierarquia de cabeçalhos | Percurso manual | conforme | relato do usuário, 2026-08-09, rotas amostradas |
