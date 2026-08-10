@@ -1,6 +1,6 @@
 import { Box, Container, Typography, Button } from "@mui/material";
 import Link from "next/link";
-import { POR_QUE_EXISTIMOS } from "@/app/sobre/content";
+import { Forzion, PorQueExistimos } from "@/app/sobre/content";
 
 export default function Sobre() {
   return (
@@ -8,14 +8,14 @@ export default function Sobre() {
       <Container maxWidth="md">
         <Box sx={{ textAlign: "center" }}>
           <Typography variant="h4" sx={{ mb: 2 }}>
-            Quem está por trás da FORZION.TECH
+            Quem está por trás da <Forzion />
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 640, mx: "auto", mb: 4 }}>
-            {POR_QUE_EXISTIMOS}
+            <PorQueExistimos />
           </Typography>
           <Link href="/sobre" style={{ textDecoration: "none" }}>
-            <Button variant="outlined" color="secondary">
-              Conhecer a FORZION.TECH
+            <Button variant="contained" color="primary">
+              Conhecer a <Forzion />
             </Button>
           </Link>
         </Box>

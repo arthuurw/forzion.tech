@@ -1,7 +1,7 @@
 import { Box, Container, Typography, Stack, Divider } from "@mui/material";
 import Link from "next/link";
 import PageHeader from "@/components/ui/PageHeader";
-import { POR_QUE_EXISTIMOS } from "./content";
+import { Forzion, PorQueExistimos } from "./content";
 
 export const metadata = {
   title: "Sobre — forzion.tech",
@@ -15,14 +15,21 @@ export default function SobrePage() {
     <Box component="main" id="main-content" tabIndex={-1} sx={{ bgcolor: "background.default", minHeight: "100dvh", py: { xs: 4, md: 6 } }}>
       <Container maxWidth="md">
         <Stack spacing={3}>
-          <PageHeader title="Sobre a FORZION.TECH" backHref="/" />
+          <PageHeader
+            title={
+              <>
+                Sobre a <Forzion />
+              </>
+            }
+            backHref="/"
+          />
 
           <Box component="section">
             <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
               Quem somos
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              FORZION.TECH é uma marca da FORZIONTECH DESENVOLVIMENTO DE
+              <Forzion /> é uma marca da FORZIONTECH DESENVOLVIMENTO DE
               SOFTWARE CUSTOMIZAVEL LTDA (CNPJ 67.900.114/0001-69), em
               operação desde julho de 2026.
             </Typography>
@@ -35,7 +42,7 @@ export default function SobrePage() {
               Por que existimos
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {POR_QUE_EXISTIMOS}
+              <PorQueExistimos />
             </Typography>
           </Box>
 

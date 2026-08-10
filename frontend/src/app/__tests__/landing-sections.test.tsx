@@ -35,7 +35,9 @@ describe("LandingPage — seções montadas", () => {
 
   it("seção Sobre presente", async () => {
     await renderLanding([]);
-    expect(screen.getByText("Quem está por trás da FORZION.TECH")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /quem está por trás da forzion\.tech/i }),
+    ).toBeInTheDocument();
   }, 20000);
 
   it("seção Sobre tem CTA para /sobre", async () => {
