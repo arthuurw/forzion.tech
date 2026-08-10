@@ -45,7 +45,7 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 - Regra: a contagem NÃO regride sem decisão humana. Teste que falha **fica** (vermelho visível) até ser corrigido pelo código — não some. Cobertura por piso protege contra suíte parar de rodar (§7). Os totais acima são SNAPSHOT datado — se divergir do repo, o repo vence: re-detectar via `dotnet test`/`npm test` e atualizar aqui.
 
 ## 5. CO-LOCALIZAÇÃO (mapa)
-- Frontend: `src/<area>/X.ts` → `src/<area>/X.test.ts` (ou `__tests__/X.test.tsx`). E2E: `frontend/e2e/specs/<categoria>/*.spec.ts` + page objects `e2e/pages/` + fixtures `e2e/fixtures/`. Factories: `src/test/factories/*`. Setup: `src/test/setup/{unit,integration,api}.ts`. MSW: `src/test/msw/`.
+- Frontend: `src/<area>/X.ts` → `src/<area>/X.test.ts` (ou `__tests__/X.test.tsx`). E2E: `frontend/e2e/specs/<categoria>/*.spec.ts` + page objects `e2e/pages/` + fixtures `e2e/fixtures/`. Factories: `src/test/factories/*`. Setup: `src/test/setup/{unit,integration,api}.ts`. MSW: `src/test/msw/`. **RHF wrapper compartilhado** (feature `a11y-conformidade-aa`, 2026-08-10): componente que usa `useForm`/`FormProvider` isolado em teste ou story reusa `RhfHarness` (`src/test/rhfHarness.tsx`, testes) / `rhfStoryWrapper` (`src/test/rhfStoryWrapper.tsx`, `.stories.tsx`) — não recriar `Harness`/`Wrapper` local por arquivo (era o padrão até então, duplicado 4x em `forms/*.a11y.test.tsx` + 4x em `forms/*.stories.tsx`).
 - Backend: `forzion.tech.<Camada>/.../X.cs` → `forzion.tech.Tests/<Camada>/.../XTests.cs` (espelho 1:1). Fixtures: `forzion.tech.Tests/E2E/`, `forzion.tech.Tests/Infrastructure/`.
 
 ## 6. ISOLAMENTO / FIXTURES & DUBLÊS (caminhos de resolução — princípio 5)

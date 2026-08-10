@@ -67,6 +67,7 @@ html[lang=pt-BR]
 ## PROXY (`src/proxy.ts`)
 Convenção `middleware.ts` foi deprecada no Next 16 → arquivo é `proxy.ts`, export nomeado `proxy`; runtime é `nodejs` (proxy NÃO suporta edge). Guard usa `jose`/`NextResponse` (agnóstico de runtime); `config.matcher` inalterado.
 Executa em todas as rotas exceto `_next/static`, `_next/image`, `favicon.ico`, `api/`. Verifica `token` + `session_guard` via `jwtVerify` (assinatura+`exp` autoritativos). Lê também `refresh` (httpOnly) e o hint `tipo_conta` (NÃO-httpOnly, R-FE — só roteamento; backend autoritativo via jti/policies). `tipoConta` efetivo = verificado ?? hint (quando há refresh).
+**Rota pública nova**: 4 registros distintos e intencionalmente NÃO-idênticos (semânticas diferentes — auth-bypass vs SEO-indexável vs alvo de Lighthouse vs alvo de scan a11y): `PUBLIC_PATHS` (`proxy.ts`, exportado), `PUBLIC_ROUTES` (`sitemap.ts`, exportado, só indexável), `collect.url` (`lighthouserc.json`, = `sitemap.ts` exato), `PUBLIC_PAGES` (`e2e/specs/a11y/public-pages.ts`, superset com query strings). Esquecer 1 dos 4 já causou incidente real 2x (`/privacidade`, depois `/seguranca` por analogia errada — ver AD-013 em `.specs/STATE.md`). Guard automático: `frontend/src/lib/publicRoutesConsistency.test.ts` (invariante, feature `a11y-conformidade-aa`, 2026-08-10) falha se uma rota entrar em 1 lista e ficar de fora de outra que deveria cobri-la.
 
 Lógica de redirect:
 1. `/cadastro/*` → sempre `next()` (livre).
