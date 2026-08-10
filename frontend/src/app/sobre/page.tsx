@@ -1,6 +1,7 @@
 import { Box, Container, Typography, Stack, Divider } from "@mui/material";
 import Link from "next/link";
 import PageHeader from "@/components/ui/PageHeader";
+import { POR_QUE_EXISTIMOS } from "./content";
 
 export const metadata = {
   title: "Sobre — forzion.tech",
@@ -34,10 +35,7 @@ export default function SobrePage() {
               Por que existimos
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Treinador perde tempo demais gerenciando aluno por planilha e
-              WhatsApp — ficha se perde, execução não é registrada, tudo vira
-              bagunça. A FORZION.TECH existe pra trazer organização real a
-              essa rotina.
+              {POR_QUE_EXISTIMOS}
             </Typography>
           </Box>
 

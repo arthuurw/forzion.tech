@@ -1,5 +1,6 @@
 import { Box, Container, Typography, Button } from "@mui/material";
 import Link from "next/link";
+import { POR_QUE_EXISTIMOS } from "@/app/sobre/content";
 
 export default function Sobre() {
   return (
@@ -10,10 +11,7 @@ export default function Sobre() {
             Quem está por trás da FORZION.TECH
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 640, mx: "auto", mb: 4 }}>
-            Treinador perde tempo demais gerenciando aluno por planilha e
-            WhatsApp — ficha se perde, execução não é registrada, tudo vira
-            bagunça. A FORZION.TECH existe pra trazer organização real a essa
-            rotina.
+            {POR_QUE_EXISTIMOS}
           </Typography>
           <Link href="/sobre" style={{ textDecoration: "none" }}>
             <Button variant="outlined" color="secondary">
