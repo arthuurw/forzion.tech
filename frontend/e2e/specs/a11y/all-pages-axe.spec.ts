@@ -23,6 +23,8 @@ const PUBLIC_PAGES = [
   "/resend-verification",
   "/reset-password?token=e2e-token-invalido",
   "/verify-email?token=e2e-token-invalido",
+  "/privacidade",
+  "/acessibilidade",
 ];
 const ADMIN_PAGES = ["/admin", "/admin/alunos", "/admin/treinadores"];
 const ALUNO_PAGES = [
