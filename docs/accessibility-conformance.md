@@ -6,12 +6,14 @@ Documento vivo, versionado. Complementa a camada automatizada (`vitest-axe`,
 ordem de foco, qualidade de texto alternativo, percurso real de leitor de
 tela, reflow/zoom, e `prefers-reduced-motion`.
 
-**Status**: roteiro pronto — vereditos pendentes até o percurso manual (NVDA +
-VoiceOver) ser executado e relatado.
-**Data da avaliação**: TODO — preenchida ao fechar a auditoria (feature
-`a11y-conformidade-aa`, fase de compilação de veredito).
-**Escopo**: TODO — rotas representativas por role (pública, aluno, treinador,
-admin), preenchido junto do veredito.
+**Status**: percurso manual concluído, vereditos compilados. Critérios
+automatizáveis (E2E) aguardam confirmação no CI — ambiente local sem Docker
+no momento da auditoria (spec validado sintaticamente: `--list`, `tsc
+--noEmit`, `eslint`, todos limpos; execução real fica pro push).
+**Data da avaliação**: 2026-08-09.
+**Escopo**: rotas públicas amostradas (`/login`) + fluxos autenticados de
+aluno (`/cadastro/aluno`, `/aluno/fichas/[fichaId]/executar`) — os 3 fluxos
+críticos do roteiro acima.
 
 ## Como este documento é usado
 
@@ -93,34 +95,38 @@ Verificar uma vez por role (não exige repetir os 3 fluxos):
 | Hierarquia de cabeçalhos | Percorrer com o leitor de tela em "modo cabeçalhos" (NVDA: tecla `H`; VoiceOver: rotor) nas mesmas rotas amostradas — sem pulo de nível (h1→h3 sem h2) |
 | Identificação do idioma do documento | Inspecionar `<html lang="...">` renderizado (`view-source` ou devtools) — confirmar `pt-BR` |
 
-## Vereditos — TODO
+## Vereditos
 
-Preenchido na compilação final da auditoria (feature `a11y-conformidade-aa`),
-após: (a) o relato do usuário do percurso manual acima com NVDA + VoiceOver,
-e (b) o resultado de `frontend/e2e/specs/a11y/manual-checklist-automatizavel.spec.ts`
-(critérios automatizáveis). Veredito possível por critério: **conforme** /
-**não-conforme** / **não-aplicável** (com razão).
+Compilado em 2026-08-09: (a) relato do usuário do percurso manual com NVDA +
+VoiceOver (2026-08-09, sem achado nos 3 fluxos nem nos critérios avulsos),
+(b) `frontend/e2e/specs/a11y/manual-checklist-automatizavel.spec.ts`
+validado sintaticamente (`--list` 88 casos/5 browsers, `tsc --noEmit`,
+`eslint`, todos limpos) — execução real contra servidor pendente de CI
+(Docker indisponível no ambiente local desta auditoria, ver `tasks.md`
+T13 DESVIO).
 
 | Critério | Método | Veredito | Evidência |
 |---|---|---|---|
-| Ordem de foco lógica | E2E automatizado | TODO | |
-| Foco visível | E2E automatizado | TODO | |
-| Navegação por teclado sem armadilha | E2E automatizado | TODO | |
-| Reflow a 320px | E2E automatizado | TODO | |
-| Zoom 200% | E2E automatizado | TODO | |
-| `prefers-reduced-motion` | E2E automatizado | TODO | |
-| Qualidade do texto alternativo | Percurso manual | TODO | |
-| Hierarquia de cabeçalhos | Percurso manual | TODO | |
-| `lang` do documento | Inspeção manual | TODO | |
-| Percurso NVDA — Login | Percurso manual (Fluxo 1) | TODO | |
-| Percurso NVDA — Cadastro de aluno | Percurso manual (Fluxo 2) | TODO | |
-| Percurso NVDA — Registro de execução | Percurso manual (Fluxo 3) | TODO | |
-| Percurso VoiceOver — Login | Percurso manual (Fluxo 1) | TODO | |
-| Percurso VoiceOver — Cadastro de aluno | Percurso manual (Fluxo 2) | TODO | |
-| Percurso VoiceOver — Registro de execução | Percurso manual (Fluxo 3) | TODO | |
+| Ordem de foco lógica | E2E automatizado | pendente confirmação CI | spec validado sintaticamente, não executado localmente |
+| Foco visível | E2E automatizado | pendente confirmação CI | idem |
+| Navegação por teclado sem armadilha | E2E automatizado | pendente confirmação CI | idem |
+| Reflow a 320px | E2E automatizado | pendente confirmação CI | idem |
+| Zoom 200% | E2E automatizado | pendente confirmação CI | idem |
+| `prefers-reduced-motion` | E2E automatizado | pendente confirmação CI | idem |
+| Qualidade do texto alternativo | Percurso manual | conforme | relato do usuário, 2026-08-09, rotas amostradas |
+| Hierarquia de cabeçalhos | Percurso manual | conforme | relato do usuário, 2026-08-09, rotas amostradas |
+| `lang` do documento | Inspeção manual | conforme | relato do usuário, 2026-08-09 |
+| Percurso NVDA — Login | Percurso manual (Fluxo 1) | conforme | relato do usuário, 2026-08-09 |
+| Percurso NVDA — Cadastro de aluno | Percurso manual (Fluxo 2) | conforme | relato do usuário, 2026-08-09 |
+| Percurso NVDA — Registro de execução | Percurso manual (Fluxo 3) | conforme | relato do usuário, 2026-08-09 |
+| Percurso VoiceOver — Login | Percurso manual (Fluxo 1) | conforme | relato do usuário, 2026-08-09 |
+| Percurso VoiceOver — Cadastro de aluno | Percurso manual (Fluxo 2) | conforme | relato do usuário, 2026-08-09 |
+| Percurso VoiceOver — Registro de execução | Percurso manual (Fluxo 3) | conforme | relato do usuário, 2026-08-09 |
 
 ## Achados
 
-TODO — preenchido na compilação final. Toda violação de nível AA encontrada
-vira correção nesta mesma feature; achado acima de AA (melhoria, não
-exigência AA) vira item de backlog, fora desta feature.
+Nenhum achado no percurso manual (NVDA + VoiceOver, 3 fluxos + critérios
+avulsos) — relato do usuário, 2026-08-09. Critérios automatizados sem
+achado registrado nesta rodada (aguardam 1ª execução real no CI); se o CI
+acusar falha, vira task de fix fora do escopo desta compilação de veredito
+(o próprio push já roda o gate).
