@@ -15,7 +15,7 @@ export default function Sobre() {
           </Typography>
           <Link href="/sobre" style={{ textDecoration: "none" }}>
             <Button variant="contained" color="primary">
-              Conhecer a <Forzion />
+              Conhecer a <Forzion inherit />
             </Button>
           </Link>
         </Box>

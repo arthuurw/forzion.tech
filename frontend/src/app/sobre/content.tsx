@@ -1,12 +1,16 @@
 import { Box } from "@mui/material";
 
-export function Forzion() {
+interface ForzionProps {
+  inherit?: boolean;
+}
+
+export function Forzion({ inherit = false }: ForzionProps) {
   return (
     <>
-      <Box component="span" sx={{ color: "brand.label" }}>
+      <Box component="span" sx={{ color: inherit ? "inherit" : "brand.label" }}>
         forzion
       </Box>
-      <Box component="span" sx={{ color: "text.primary" }}>
+      <Box component="span" sx={{ color: inherit ? "inherit" : "text.primary" }}>
         .tech
       </Box>
     </>
