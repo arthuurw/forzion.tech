@@ -116,15 +116,20 @@ const indexable = process.env.NEXT_PUBLIC_INDEXABLE === "true";
 
 NOTA defesa-em-profundidade: áreas autenticadas já protegidas pelo proxy (redirect `/login` sem token — [specification-frontend] §PROXY); robots/noindex é camada adicional contra vazamento de URLs em SERP.
 
-### 4.3 `sitemap.ts` — `[ATUAL]` (T5)
-`src/app/sitemap.ts` lista SÓ rotas públicas indexáveis:
+### 4.3 `sitemap.ts` — `[ATUAL]` (feature `a11y-conformidade-aa`, 2026-08-09)
+`src/app/sitemap.ts` lista SÓ rotas públicas indexáveis, via array `PUBLIC_ROUTES`:
 ```ts
+const PUBLIC_ROUTES = ["/", "/login", "/cadastro/treinador", "/cadastro/aluno", "/privacidade", "/acessibilidade"];
+
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://forzion.tech";
-  return ["/", "/login", "/cadastro/treinador", "/cadastro/aluno"]
-    .map((p) => ({ url: `${base}${p}`, changeFrequency: "weekly", priority: p === "/" ? 1 : 0.7 }));
+  return PUBLIC_ROUTES.map((route) => ({
+    url: `${SITE_URL}${route}`,
+    changeFrequency: "weekly",
+    priority: route === "/" ? 1 : 0.7,
+  }));
 }
 ```
+- `/privacidade` e `/acessibilidade` fechados nesta feature (`/privacidade` era gap pré-existente — nunca tinha entrado aqui desde que a rota foi criada em `lgpd-conformidade-prod`).
 - Atualizar a lista QUANDO surgir rota pública nova (ex.: futura `/treinadores/[id]` → gerar dinamicamente).
 
 ## 5. STRUCTURED DATA (schema.org JSON-LD) — `[REC]`
