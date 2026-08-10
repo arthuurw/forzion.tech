@@ -38,4 +38,17 @@ describe("PageHeader", () => {
     rerender(<PageHeader title="X" />);
     expect(screen.queryByRole("link", { name: /voltar/i })).not.toBeInTheDocument();
   });
+
+  it("aceita título como ReactNode (ex.: wordmark com cor partida)", () => {
+    render(
+      <PageHeader
+        title={
+          <>
+            Sobre a <span style={{ color: "red" }}>forzion</span>.tech
+          </>
+        }
+      />,
+    );
+    expect(screen.getByRole("heading", { name: /sobre a forzion\.tech/i })).toBeInTheDocument();
+  });
 });

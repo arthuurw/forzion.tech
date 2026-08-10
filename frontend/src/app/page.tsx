@@ -153,9 +153,9 @@ export default function LandingPage() {
           <PlanosSlab />
         </Suspense>
 
-        <Sobre />
-
         <Faq />
+
+        <Sobre />
       </Box>
 
       <Box
