@@ -81,7 +81,18 @@ const config = [
       "playwright/no-skipped-test": ["warn", { allowConditional: true }],
       "playwright/no-conditional-in-test": "off",
       "playwright/no-conditional-expect": "off",
-      "playwright/expect-expect": ["warn", { assertFunctionNames: ["scanAxe", "runAxe"] }],
+      "playwright/expect-expect": [
+        "warn",
+        {
+          assertFunctionNames: [
+            "scanAxe",
+            "runAxe",
+            "assertLogicalFocusOrder",
+            "assertVisibleFocus",
+            "assertReducedMotionHonored",
+          ],
+        },
+      ],
     },
   },
 
