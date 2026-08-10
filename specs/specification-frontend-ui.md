@@ -67,15 +67,17 @@ Story = `*.stories.tsx`. A11y test (vitest-axe dedicado) = `*.a11y.test.tsx`. Co
 | `StatusChip` | chip de status domínio | `status`(AlunoStatus\|TreinadorStatus\|VinculoStatus), `size`(small def) | ✅ | ✅ vitest-axe (rotulado: `aria-label="Status: ${label}"`) |
 | `EmptyState` | estado vazio + CTA | `message`, `actionLabel?`, `onAction?` | ✅ | ✅ vitest-axe |
 | `LoadingSpinner` | spinner (page/inline) | `fullPage`(def false), `label`(def "Carregando" → `aria-label`) | ✅ | ✅ vitest-axe |
-| `ConfirmDialog` | dialog confirmação genérico | `open`, `title`, `description`, `confirmLabel`, `cancelLabel`, `destructive`, `loading`, `children?`, `onConfirm`, `onClose` | ✅ | ⚠️ UNIT only (`__tests__/a11y.test.tsx`: aria-describedby + autoFocus) — SEM vitest-axe dedicado |
-| `ResponsiveTable` | tabela→cards responsiva | `columns[]`(Column: label/align/mobileRole), `rows`, `rowKey`, `renderCell`, `onRowClick?`, `pagination?` | ✅ | ⚠️ UNIT only (`__tests__/a11y.test.tsx`: row role/tabIndex/keyboard) — SEM vitest-axe dedicado |
-| `DataList<T>` | wrapper loading/empty/table | `loading`, `items`, `emptyMessage`, `columns`, `rowKey`, `renderCell`, `onRowClick?`, `pagination?` | ❌ | ❌ (compõe LoadingSpinner+EmptyState+ResponsiveTable já testados) |
-| `ConsentBanner` | dialog consentimento LGPD (cookies) | `forceOpen?`, `onClose?` — ver [specification-lgpd] | ❌ | ⚠️ `__tests__/ConsentBanner.test.tsx` (comportamento, não axe) |
-| `ConsentProvider` | wrapper `dynamic(ssr:false)` do ConsentBanner (evita hydration mismatch — lê cookie) | — | ❌ | ❌ |
-| `ErrorBoundary` | class boundary + Sentry capture | `children`, `fallback?` | ❌ | ❌ |
-| `InfoLine` | label:value inline (sem `"use client"`) | `label`, `value` | ❌ | ❌ |
-| `Logo` | wordmark "forzion.tech" | `size`(sm\|md\|lg), `sx?` | ❌ | ❌ |
-| `CheckoutTermos` | disclosure CDC art. 31 de transparência de preço no checkout | `valor: number`, `dense?: boolean` | ❌ | ✅ (`CheckoutTermos.test.tsx`: valor exibido + termos + CDC) |
+| `ConfirmDialog` | dialog confirmação genérico | `open`, `title`, `description`, `confirmLabel`, `cancelLabel`, `destructive`, `loading`, `children?`, `onConfirm`, `onClose` | ✅ | ✅ vitest-axe (dialog aberto, destrutivo + não-destrutivo) + `__tests__/a11y.test.tsx` (aria-describedby + autoFocus) |
+| `ResponsiveTable` | tabela→cards responsiva | `columns[]`(Column: label/align/mobileRole), `rows`, `rowKey`, `renderCell`, `onRowClick?`, `pagination?` | ✅ | ✅ vitest-axe (desktop + mobile via mock `useMediaQuery`) + `__tests__/a11y.test.tsx` (row role/tabIndex/keyboard) |
+| `DataList<T>` | wrapper loading/empty/table | `loading`, `items`, `emptyMessage`, `columns`, `rowKey`, `renderCell`, `onRowClick?`, `pagination?` | ❌ isento | ❌ isento (compõe LoadingSpinner+EmptyState+ResponsiveTable já testados — ver `EXEMPTIONS` em `inventory.a11y.test.ts`) |
+| `ConsentBanner` | dialog consentimento LGPD (cookies) | `forceOpen?`, `onClose?` — ver [specification-lgpd] | ✅ | ✅ vitest-axe (dialog aberto) + `__tests__/ConsentBanner.test.tsx` (comportamento) |
+| `ConsentProvider` | wrapper `dynamic(ssr:false)` do ConsentBanner (evita hydration mismatch — lê cookie) | — | ❌ isento | ❌ isento (sem markup próprio — ver `EXEMPTIONS` em `inventory.a11y.test.ts`) |
+| `ErrorBoundary` | class boundary + Sentry capture | `children`, `fallback?` | ❌ isento | ❌ isento (markup do `fallback` é do chamador — ver `EXEMPTIONS` em `inventory.a11y.test.ts`) |
+| `InfoLine` | label:value inline (sem `"use client"`) | `label`, `value` | ✅ | ✅ vitest-axe |
+| `Logo` | wordmark "forzion.tech" | `size`(sm\|md\|lg), `sx?` | ✅ | ✅ vitest-axe (sm/md/lg) |
+| `CheckoutTermos` | disclosure CDC art. 31 de transparência de preço no checkout | `valor: number`, `dense?: boolean` | ✅ | ✅ vitest-axe + `CheckoutTermos.test.tsx` (valor exibido + termos + CDC) |
+| `DetalheErro` | estado de erro de detalhe (mensagem + retry/voltar opcionais) | `mensagem`, `onRetry?`, `onVoltar?` | ✅ | ✅ vitest-axe |
+| `RouteGroupError` | boundary de erro de route group (`app/(role)/error.tsx`) | `error`, `reset`, `homeHref`, `homeLabel`, `bodyText` | ✅ | ✅ vitest-axe |
 
 NÃO há barrel `ui/index.ts`. Todos os componentes são importados por path direto (ex. `@/components/ui/StatusChip`).
 
@@ -84,17 +86,17 @@ Integração react-hook-form via `Controller` + `useFormContext` (RHF context ob
 
 | Componente | Propósito | Props-chave | Story? | a11y test? |
 |---|---|---|---|---|
-| `FormTextField` | TextField controlado | `name` + `...TextFieldProps`; `error`/`helperText` ← `fieldState.error.message` | ❌ | ❌ |
-| `FormSelect` | Select controlado | `name`, `label`, `options[]`(value/label/`disabled?`), `required?`; `InputLabel id={name}-label` linkado | ❌ | ❌ |
-| `FormSwitch` | Switch booleano controlado | `name`, `label`; `FormControlLabel` + `Switch checked={field.value}` | ❌ | ❌ |
-| `PasswordField` | senha + toggle visibilidade | `name` + `...TextFieldProps` (sem `type`); IconButton `aria-label` "Mostrar/Ocultar senha" | ❌ | ❌ |
+| `FormTextField` | TextField controlado | `name` + `...TextFieldProps`; `error`/`helperText` ← `fieldState.error.message` | ✅ | ✅ vitest-axe (default + erro, harness RHF real) |
+| `FormSelect` | Select controlado | `name`, `label`, `options[]`(value/label/`disabled?`), `required?`; `InputLabel id={name}-label` linkado | ✅ | ✅ vitest-axe (default + erro) |
+| `FormSwitch` | Switch booleano controlado | `name`, `label`; `FormControlLabel` + `Switch checked={field.value}` | ✅ | ✅ vitest-axe (ligado + desligado) |
+| `PasswordField` | senha + toggle visibilidade | `name` + `...TextFieldProps` (sem `type`); IconButton `aria-label` "Mostrar/Ocultar senha" | ✅ | ✅ vitest-axe (default, toggle, erro) |
 
-NÃO há barrel `forms/index.ts`; import por path direto (ex. `@/components/forms/FormTextField`). NENHUM form component tem story nem a11y test dedicado (gap — ver §GOVERNANCE).
+NÃO há barrel `forms/index.ts`; import por path direto (ex. `@/components/forms/FormTextField`). Todo form component tem story + a11y test dedicado (invariante verificada por `inventory.a11y.test.ts` — ver §GOVERNANCE).
 
 ## GOVERNANCE
 - **`ui/` vs domínio**: `src/components/ui/*` = genérico/reutilizável, ZERO acoplamento a entidade de negócio (exceção pragmática: `StatusChip` importa enums de `@/types`). Componente acoplado a domínio (aluno/treinador/admin/pagamento) vive em `src/components/<dominio>/*` (ex. `components/aluno/AlunoInadimplenteBanner.tsx`), NÃO em `ui/`.
 - **Forms**: `src/components/forms/*` = primitivos RHF reutilizáveis. Form de domínio compõe estes; não duplicar lógica `Controller`.
-- **Requisito ao CRIAR componente em `ui/`**: idealmente story (`*.stories.tsx`) + a11y test. ESTADO REAL: cumprido só pelos 4 primeiros da tabela (AlertBanner/StatusChip/EmptyState/LoadingSpinner têm story+vitest-axe); ConfirmDialog/ResponsiveTable têm story+a11y-unit; demais não têm nenhum. Padrão a alvejar, não invariante atual.
+- **Requisito ao CRIAR componente em `ui/` ou `forms/`**: story (`*.stories.tsx`) + a11y test dedicado (`*.a11y.test.tsx`, `vitest-axe`) — OU entrada justificada em `EXEMPTIONS`. **Invariante real, verificada pelo CI**: `frontend/src/components/ui/inventory.a11y.test.ts` descobre dinamicamente todo `*.tsx` solto em `ui/`+`forms/` (exclui `__tests__/`, `*.stories.tsx`, `*.test.tsx`) e falha nomeando o arquivo exato quando faltar o par — roda junto do `npm test`/`npm run validate` já gated no pre-commit e no CI (sem step novo). Isenções declaradas hoje (só componentes sem markup próprio ou puramente composicionais): `DataList` (compõe LoadingSpinner+EmptyState+ResponsiveTable, já cobertos), `ConsentProvider` (wrapper `dynamic(ssr:false)` sem markup próprio), `ErrorBoundary` (markup do `fallback` é do chamador). Qualquer outra isenção exige motivo no array `EXEMPTIONS` do teste, não convenção implícita.
 - **Padrão de props**: discriminantes via enum string — `severity`(error\|warning\|info\|success), `size`(small\|medium), `status`(enums domínio), `mobileRole`(primary\|secondary\|actions\|hidden). Booleans de modo: `destructive`, `loading`, `fullPage`, `forceOpen`. Callbacks `on*` opcionais habilitam comportamento (ex. `onRowClick` ⇒ row vira `role=button` focável).
 - **Imports**: NÃO há barrel (`ui/index.ts`/`forms/index.ts` inexistentes); sempre path direto.
 - **Canal de erro canônico**: `AlertBanner` (inline) alimentado por `extractApiError` é o canal de feedback de erro — o `SnackbarProvider`/`useSnackbar` (toast global genérico) foi removido. Padrão e regra "`return null` em falha de load = BANIDO" em [specification-frontend] §TRATAMENTO DE ERRO.
@@ -165,8 +167,8 @@ Frontend: `grep -rniE "<regex>" frontend/src --include=*.tsx --include=*.ts | gr
 ### Harness (REFERENCIAR [specification-tests]; não reexecutar disciplina aqui)
 | Camada | Ferramenta | Local | Escopo |
 |---|---|---|---|
-| Unit/componente | `vitest-axe` (`axe()` + `toHaveNoViolations`) | `src/components/ui/*.a11y.test.tsx` | AlertBanner, StatusChip, EmptyState, LoadingSpinner |
-| Unit a11y comportamental | RTL (sem axe) | `src/components/ui/__tests__/a11y.test.tsx` | ConfirmDialog (aria-describedby, autoFocus), ResponsiveTable (role/tabIndex/keyboard) |
+| Unit/componente | `vitest-axe` (`axe()` + `toHaveNoViolations`) | `src/components/{ui,forms}/*.a11y.test.tsx` | Todo componente de `ui/`+`forms/`, exceto isenções declaradas (ver §GOVERNANCE) — invariante verificada por `src/components/ui/inventory.a11y.test.ts` |
+| Unit a11y comportamental | RTL (sem axe) | `src/components/ui/__tests__/a11y.test.tsx` | ConfirmDialog (aria-describedby, autoFocus), ResponsiveTable (role/tabIndex/keyboard) — adicional ao vitest-axe dedicado, não substitui |
 | Página E2E | `@axe-core/playwright` (`AxeBuilder`) | `e2e/utils/axe.ts` → `e2e/specs/a11y/all-pages-axe.spec.ts` | varre por role/storage-state: públicas (4 + fluxos de senha forgot/reset/verify/resend), aluno (dashboard, fichas, assinatura, histórico, pagamentos, perfil, seguranca + dinâmicas fichas/[id]+executar), treinador (dashboard, alunos, treinos, dados-fiscais + dinâmicas alunos/[id]+treinos/[id]), admin. Rotas dinâmicas usam id semeado (`provision-local` + `provision-e2e-fichas`); fixture ausente FALHA explícita |
 | Storybook | `@storybook/addon-a11y` | `.storybook/main.ts` (addon) + `preview.tsx` (`parameters.a11y.element:#storybook-root`, `manual:false`) | toda story |
 | Lighthouse | `categories:accessibility minScore 0.95` (error gate) | `frontend/lighthouserc.json` (público) + `frontend/lighthouserc.auth.cjs` (autenticado, `npm run lhci:auth`) | público: `/`, `/login`, `/cadastro/aluno`, `/cadastro/treinador`. Autenticado: 1 rota por role (aluno/treinador/admin) com sessão via cookies do storage-state (`e2e/.auth/<role>.json` + consent); a11y-only; sem storage-state FALHA explícita (REFERENCIAR [specification-observability]) |
