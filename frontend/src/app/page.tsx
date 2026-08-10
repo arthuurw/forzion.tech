@@ -6,6 +6,7 @@ import Logo from "@/components/ui/Logo";
 import HowItWorks from "./_landing/HowItWorks";
 import SocialProof from "./_landing/SocialProof";
 import Diferenciais from "./_landing/Diferenciais";
+import Sobre from "./_landing/Sobre";
 import Faq from "./_landing/Faq";
 import PlanosSlab from "./_landing/PlanosSlab";
 import PlanosSkeleton from "./_landing/PlanosSkeleton";
@@ -152,6 +153,8 @@ export default function LandingPage() {
           <PlanosSlab />
         </Suspense>
 
+        <Sobre />
+
         <Faq />
       </Box>
 
@@ -181,6 +184,11 @@ export default function LandingPage() {
           <Link href="/acessibilidade">
             <Typography variant="caption" color="text.secondary" sx={{ textDecoration: "underline" }}>
               Acessibilidade
+            </Typography>
+          </Link>
+          <Link href="/sobre">
+            <Typography variant="caption" color="text.secondary" sx={{ textDecoration: "underline" }}>
+              Sobre
             </Typography>
           </Link>
         </Box>

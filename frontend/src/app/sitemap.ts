@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://forzion.tech";
 
-export const PUBLIC_ROUTES = ["/", "/login", "/cadastro/treinador", "/cadastro/aluno", "/privacidade", "/acessibilidade"];
+export const PUBLIC_ROUTES = ["/", "/login", "/cadastro/treinador", "/cadastro/aluno", "/privacidade", "/acessibilidade", "/sobre"];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return PUBLIC_ROUTES.map((route) => ({

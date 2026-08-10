@@ -9,4 +9,5 @@ export const PUBLIC_PAGES = [
   "/verify-email?token=e2e-token-invalido",
   "/privacidade",
   "/acessibilidade",
+  "/sobre",
 ];

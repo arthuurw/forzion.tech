@@ -193,7 +193,7 @@ Pipeline distinto do `/health`: coleta profunda (DB connect real, KPIs, entregab
 
 ### Cadência (`.github/workflows/lighthouse.yml`)
 - `schedule` cron `0 6 * * 3` (Quarta 06:00 UTC — pós-deploys de terça em homolog) + `workflow_dispatch` (input `base_url`, fallback `vars.HOMOLOG_BASE_URL`; aborta sem URL). Node 22, `working-directory: frontend`.
-- **Alvo = páginas PÚBLICAS homolog**: `/login`, `/cadastro/aluno`, `/cadastro/treinador`, `/privacidade`, `/acessibilidade` (URLs locais em `lighthouserc.json` `collect.url` incluem também `/`). `lhci collect --url=... ; lhci assert`. Report → artifact `lighthouse-report` (`.lighthouseci/`, `if: always()`). **NÃO cobre produção** — mesma lacuna estrutural do DAST ([specification-security] §8): a cadência agendada só bate em homolog; rodar contra prod exige `workflow_dispatch` manual com `base_url` de produção.
+- **Alvo = páginas PÚBLICAS homolog**: `/login`, `/cadastro/aluno`, `/cadastro/treinador`, `/privacidade`, `/acessibilidade`, `/sobre` (URLs locais em `lighthouserc.json` `collect.url` incluem também `/`). `lhci collect --url=... ; lhci assert`. Report → artifact `lighthouse-report` (`.lighthouseci/`, `if: always()`). **NÃO cobre produção** — mesma lacuna estrutural do DAST ([specification-security] §8): a cadência agendada só bate em homolog; rodar contra prod exige `workflow_dispatch` manual com `base_url` de produção.
 - Perf de runtime/SEO da app: ver [specification-frontend].
 
 ## 6. MÉTRICAS / TRACING / ALERTING — ESTADO ATUAL + GAPS
