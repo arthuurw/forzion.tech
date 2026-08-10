@@ -5,7 +5,10 @@
         "http://localhost:3000/",
         "http://localhost:3000/login",
         "http://localhost:3000/cadastro/aluno",
-        "http://localhost:3000/cadastro/treinador"
+        "http://localhost:3000/cadastro/treinador",
+        "http://localhost:3000/privacidade",
+        "http://localhost:3000/acessibilidade",
+        "http://localhost:3000/sobre"
       ],
       "numberOfRuns": 3,
       "settings": {

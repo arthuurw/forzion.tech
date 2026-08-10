@@ -70,10 +70,12 @@ nunit-*.xml
 
 # Artefatos de agente/IA e docs gerados — não versionar.
 # docs/api/ é exceção: openapi.v1.json é baseline do gate OpenAPI drift (CI).
+# docs/accessibility-conformance.md é exceção: auditoria AA versionada (specs/specification-frontend-ui.md §CONFORMANCE aponta pra ele).
 /.claude/
 /.specs/
 /docs/*
 !/docs/api/
+!/docs/accessibility-conformance.md
 
 # Arquivos locais do Visual Studio (preferências por-usuário, não versionar)
 *.user
@@ -107,6 +109,9 @@ migration_public_schema.sql
 
 # Dumps de crash do MSYS/Git-Bash no Windows (gerados por tooling, nao versionar).
 *.stackdump
+
+# Residuo de redirecionamento do PowerShell (ex.: `cmd > file;C`) capturado por engano.
+*;C
 
 # Scaffolding e2e local (não versionar): override de compose, creds/IDs de teste,
 # config Playwright e scripts de provisionamento/seed local.

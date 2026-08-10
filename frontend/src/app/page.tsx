@@ -6,6 +6,7 @@ import Logo from "@/components/ui/Logo";
 import HowItWorks from "./_landing/HowItWorks";
 import SocialProof from "./_landing/SocialProof";
 import Diferenciais from "./_landing/Diferenciais";
+import Sobre from "./_landing/Sobre";
 import Faq from "./_landing/Faq";
 import PlanosSlab from "./_landing/PlanosSlab";
 import PlanosSkeleton from "./_landing/PlanosSkeleton";
@@ -153,15 +154,44 @@ export default function LandingPage() {
         </Suspense>
 
         <Faq />
+
+        <Sobre />
       </Box>
 
       <Box
         component="footer"
-        sx={{ py: 3, textAlign: "center", borderTop: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}
+        sx={{
+          py: 3,
+          textAlign: "center",
+          borderTop: "1px solid",
+          borderColor: "divider",
+          bgcolor: "background.paper",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 1,
+        }}
       >
         <Typography variant="caption" color="text.secondary">
           © {new Date().getFullYear()} forzion.tech — Todos os direitos reservados
         </Typography>
+        <Box sx={{ display: "flex", gap: 2 }}>
+          <Link href="/privacidade">
+            <Typography variant="caption" color="text.secondary" sx={{ textDecoration: "underline" }}>
+              Privacidade
+            </Typography>
+          </Link>
+          <Link href="/acessibilidade">
+            <Typography variant="caption" color="text.secondary" sx={{ textDecoration: "underline" }}>
+              Acessibilidade
+            </Typography>
+          </Link>
+          <Link href="/sobre">
+            <Typography variant="caption" color="text.secondary" sx={{ textDecoration: "underline" }}>
+              Sobre
+            </Typography>
+          </Link>
+        </Box>
       </Box>
     </Box>
   );

@@ -324,6 +324,23 @@ public class GlobalExceptionHandlerTests
             Times.Once);
     }
 
+    [Fact]
+    public async Task TryHandleAsync_Retorna500_LogaComRequestIdDeCorrelacao()
+    {
+        var context = CriarHttpContext();
+        context.TraceIdentifier = "trace-abc-123";
+        await _handler.TryHandleAsync(context, new Exception("boom"), default);
+
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("trace-abc-123")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
     [Theory]
     [InlineData(typeof(AlunoNaoEncontradoException))]
     [InlineData(typeof(TreinadorNaoEncontradoException))]

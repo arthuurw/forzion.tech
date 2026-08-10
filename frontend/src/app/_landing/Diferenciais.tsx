@@ -1,6 +1,7 @@
 import { Box, Container, Typography, Grid } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
+import { Forzion } from "@/app/sobre/content";
 
 const ROWS = [
   {
@@ -39,8 +40,7 @@ export default function Diferenciais() {
           <Grid size={{ xs: 4, md: 4 }} />
           <Grid size={{ xs: 4, md: 4 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 700, textAlign: "center" }}>
-              <Box component="span" sx={{ color: "brand.label" }}>forzion</Box>
-              <Box component="span" sx={{ color: "text.primary" }}>.tech</Box>
+              <Forzion />
             </Typography>
           </Grid>
           <Grid size={{ xs: 4, md: 4 }} sx={{ pl: { xs: 1, md: 2 } }}>

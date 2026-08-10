@@ -24,6 +24,7 @@ interface FormSelectProps {
 export default function FormSelect({ name, label, options, required }: FormSelectProps) {
   const { control } = useFormContext();
   const labelId = `${name}-label`;
+  const helperTextId = `${name}-helper-text`;
 
   return (
     <Controller
@@ -32,7 +33,12 @@ export default function FormSelect({ name, label, options, required }: FormSelec
       render={({ field, fieldState }) => (
         <FormControl fullWidth size="small" error={!!fieldState.error} required={required}>
           <InputLabel id={labelId}>{label}</InputLabel>
-          <Select {...field} labelId={labelId} label={label}>
+          <Select
+            {...field}
+            labelId={labelId}
+            label={label}
+            aria-describedby={fieldState.error ? helperTextId : undefined}
+          >
             {options.map((opt) => (
               <MenuItem key={opt.value} value={opt.value} disabled={opt.disabled}>
                 {opt.label}
@@ -40,7 +46,7 @@ export default function FormSelect({ name, label, options, required }: FormSelec
             ))}
           </Select>
           {fieldState.error && (
-            <FormHelperText>{fieldState.error.message}</FormHelperText>
+            <FormHelperText id={helperTextId}>{fieldState.error.message}</FormHelperText>
           )}
         </FormControl>
       )}

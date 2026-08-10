@@ -33,9 +33,40 @@ describe("LandingPage — seções montadas", () => {
     expect(screen.getByText("O que nos diferencia")).toBeInTheDocument();
   }, 20000);
 
+  it("seção Sobre presente", async () => {
+    await renderLanding([]);
+    expect(
+      screen.getByRole("heading", { name: /quem está por trás da forzion\.tech/i }),
+    ).toBeInTheDocument();
+  }, 20000);
+
+  it("seção Sobre tem CTA para /sobre", async () => {
+    await renderLanding([]);
+    const link = screen.getByRole("link", { name: /conhecer a forzion\.tech/i });
+    expect(link).toHaveAttribute("href", "/sobre");
+  }, 20000);
+
   it("FAQ presente", async () => {
     await renderLanding([]);
     expect(screen.getByText("Meu aluno precisa pagar para usar?")).toBeInTheDocument();
+  }, 20000);
+
+  it("rodapé tem link para /privacidade", async () => {
+    await renderLanding([]);
+    const link = screen.getByRole("link", { name: /privacidade/i });
+    expect(link).toHaveAttribute("href", "/privacidade");
+  }, 20000);
+
+  it("rodapé tem link para /acessibilidade", async () => {
+    await renderLanding([]);
+    const link = screen.getByRole("link", { name: /acessibilidade/i });
+    expect(link).toHaveAttribute("href", "/acessibilidade");
+  }, 20000);
+
+  it("rodapé tem link para /sobre", async () => {
+    await renderLanding([]);
+    const link = screen.getByRole("link", { name: /^sobre$/i });
+    expect(link).toHaveAttribute("href", "/sobre");
   }, 20000);
 });
 

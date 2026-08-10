@@ -9,7 +9,7 @@ name: SAST — Semgrep
 # default e o repo nao a tem aqui.
 on:
   pull_request:
-    branches: [homolog]
+    branches: [homolog, main]
     paths-ignore: ["**.md", "docs/**", "specs/**"]
   workflow_dispatch:
 

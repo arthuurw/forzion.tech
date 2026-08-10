@@ -89,6 +89,18 @@ describe("middleware — rotas públicas", () => {
     expect(NextResponse.redirect).not.toHaveBeenCalled();
   });
 
+  it("/privacidade sem auth → pass-through", async () => {
+    await middleware(makeRequest("/privacidade"));
+    expect(NextResponse.next).toHaveBeenCalled();
+    expect(NextResponse.redirect).not.toHaveBeenCalled();
+  });
+
+  it("/acessibilidade sem auth → pass-through", async () => {
+    await middleware(makeRequest("/acessibilidade"));
+    expect(NextResponse.next).toHaveBeenCalled();
+    expect(NextResponse.redirect).not.toHaveBeenCalled();
+  });
+
   it("/cadastro/aluno sem auth → pass-through", async () => {
     await middleware(makeRequest("/cadastro/aluno"));
     expect(NextResponse.next).toHaveBeenCalled();
@@ -108,6 +120,7 @@ describe("middleware — sem auth em área protegida", () => {
     ["/treinador/alunos"],
     ["/aluno/fichas"],
     ["/perfil"],
+    ["/seguranca"],
   ])("%s → redirect /login", async (path) => {
     await middleware(makeRequest(path));
     expect(NextResponse.redirect).toHaveBeenCalledOnce();

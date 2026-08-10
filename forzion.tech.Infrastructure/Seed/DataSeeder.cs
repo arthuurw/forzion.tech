@@ -1,4 +1,5 @@
 using forzion.tech.Application.Interfaces;
+using forzion.tech.Application.Validation;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.ValueObjects;
@@ -18,7 +19,8 @@ public class DataSeeder(
     IConfiguration configuration,
     IHostEnvironment environment,
     TimeProvider timeProvider,
-    ILogger<DataSeeder> logger)
+    ILogger<DataSeeder> logger,
+    IPwnedPasswordsService pwnedPasswords)
 {
     private static readonly string[] GruposMuscularesPadrao =
     [
@@ -238,6 +240,13 @@ public class DataSeeder(
         var senha = configuration["Seed:AdminPassword"];
         if (string.IsNullOrWhiteSpace(senha))
             throw new InvalidOperationException("Seed:AdminPassword não configurado.");
+
+        var validacao = await new AdminSeedPasswordValidator(pwnedPasswords)
+            .ValidateAsync(senha, cancellationToken)
+            .ConfigureAwait(false);
+        if (!validacao.IsValid)
+            throw new InvalidOperationException(
+                $"Seed:AdminPassword não atende à política de senha: {string.Join(" ", validacao.Errors.Select(e => e.ErrorMessage))}");
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
         var conta = Conta.Criar(Email.Criar(email).Value, passwordHasher.Hash(senha), TipoConta.SystemAdmin, agora).Value;

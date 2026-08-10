@@ -1,6 +1,6 @@
 import { apiClient } from "./client";
 
-export const MfaFator = { Totp: 0, Email: 1, RecoveryCode: 2 } as const;
+export const MfaFator = { Totp: "Totp", Email: "Email", RecoveryCode: "RecoveryCode" } as const;
 export type MfaFatorValue = (typeof MfaFator)[keyof typeof MfaFator];
 
 export interface MfaDispositivo {
