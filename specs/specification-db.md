@@ -218,6 +218,10 @@ A app tem auth próprio (JWT + BCrypt) e não usa Supabase Auth nem Storage. Pro
 ### Guarda contra regressão
 `.github/workflows/supabase-exposure-guard.yml` (cron semanal, seg 07:00 UTC) roda as DUAS asserções acima nos 2 projetos: probe HTTP (reprova em 2xx) e SQL de `has_table_privilege` + `pg_default_acl` (reprova se `anon`/`authenticated` tiverem privilégio, `supabase_admin` excluído). Falha abre issue `ops`/`security` sem registrar nenhuma linha de dado. ⚠️ `schedule` só dispara da branch **default** ([specification-infrastructure] §CI-CD) — o guard fica INERTE em `homolog`, só passa a rodar após a promoção para `main`.
 
+**GOTCHA `psql -c` não interpola variável psql** (queimou 2 runs, 2026-08-10 e 2026-08-17, issues #394/#398): a string de `-c` tem que ser inteiramente parseável pelo SERVIDOR — `-v schemas=… -c "… any(string_to_array(:'schemas', ','))"` manda `:'schemas'` literal pro Postgres e o step morre em `ERROR: syntax error at or near ":"`. A2 nasceu com esse defeito e **nunca executou** entre 2026-08-09 (`6a25c713`) e o fix de 2026-08-19; nesse intervalo só A1 estava medindo. Ao escrever asserção nova aqui: inlinar o literal pelo shell (valores são constantes do workflow) ou alimentar o SQL por stdin/`-f`.
+
+**Primeira medição REAL de A2** (run 32308898581, 2026-08-19): prod `public` = 0 objetos legíveis / 0 default ACLs abertas; homolog `homolog,develop,public` = 0 / 0 — bate com a medição manual de 2026-08-08, sem regressão no intervalo. Zero validado como zero VERDADEIRO por sensor read-only: o mesmo predicado devolve `storage=7`, `realtime=2`, `extensions=2`, `information_schema=62`, `pg_catalog=128` em prod, então a query discrimina.
+
 Cross-ref [specification-security] §8/§10.1, [specification-lgpd] §PENDÊNCIAS.
 
 ## MIGRATION-SAFETY (política de mudança de schema)
