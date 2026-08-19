@@ -107,23 +107,27 @@ jobs:
           checar() {
             local rotulo="$1" url="$2" schemas="$3"
 
+            # Lista inlined pelo shell, NÃO por variável psql (`-v` + `:'schemas'`): o servidor precisa
+            # parsear a string de `-c` inteira, e a interpolação do psql não roda aí — chegava `:'schemas'`
+            # literal no Postgres e o step morria em `syntax error at or near ":"`. Os valores são
+            # constantes deste arquivo, não entrada externa.
             local leituras
-            leituras=$(psql "$url" -X -A -t -v ON_ERROR_STOP=1 -v schemas="$schemas" -c "
+            leituras=$(psql "$url" -X -A -t -v ON_ERROR_STOP=1 -c "
               select count(*)
               from pg_class c
               join pg_namespace n on n.oid = c.relnamespace
               where c.relkind in ('r','v','m','p')
-                and n.nspname = any(string_to_array(:'schemas', ','))
+                and n.nspname = any(string_to_array('${schemas}', ','))
                 and (has_table_privilege('anon', c.oid, 'SELECT')
                   or has_table_privilege('authenticated', c.oid, 'SELECT'));")
 
             # supabase_admin excluído: irrevogável (42501) — ver cabeçalho.
             local defaults
-            defaults=$(psql "$url" -X -A -t -v ON_ERROR_STOP=1 -v schemas="$schemas" -c "
+            defaults=$(psql "$url" -X -A -t -v ON_ERROR_STOP=1 -c "
               select count(*)
               from pg_default_acl d
               join pg_namespace n on n.oid = d.defaclnamespace
-              where n.nspname = any(string_to_array(:'schemas', ','))
+              where n.nspname = any(string_to_array('${schemas}', ','))
                 and d.defaclrole::regrole::text <> 'supabase_admin'
                 and d.defaclacl::text ~ '(anon|authenticated)=';")
 
