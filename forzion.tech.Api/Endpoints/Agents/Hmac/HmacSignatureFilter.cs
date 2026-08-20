@@ -66,7 +66,7 @@ internal sealed class HmacSignatureFilter(
 
     private static async Task<MemoryStream> LerCorpoAsync(HttpRequest requisicao, CancellationToken cancellationToken)
     {
-        var limitado = new LimitedStream(requisicao.Body, MaxBodyBytes);
+        using var limitado = new LimitedStream(requisicao.Body, MaxBodyBytes);
         var buffer = new MemoryStream();
 
         await limitado.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);

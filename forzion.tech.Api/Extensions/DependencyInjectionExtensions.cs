@@ -212,6 +212,8 @@ public static class DependencyInjectionExtensions
         services.AddOpenApiDocumentation();
         services.AddJwtAuthentication(configuration, environment);
         services.AddAgentsHmac(configuration, environment);
+        // Fallback para Test: AddInfrastructure (abaixo) é o registrador real de TimeProvider e não
+        // roda nesse ambiente, mas o HmacSignatureVerifier precisa resolvê-lo em qualquer um deles.
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<HmacSignatureVerifier>();
         services.AddCorsPolicies(configuration);
