@@ -1,5 +1,9 @@
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using FluentAssertions;
+using forzion.tech.Api.Endpoints.Agents;
+using forzion.tech.Api.Endpoints.Agents.Hmac;
 using forzion.tech.Api.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -17,6 +21,8 @@ public class RateLimitAgentsPolicyTests
     private const int CapAgentsPorMinuto = 120;
     private const string HeaderIpDeTeste = "X-Test-Ip";
     private const string RotaSonda = "/sonda";
+    private const string Segredo = "segredo-atual-com-pelo-menos-32-bytes!!";
+    private const string CaminhoDeEcoDoGrupo = AgentEndpoints.Prefixo + "/eco";
 
     private sealed record Servidor(WebApplication App, HttpClient Cliente) : IAsyncDisposable
     {
@@ -27,7 +33,7 @@ public class RateLimitAgentsPolicyTests
         }
     }
 
-    private static async Task<Servidor> IniciarAsync(bool limitersReais)
+    private static async Task<Servidor> IniciarAsync(bool limitersReais, bool montarGrupoRealDeAgentes = false)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Test" });
         builder.WebHost.UseTestServer();
@@ -36,6 +42,7 @@ public class RateLimitAgentsPolicyTests
         {
             ["AllowedHosts"] = "*",
             ["Auth:JwtSecret"] = "segredo-de-teste-com-pelo-menos-32-bytes!!",
+            ["Agents:Hmac:SecretAtual"] = Segredo,
             ["RateLimiting:DesabilitarParaTeste"] = limitersReais ? "false" : "true",
         });
         builder.Services.AddApiServices(builder.Configuration, builder.Environment);
@@ -51,6 +58,11 @@ public class RateLimitAgentsPolicyTests
         app.UseRateLimiter();
         app.MapGet(RotaSonda, () => Results.Ok()).RequireRateLimiting("agents");
 
+        // O grupo REAL da produção, sem `.RequireRateLimiting` acrescentado aqui: remover a
+        // anotação de `CriarGrupo` tem que derrubar este teste.
+        if (montarGrupoRealDeAgentes)
+            AgentEndpoints.CriarGrupo(app).MapGet("/eco", () => Results.Ok());
+
         await app.StartAsync();
         return new Servidor(app, app.GetTestClient());
     }
@@ -59,6 +71,23 @@ public class RateLimitAgentsPolicyTests
     {
         using var requisicao = new HttpRequestMessage(HttpMethod.Get, RotaSonda);
         requisicao.Headers.Add(HeaderIpDeTeste, ip);
+        using var resposta = await cliente.SendAsync(requisicao);
+        return resposta.StatusCode;
+    }
+
+    private static async Task<HttpStatusCode> EnviarAssinadaAoGrupoAsync(HttpClient cliente, string ip)
+    {
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var payload = $"GET\n{CaminhoDeEcoDoGrupo}\n{Convert.ToHexStringLower(SHA256.HashData([]))}\n{timestamp}";
+        var mac = HMACSHA256.HashData(Encoding.UTF8.GetBytes(Segredo), Encoding.UTF8.GetBytes(payload));
+
+        using var requisicao = new HttpRequestMessage(HttpMethod.Get, CaminhoDeEcoDoGrupo);
+        requisicao.Headers.Add(HeaderIpDeTeste, ip);
+        requisicao.Headers.TryAddWithoutValidation(
+            HmacSignatureFilter.HeaderDeAssinatura, "v1=" + Convert.ToHexStringLower(mac));
+        requisicao.Headers.TryAddWithoutValidation(
+            HmacSignatureFilter.HeaderDeTimestamp, timestamp.ToString(provider: null));
+
         using var resposta = await cliente.SendAsync(requisicao);
         return resposta.StatusCode;
     }
@@ -89,6 +118,19 @@ public class RateLimitAgentsPolicyTests
         var status = await RajadaAsync(servidor.Cliente, "203.0.113.20", CapAgentsPorMinuto + 1);
 
         status.Take(CapAgentsPorMinuto).Should().NotContain(HttpStatusCode.TooManyRequests);
+        status[CapAgentsPorMinuto].Should().Be(HttpStatusCode.TooManyRequests);
+    }
+
+    [Fact]
+    public async Task GrupoRealDeAgentes_CarregaAPolicyAgents_RejeitaAPartirDa121aRequisicaoAssinada()
+    {
+        await using var servidor = await IniciarAsync(limitersReais: true, montarGrupoRealDeAgentes: true);
+
+        var status = new List<HttpStatusCode>();
+        for (var i = 0; i < CapAgentsPorMinuto + 1; i++)
+            status.Add(await EnviarAssinadaAoGrupoAsync(servidor.Cliente, "203.0.113.40"));
+
+        status.Take(CapAgentsPorMinuto).Should().AllBeEquivalentTo(HttpStatusCode.OK);
         status[CapAgentsPorMinuto].Should().Be(HttpStatusCode.TooManyRequests);
     }
 
