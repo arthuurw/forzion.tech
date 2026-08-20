@@ -209,6 +209,36 @@ public class HmacSignatureFilterTests
     }
 
     [Fact]
+    public async Task CorpoDeExatamenteSessentaEQuatroKb_RespondeQuatrocentosComValidationFailed()
+    {
+        await using var servidor = await IniciarAsync();
+        var corpo = new string('a', 65_536);
+
+        using var resposta = await EnviarAsync(
+            servidor.Cliente, HttpMethod.Post, CaminhoDeEco, corpo,
+            Assinar("POST", CaminhoDeEco, Encoding.UTF8.GetBytes(corpo), TimestampBase),
+            TimestampBase.ToString(provider: null));
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await LerCodeAsync(resposta)).Should().Be("validation_failed");
+    }
+
+    [Fact]
+    public async Task CorpoDeUmByteAbaixoDoCap_PassaPelaVerificacaoDeTamanhoEChegaAoHandler()
+    {
+        await using var servidor = await IniciarAsync();
+        var corpo = new string('a', 65_535);
+
+        using var resposta = await EnviarAsync(
+            servidor.Cliente, HttpMethod.Post, CaminhoDeEco, corpo,
+            Assinar("POST", CaminhoDeEco, Encoding.UTF8.GetBytes(corpo), TimestampBase),
+            TimestampBase.ToString(provider: null));
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await resposta.Content.ReadAsStringAsync()).Should().HaveLength(65_535);
+    }
+
+    [Fact]
     public async Task AssinaturaAusente_RespondeQuatrocentosEUmComSignatureInvalid()
     {
         await using var servidor = await IniciarAsync();

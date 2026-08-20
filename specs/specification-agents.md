@@ -41,7 +41,7 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 Vetores de regressão: `forzion.tech.Tests/Api/Agents/CanonicalPayloadTests.cs` (exemplo literal, hash da string vazia asserido contra a constante escrita à mão, query fora de ordem, parâmetro repetido, ausência de `\r`).
 
 ## 3. ORDEM DE VERIFICAÇÃO (D4 — assinatura ANTES da janela)
-1. Corpo lido uma vez sob `LimitedStream` de **64 KB** ⇒ excedeu ⇒ `400 validation_failed` (sem hashear o excedente).
+1. Corpo lido uma vez sob `LimitedStream` de **64 KB** ⇒ atingiu o cap ⇒ `400 validation_failed` (sem hashear o excedente). Cap **exclusivo**: 65.535 bytes passa, **65.536 bytes exatos já rejeitam** — o `LimitedStream` lança quando o saldo zera e `CopyToAsync` sempre emite mais um `Read`. Herdado do cap de webhook, mantido por consistência.
 2. `X-Forzion-Timestamp` ausente, vazio ou não-parseável ⇒ `401 signature_invalid`. **Fail-closed**: o enforcement NÃO é guardado por `if (parseou) { valida }`.
 3. `X-Forzion-Signature` sem `v1=`, com prefixo diferente ou hex inválido ⇒ `401 signature_invalid`.
 4. HMAC recomputado sobre o payload; comparação `CryptographicOperations.FixedTimeEquals` **precedida de checagem de comprimento** (lança em spans desiguais). Nenhuma chave confere ⇒ `401 signature_invalid`.
@@ -81,7 +81,7 @@ Envelope `application/problem+json` (RFC 9457) com `type`/`title`/`status`/`code
 |---|---|---|
 | `signature_invalid` | 401 | header ausente/vazio/não-parseável, prefixo ≠ `v1=`, hex inválido, HMAC não confere |
 | `timestamp_out_of_window` | 401 | assinatura válida e `\|agora − ts\| > 300s` |
-| `validation_failed` | 400 | corpo > 64 KB; validação de request das fatias 1-4 |
+| `validation_failed` | 400 | corpo ≥ 64 KB; validação de request das fatias 1-4 |
 | `tenant_not_found` | 404 | `tenantId` inexistente **ou** fora do escopo (colapso deliberado — não confirma existência) |
 | `service_not_found` | 404 | `Pacote` inexistente/não-público no tenant (fatia 1) |
 | `slot_not_found` | 404 | slot derivado que nunca existiu (fatia 3/4) |
