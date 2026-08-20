@@ -57,6 +57,7 @@ public class AgentEndpointsGroupTests
         builder.Services.AddAgentsHmac(builder.Configuration, builder.Environment);
         builder.Services.TryAddSingleton(TimeProvider.System);
         builder.Services.AddSingleton<HmacSignatureVerifier>();
+        builder.Services.AddHealthChecks();
         builder.Services.AddOpenApiDocumentation();
         builder.Services.AddAuthentication();
         builder.Services.AddRateLimiter(opt =>

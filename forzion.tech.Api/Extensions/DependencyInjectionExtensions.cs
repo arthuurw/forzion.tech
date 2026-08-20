@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using FluentValidation;
 using forzion.tech.Api.Configuration;
 using forzion.tech.Api.Context;
+using forzion.tech.Api.Endpoints.Agents;
 using forzion.tech.Api.Endpoints.Agents.Hmac;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using forzion.tech.Api.Filters;
@@ -218,10 +219,12 @@ public static class DependencyInjectionExtensions
         // Readiness usa checks taggeados "ready" (DbContextCheck + Stripe + Resend).
         // Stripe/Resend: Degraded em falha (nunca Unhealthy) — integração fora do ar não mata o pod.
         // Em ambiente Test o AppDbContext não é registrado; check "db" só roda quando há AppDbContext em DI.
+        // "agents-ready" é aditiva à "ready" e cobre só db+schema: Stripe/Resend/WhatsApp fora do ar não
+        // impedem o gateway de agentes de operar, e reportá-los abriria circuito sem relação causal.
         services.AddHttpClient(); // necessário para IHttpClientFactory em ResendHealthCheck
         services.AddHealthChecks()
-            .AddDbContextCheck<AppDbContext>("db", tags: new[] { "ready" })
-            .AddCheck<forzion.tech.Infrastructure.Health.SchemaHealthCheck>("schema", tags: new[] { "ready" })
+            .AddDbContextCheck<AppDbContext>("db", tags: new[] { "ready", AgentEndpoints.TagAgentsReady })
+            .AddCheck<forzion.tech.Infrastructure.Health.SchemaHealthCheck>("schema", tags: new[] { "ready", AgentEndpoints.TagAgentsReady })
             .AddCheck<forzion.tech.Infrastructure.Health.StripeHealthCheck>("stripe", tags: new[] { "ready" })
             .AddCheck<forzion.tech.Infrastructure.Health.ResendHealthCheck>("resend", tags: new[] { "ready" })
             .AddCheck<forzion.tech.Infrastructure.Health.WhatsAppHealthCheck>("whatsapp", tags: new[] { "ready" });
