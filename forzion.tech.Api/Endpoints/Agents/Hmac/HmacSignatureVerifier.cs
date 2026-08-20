@@ -80,8 +80,9 @@ internal sealed class HmacSignatureVerifier(IOptions<AgentsHmacOptions> options,
             || Confere(options.Value.SecretAnterior, bytesDoPayload, assinaturaRecebida);
     }
 
-    // FixedTimeEquals lança ArgumentException em spans de tamanhos diferentes — checar
-    // comprimento antes; segredo ausente NUNCA confere (não há bypass por falta de configuração).
+    // FixedTimeEquals RETORNA false em spans de tamanhos diferentes (não lança) — a checagem de
+    // comprimento é defesa redundante, não pré-condição. Segredo ausente NUNCA confere: não há
+    // bypass por falta de configuração.
     private static bool Confere(string? segredo, byte[] payload, byte[] assinaturaRecebida)
     {
         if (string.IsNullOrEmpty(segredo))

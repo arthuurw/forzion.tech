@@ -195,9 +195,21 @@ public class HmacSignatureVerifierTests
             "esperada.Length == assinaturaRecebida.Length", StringComparison.Ordinal);
         var comparacao = fonte.IndexOf("CryptographicOperations.FixedTimeEquals", StringComparison.Ordinal);
 
-        checagemDeComprimento.Should().BeGreaterThan(-1, "FixedTimeEquals lança em spans de tamanhos diferentes");
+        checagemDeComprimento.Should().BeGreaterThan(
+            -1, "comparar comprimento fora do caminho constant-time evita expor tamanho por tempo");
         comparacao.Should().BeGreaterThan(checagemDeComprimento);
         fonte.Should().NotContain("SequenceEqual");
+    }
+
+    [Theory]
+    [InlineData("v1=abcd")]
+    [InlineData("v1=")]
+    [InlineData("v1=00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff00")]
+    public void Verificar_HexValidoComComprimentoDiferenteDoEsperado_EhAssinaturaInvalidaSemExcecao(string assinatura)
+    {
+        var verificar = () => CriarVerificador().Verificar("GET", Caminho, [], assinatura, Texto(TimestampBase));
+
+        verificar.Should().NotThrow().Which.Should().Be(HmacVerificationResult.AssinaturaInvalida);
     }
 
     private static string LocalizarRaizDoRepo()

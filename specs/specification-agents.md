@@ -44,7 +44,7 @@ Vetores de regressão: `forzion.tech.Tests/Api/Agents/CanonicalPayloadTests.cs` 
 1. Corpo lido uma vez sob `LimitedStream` de **64 KB** ⇒ atingiu o cap ⇒ `400 validation_failed` (sem hashear o excedente). Cap **exclusivo**: 65.535 bytes passa, **65.536 bytes exatos já rejeitam** — o `LimitedStream` lança quando o saldo zera e `CopyToAsync` sempre emite mais um `Read`. Herdado do cap de webhook, mantido por consistência.
 2. `X-Forzion-Timestamp` ausente, vazio ou não-parseável ⇒ `401 signature_invalid`. **Fail-closed**: o enforcement NÃO é guardado por `if (parseou) { valida }`.
 3. `X-Forzion-Signature` sem `v1=`, com prefixo diferente ou hex inválido ⇒ `401 signature_invalid`.
-4. HMAC recomputado sobre o payload; comparação `CryptographicOperations.FixedTimeEquals` **precedida de checagem de comprimento** (lança em spans desiguais). Nenhuma chave confere ⇒ `401 signature_invalid`.
+4. HMAC recomputado sobre o payload; comparação `CryptographicOperations.FixedTimeEquals`, precedida de checagem de comprimento. **`FixedTimeEquals` RETORNA `false` em spans de tamanhos diferentes — não lança**; a checagem é defesa redundante, não pré-condição (o comentário oposto em `Api/Extensions/InternalApiKeyValidator.cs` está incorreto). Nenhuma chave confere ⇒ `401 signature_invalid`.
 5. **Só então** `|agora − ts| > 300s` ⇒ `401 timestamp_out_of_window`.
 6. O buffer verificado é reinstalado como `Request.Body` — o handler consome **os mesmos bytes** que foram hasheados, nunca uma releitura do socket.
 
