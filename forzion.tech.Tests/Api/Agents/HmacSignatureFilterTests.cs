@@ -8,6 +8,7 @@ using forzion.tech.Api.Endpoints.Agents.Hmac;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -59,7 +60,7 @@ public class HmacSignatureFilterTests
         }
     }
 
-    private static async Task<Servidor> IniciarAsync(long agoraUnix = TimestampBase)
+    private static async Task<Servidor> IniciarAsync(long agoraUnix = TimestampBase, string? alvoCru = null)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -75,6 +76,18 @@ public class HmacSignatureFilterTests
         builder.Services.AddSingleton<HmacSignatureVerifier>();
 
         var app = builder.Build();
+
+        // TestServer não popula RawTarget; injetar aqui simula o que o Kestrel real faz com os
+        // bytes crus da wire — e `string.Empty` simula o host que não o popula.
+        if (alvoCru is not null)
+        {
+            app.Use(async (contexto, proximo) =>
+            {
+                contexto.Features.Get<IHttpRequestFeature>()!.RawTarget = alvoCru;
+                await proximo();
+            });
+        }
+
         var grupo = app.MapGroup("/internal/agents/v1").AddEndpointFilter<HmacSignatureFilter>();
         grupo.MapGet("/health", () => Results.Ok());
         grupo.MapPost("/echo", async (HttpContext contexto) =>
@@ -125,6 +138,59 @@ public class HmacSignatureFilterTests
             Assinar("GET", CaminhoDeSaude, [], TimestampBase), TimestampBase.ToString(provider: null));
 
         resposta.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AlvoCruPresente_EhOCaminhoAssinado_ComPercentEncodingPreservado()
+    {
+        const string AlvoCru = "/internal/agents/v1/health?q=%2Fbar&z=%7e";
+        await using var servidor = await IniciarAsync(alvoCru: AlvoCru);
+
+        using var resposta = await EnviarAsync(
+            servidor.Cliente, HttpMethod.Get, CaminhoDeSaude, corpo: null,
+            Assinar("GET", AlvoCru, [], TimestampBase), TimestampBase.ToString(provider: null));
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AlvoCruPresente_AssinaturaSobreCaminhoDecodificado_RespondeQuatrocentosEUm()
+    {
+        await using var servidor = await IniciarAsync(alvoCru: "/internal/agents/v1/health?q=%2Fbar&z=%7e");
+
+        using var resposta = await EnviarAsync(
+            servidor.Cliente, HttpMethod.Get, CaminhoDeSaude, corpo: null,
+            Assinar("GET", "/internal/agents/v1/health?q=%2Fbar&z=~", [], TimestampBase),
+            TimestampBase.ToString(provider: null));
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await LerCodeAsync(resposta)).Should().Be("signature_invalid");
+    }
+
+    [Fact]
+    public async Task AlvoCruAusente_FallbackAssinaCaminhoMaisQueryNaOrdemRecebida()
+    {
+        const string CaminhoComQuery = CaminhoDeSaude + "?b=2&a=1";
+        await using var servidor = await IniciarAsync(alvoCru: string.Empty);
+
+        using var resposta = await EnviarAsync(
+            servidor.Cliente, HttpMethod.Get, CaminhoComQuery, corpo: null,
+            Assinar("GET", CaminhoComQuery, [], TimestampBase), TimestampBase.ToString(provider: null));
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AlvoCruAusente_AssinaturaQueOmiteAQuery_RespondeQuatrocentosEUm()
+    {
+        await using var servidor = await IniciarAsync(alvoCru: string.Empty);
+
+        using var resposta = await EnviarAsync(
+            servidor.Cliente, HttpMethod.Get, CaminhoDeSaude + "?b=2&a=1", corpo: null,
+            Assinar("GET", CaminhoDeSaude, [], TimestampBase), TimestampBase.ToString(provider: null));
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await LerCodeAsync(resposta)).Should().Be("signature_invalid");
     }
 
     [Fact]

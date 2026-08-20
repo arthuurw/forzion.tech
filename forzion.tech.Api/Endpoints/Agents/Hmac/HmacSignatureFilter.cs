@@ -1,4 +1,5 @@
 using forzion.tech.Api.Endpoints.Pagamentos;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Api.Endpoints.Agents.Hmac;
@@ -31,7 +32,7 @@ internal sealed class HmacSignatureFilter(
 
         var resultado = verificador.Verificar(
             requisicao.Method,
-            requisicao.Path + requisicao.QueryString,
+            MontarCaminhoComQuery(context.HttpContext),
             corpo.GetBuffer().AsSpan(0, (int)corpo.Length),
             requisicao.Headers[HeaderDeAssinatura].FirstOrDefault(),
             requisicao.Headers[HeaderDeTimestamp].FirstOrDefault());
@@ -48,6 +49,19 @@ internal sealed class HmacSignatureFilter(
         requisicao.Body = corpo;
 
         return await next(context).ConfigureAwait(false);
+    }
+
+    // RawTarget carrega os bytes crus da wire; o operador `PathString + QueryString` passa por
+    // ToUriComponent() nos dois lados e re-normaliza o percent-encoding (`%7E` vira `~`), gerando
+    // payload diferente do que o gateway assinou — 401 mudo. Host que não popula RawTarget
+    // (TestServer) cai no fallback, que concatena os `.Value` sem passar pelo operador.
+    private static string MontarCaminhoComQuery(HttpContext contexto)
+    {
+        var alvoCru = contexto.Features.Get<IHttpRequestFeature>()?.RawTarget;
+
+        return string.IsNullOrEmpty(alvoCru)
+            ? contexto.Request.Path.Value + contexto.Request.QueryString.Value
+            : alvoCru;
     }
 
     private static async Task<MemoryStream> LerCorpoAsync(HttpRequest requisicao, CancellationToken cancellationToken)
