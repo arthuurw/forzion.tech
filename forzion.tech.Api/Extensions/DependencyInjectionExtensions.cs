@@ -141,6 +141,7 @@ public static class DependencyInjectionExtensions
                 opt.AddPolicy("read", _ => RateLimitPartition.GetNoLimiter<string>("test"));
                 opt.AddPolicy("internal", _ => RateLimitPartition.GetNoLimiter<string>("test"));
                 opt.AddPolicy("webhook", _ => RateLimitPartition.GetNoLimiter<string>("test"));
+                opt.AddPolicy("agents", _ => RateLimitPartition.GetNoLimiter<string>("test"));
             });
         }
         else
@@ -197,6 +198,13 @@ public static class DependencyInjectionExtensions
                 opt.AddPolicy("webhook", ctx =>
                     RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIp(ctx),
                         _ => Fixed(300, TimeSpan.FromMinutes(1))));
+
+                // agents: gateway de agentes — por IP, nunca por identidade (UseRateLimiter é
+                // middleware e roda ANTES do filtro de assinatura). Isolada da `internal` (5/min):
+                // uma conversa do agente dispara 3-4 chamadas e leria o 429 como indisponibilidade.
+                opt.AddPolicy("agents", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIp(ctx),
+                        _ => Fixed(120, TimeSpan.FromMinutes(1))));
             });
         }
 
