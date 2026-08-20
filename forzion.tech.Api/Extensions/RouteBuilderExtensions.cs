@@ -1,5 +1,6 @@
 using forzion.tech.Api.Configuration;
 using forzion.tech.Api.Endpoints.Admin;
+using forzion.tech.Api.Endpoints.Agents;
 using Microsoft.Extensions.Logging;
 using forzion.tech.Api.Endpoints.AlunoArea;
 using forzion.tech.Api.Endpoints.Auth;
@@ -44,6 +45,7 @@ public static class RouteBuilderExtensions
         endpoints.MapTreinoEndpoints();
         endpoints.MapPagamentosEndpoints();
         endpoints.MapInternalEndpoints();
+        endpoints.MapAgentEndpoints();
         endpoints.MapWebhookEndpoints();
 
         return endpoints;
