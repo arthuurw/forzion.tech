@@ -200,6 +200,7 @@ public static class DependencyInjectionExtensions
 
         services.AddOpenApiDocumentation();
         services.AddJwtAuthentication(configuration, environment);
+        services.AddAgentsHmac(configuration, environment);
         services.AddCorsPolicies(configuration);
         // Liveness é o endpoint sem checks (Predicate => false) mapeado em RouteBuilder.
         // Readiness usa checks taggeados "ready" (DbContextCheck + Stripe + Resend).
