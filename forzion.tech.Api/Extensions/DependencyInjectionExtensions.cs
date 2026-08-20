@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.RateLimiting;
 using FluentValidation;
 using forzion.tech.Api.Configuration;
 using forzion.tech.Api.Context;
+using forzion.tech.Api.Endpoints.Agents.Hmac;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using forzion.tech.Api.Filters;
 using forzion.tech.Api.Middleware;
 using forzion.tech.Application.Interfaces;
@@ -201,6 +203,8 @@ public static class DependencyInjectionExtensions
         services.AddOpenApiDocumentation();
         services.AddJwtAuthentication(configuration, environment);
         services.AddAgentsHmac(configuration, environment);
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<HmacSignatureVerifier>();
         services.AddCorsPolicies(configuration);
         // Liveness é o endpoint sem checks (Predicate => false) mapeado em RouteBuilder.
         // Readiness usa checks taggeados "ready" (DbContextCheck + Stripe + Resend).
