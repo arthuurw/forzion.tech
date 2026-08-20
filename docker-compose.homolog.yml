@@ -28,6 +28,8 @@ services:
       Email__AllowlistDominios: ${EMAIL_ALLOWLIST_DOMAINS:-}
       App__FrontendBaseUrl: ${APP_FRONTEND_BASE_URL:-https://homologacao.forzion.tech}
       Internal__ApiKey: ${INTERNAL_API_KEY:-}
+      Agents__Hmac__SecretAtual: ${AGENTS_HMAC_SECRET_ATUAL}
+      Agents__Hmac__SecretAnterior: ${AGENTS_HMAC_SECRET_ANTERIOR:-}
       DeliveryLog__RecipientHashKey: ${DELIVERY_LOG_HASH_KEY:-}
       Seed__ZapTestEmail: ${SEED_ZAP_TEST_EMAIL:-zap-test@forzion.tech}
       Seed__ZapTestPassword: ${SEED_ZAP_TEST_PASSWORD:-}
