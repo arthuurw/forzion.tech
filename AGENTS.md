@@ -48,6 +48,7 @@ Vai escrever CÓDIGO ⇒ SEMPRE +coding +tests (carregar ANTES de codar, não de
 | schema/migration/FK/enum           | db |
 | endpoint/contrato/erro API         | backend, security |
 | Stripe/refund/webhook pagamento    | stripe, security |
+| endpoint de agente/`/internal/agents`/assinatura HMAC do gateway | agents, security |
 | dados fiscais do treinador (coleta; emissão de NFS-e REMOVIDA — software terceiro) | fiscal |
 | email/whatsapp                     | email, whatsapp |
 | componente/form/página             | frontend, frontend-ui |
@@ -88,6 +89,7 @@ Carregar SOB DEMANDA quando a tarefa toca a área (regra 2; TRIGGER acima roteia
 - `specification-seo.md` / `specification-dr.md` — misturam implementado e aspiracional, mas AGORA COM RÓTULO por item (`[EXISTE]`/`[GAP]`/`[ALVO]` no dr, `[ATUAL]`/`[REC]`/`[GAP]` no seo). Ler o rótulo antes de assumir capacidade; o `dr` abre com resumo do que é real hoje.
 - `specification-local-ci-repro.md` — reproduzir gates do CI local + gotchas Windows/Docker (CRLF, MSYS path, coverlet merge, node22/dotnet10, postgres fsync, .slnx, E2E email-block).
 - `specification-workflow.md` — fluxo de entrega: pipeline de cards (GitHub Projects v2, `.specs` local = fonte de verdade, board = espelho mantido pelo agente via `gh`), Fluxo A (card novo forward) + Fluxo B (backfill histórico→Done). Board montado no Project nº1; IDs de campo pinados em `§9`. Card = issue real com conteúdo embutido (durabilidade: `.specs` é gitignored). ⚠️ Repo PÚBLICO ⇒ card leva só título/severidade/área/ponteiro; repro de vuln viva NUNCA vai pra issue.
+- `specification-agents.md` — API interna `/internal/agents/v1` consumida pelo gateway de agentes (repo externo). O wire canônico é `.specs/contracts/forzion-internal-api.v1.yaml` (gitignored, veio de outro repo) — esta spec descreve a IMPLEMENTAÇÃO deste lado. Só a fatia 0 (HMAC + `/health`) existe; os outros 5 caminhos são 404 de rota por desenho, não bug.
 - `specification-fiscal.md` — ARQUIVADA. Emissão de NFS-e REMOVIDA (agora é software fiscal terceiro); documenta só a coleta RETIDA de dados fiscais do treinador (`DadosFiscais` VO owned, `PUT/GET /treinador/dados-fiscais`, autofill CEP, banner `dadosFiscaisPendentes`). Cross-refs: db, lgpd, frontend.
 - Sem caveat especial (rotear por TRIGGER): `model`, `backend`, `db`, `email`, `whatsapp`, `frontend`, `git`, `lgpd`, `tests`, `stripe`, `security`, `observability`.
 

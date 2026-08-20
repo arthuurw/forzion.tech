@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.RateLimiting;
 using FluentValidation;
 using forzion.tech.Api.Configuration;
 using forzion.tech.Api.Context;
+using forzion.tech.Api.Endpoints.Agents;
+using forzion.tech.Api.Endpoints.Agents.Hmac;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using forzion.tech.Api.Filters;
 using forzion.tech.Api.Middleware;
 using forzion.tech.Application.Interfaces;
@@ -139,6 +142,7 @@ public static class DependencyInjectionExtensions
                 opt.AddPolicy("read", _ => RateLimitPartition.GetNoLimiter<string>("test"));
                 opt.AddPolicy("internal", _ => RateLimitPartition.GetNoLimiter<string>("test"));
                 opt.AddPolicy("webhook", _ => RateLimitPartition.GetNoLimiter<string>("test"));
+                opt.AddPolicy("agents", _ => RateLimitPartition.GetNoLimiter<string>("test"));
             });
         }
         else
@@ -195,20 +199,34 @@ public static class DependencyInjectionExtensions
                 opt.AddPolicy("webhook", ctx =>
                     RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIp(ctx),
                         _ => Fixed(300, TimeSpan.FromMinutes(1))));
+
+                // agents: gateway de agentes — por IP, nunca por identidade (UseRateLimiter é
+                // middleware e roda ANTES do filtro de assinatura). Isolada da `internal` (5/min):
+                // uma conversa do agente dispara 3-4 chamadas e leria o 429 como indisponibilidade.
+                opt.AddPolicy("agents", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIp(ctx),
+                        _ => Fixed(120, TimeSpan.FromMinutes(1))));
             });
         }
 
         services.AddOpenApiDocumentation();
         services.AddJwtAuthentication(configuration, environment);
+        services.AddAgentsHmac(configuration, environment);
+        // Fallback para Test: AddInfrastructure (abaixo) é o registrador real de TimeProvider e não
+        // roda nesse ambiente, mas o HmacSignatureVerifier precisa resolvê-lo em qualquer um deles.
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<HmacSignatureVerifier>();
         services.AddCorsPolicies(configuration);
         // Liveness é o endpoint sem checks (Predicate => false) mapeado em RouteBuilder.
         // Readiness usa checks taggeados "ready" (DbContextCheck + Stripe + Resend).
         // Stripe/Resend: Degraded em falha (nunca Unhealthy) — integração fora do ar não mata o pod.
         // Em ambiente Test o AppDbContext não é registrado; check "db" só roda quando há AppDbContext em DI.
+        // "agents-ready" é aditiva à "ready" e cobre só db+schema: Stripe/Resend/WhatsApp fora do ar não
+        // impedem o gateway de agentes de operar, e reportá-los abriria circuito sem relação causal.
         services.AddHttpClient(); // necessário para IHttpClientFactory em ResendHealthCheck
         services.AddHealthChecks()
-            .AddDbContextCheck<AppDbContext>("db", tags: new[] { "ready" })
-            .AddCheck<forzion.tech.Infrastructure.Health.SchemaHealthCheck>("schema", tags: new[] { "ready" })
+            .AddDbContextCheck<AppDbContext>("db", tags: new[] { "ready", AgentEndpoints.TagAgentsReady })
+            .AddCheck<forzion.tech.Infrastructure.Health.SchemaHealthCheck>("schema", tags: new[] { "ready", AgentEndpoints.TagAgentsReady })
             .AddCheck<forzion.tech.Infrastructure.Health.StripeHealthCheck>("stripe", tags: new[] { "ready" })
             .AddCheck<forzion.tech.Infrastructure.Health.ResendHealthCheck>("resend", tags: new[] { "ready" })
             .AddCheck<forzion.tech.Infrastructure.Health.WhatsAppHealthCheck>("whatsapp", tags: new[] { "ready" });

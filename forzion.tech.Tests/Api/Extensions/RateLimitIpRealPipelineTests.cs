@@ -92,6 +92,7 @@ public class RateLimitIpRealPipelineTests : IClassFixture<RateLimitIpRealPipelin
             builder.UseSetting("AllowedHosts", "*");
             builder.UseSetting("ForwardedHeaders:KnownNetworks", RedeDoProxy);
             builder.UseSetting("Auth:JwtSecret", "test-only-secret-at-least-32-chars!!");
+            builder.UseSetting("Agents:Hmac:SecretAtual", "test-only-secret-at-least-32-chars!!");
             builder.UseSetting("Mfa:EncryptionKey", ChaveAes256Base64);
             builder.UseSetting("DataProtection:EncryptionKey", ChaveAes256Base64);
             builder.UseSetting("ConnectionStrings:AppConnection", "Host=127.0.0.1;Database=nao-usado;Username=nao;Password=nao");
