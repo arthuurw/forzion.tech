@@ -194,6 +194,33 @@ public class HmacSignatureFilterTests
     }
 
     [Fact]
+    public async Task AlvoCruAusente_FallbackPreservaPercentEncodingDaQuery()
+    {
+        const string CaminhoComQuery = CaminhoDeSaude + "?q=%2Fbar";
+        await using var servidor = await IniciarAsync(alvoCru: string.Empty);
+
+        using var resposta = await EnviarAsync(
+            servidor.Cliente, HttpMethod.Get, CaminhoComQuery, corpo: null,
+            Assinar("GET", CaminhoComQuery, [], TimestampBase), TimestampBase.ToString(provider: null));
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AlvoCruAusente_AssinaturaSobreQueryDecodificada_RespondeQuatrocentosEUm()
+    {
+        await using var servidor = await IniciarAsync(alvoCru: string.Empty);
+
+        using var resposta = await EnviarAsync(
+            servidor.Cliente, HttpMethod.Get, CaminhoDeSaude + "?q=%2Fbar", corpo: null,
+            Assinar("GET", CaminhoDeSaude + "?q=/bar", [], TimestampBase),
+            TimestampBase.ToString(provider: null));
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await LerCodeAsync(resposta)).Should().Be("signature_invalid");
+    }
+
+    [Fact]
     public async Task CorpoAcimaDoCapDeSessentaEQuatroKb_RespondeQuatrocentosComValidationFailed()
     {
         await using var servidor = await IniciarAsync();
