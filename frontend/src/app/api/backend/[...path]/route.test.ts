@@ -187,6 +187,17 @@ describe("Backend proxy /api/backend/[...path]", () => {
       },
     );
 
+    it.each(["internal", "Internal", "INTERNAL", "%69nternal", "%2569nternal"])(
+      "prefixo de agentes sob '%s' → 404 sem chamar o backend",
+      async (segment) => {
+        const req = createMockRequest({ method: "GET" });
+        const res = await GET(req, makeCtx([segment, "agents", "v1", "health"]));
+
+        expect(res.status).toBe(404);
+        expect(fetchSpy).not.toHaveBeenCalled();
+      },
+    );
+
     it.each([
       ["POST", POST],
       ["PUT", PUT],
