@@ -1,9 +1,7 @@
-using forzion.tech.Domain.Shared;
-
-namespace forzion.tech.Infrastructure.Notifications.WhatsApp;
+namespace forzion.tech.Domain.Shared;
 
 /// <summary>
-/// Normaliza telefone para o formato esperado pela Meta Cloud API: dígitos E.164 SEM "+".
+/// Normaliza telefone para dígitos E.164 SEM "+".
 /// Default de país: Brasil (DDI 55). Retorna null quando não há como normalizar com segurança.
 /// </summary>
 public static class PhoneNumberNormalizer

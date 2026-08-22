@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Settings;
-using forzion.tech.Infrastructure.Notifications.WhatsApp;
+using forzion.tech.Domain.Shared;
 using Microsoft.Extensions.Options;
 
 namespace forzion.tech.Infrastructure.Services;

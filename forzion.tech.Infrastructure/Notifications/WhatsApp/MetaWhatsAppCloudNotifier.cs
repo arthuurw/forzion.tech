@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using forzion.tech.Application.Interfaces;
+using forzion.tech.Domain.Shared;
 using forzion.tech.Infrastructure.Common;
 using Microsoft.Extensions.Logging;
 
