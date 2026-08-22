@@ -13,4 +13,5 @@ import type { HttpHandler } from "msw";
 export const authHandlers: HttpHandler[] = [
   http.get("*/api/auth/me", () => HttpResponse.json(null, { status: 401 })),
   http.post("*/api/auth/logout", () => HttpResponse.json({ ok: true })),
+  http.get("*/api/auth/convite/*", () => HttpResponse.json({ title: "Not Found", status: 404 }, { status: 404 })),
 ];

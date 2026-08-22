@@ -10,6 +10,7 @@ import type {
   PlanoPlataformaResponse,
   ProblemDetails,
   TreinadorResponse,
+  ResolverConviteLeadResponse,
 } from "@/types";
 import { type MfaFatorValue } from "@/lib/api/mfa";
 
@@ -73,6 +74,7 @@ export interface RegisterAlunoPayload {
   observacoesAdicionais: string | null;
   consentimentoDadosSaude: boolean;
   consentimentoDadosSaudeEm: string;
+  conviteToken?: string | null;
 }
 
 export interface RegisterTreinadorPayload {
@@ -121,6 +123,10 @@ export const authApi = {
 
   registerAluno(payload: RegisterAlunoPayload) {
     return postJson<unknown>("/api/auth/register/aluno", payload);
+  },
+
+  resolverConvite(token: string) {
+    return getJson<ResolverConviteLeadResponse>(`/api/auth/convite/${encodeURIComponent(token)}`);
   },
 
   registerTreinador(payload: RegisterTreinadorPayload) {

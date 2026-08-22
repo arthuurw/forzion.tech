@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -22,6 +22,7 @@ import {
 } from "@mui/material";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSearchParams } from "next/navigation";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircle";
 import Link from "next/link";
 import FormTextField from "@/components/forms/FormTextField";
@@ -47,17 +48,31 @@ const STEP2_FIELDS: (keyof CadastroAlunoFormData)[] = [
   "confirmPassword",
 ];
 
-export default function CadastroAlunoPage() {
+type TreinadorParaCadastro = Pick<TreinadorResponse, "treinadorId" | "nome">;
+
+// Convite emitido pelo E.164 do PhoneNumberNormalizer traz o DDI 55; o schema local
+// (cadastroAlunoSchema.telefone) só aceita 10-11 dígitos locais — sem isso, o
+// pré-preenchimento reprovaria a própria validação que ele deveria satisfazer.
+function paraTelefoneLocal(digitos: string): string {
+  const semDdi = digitos.length > 11 && digitos.startsWith("55") ? digitos.slice(2) : digitos;
+  return semDdi.slice(-11);
+}
+
+function CadastroAlunoInner() {
+  const searchParams = useSearchParams();
+  const conviteToken = searchParams.get("convite");
+
   const [activeStep, setActiveStep] = useState(0);
   const [treinadores, setTreinadores] = useState<TreinadorResponse[]>([]);
   const [pacotes, setPacotes] = useState<PacoteResponse[]>([]);
-  const [selectedTreinador, setSelectedTreinador] = useState<TreinadorResponse | null>(null);
+  const [selectedTreinador, setSelectedTreinador] = useState<TreinadorParaCadastro | null>(null);
   const [selectedPacote, setSelectedPacote] = useState<PacoteResponse | null>(null);
   const [loadingList, setLoadingList] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [consentimentoSaude, setConsentimentoSaude] = useState(false);
+  const [treinadorTravado, setTreinadorTravado] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -103,6 +118,30 @@ export default function CadastroAlunoPage() {
       setLoadingList(false);
     }
   };
+
+  useEffect(() => {
+    if (!conviteToken) return;
+    let ativo = true;
+    authApi
+      .resolverConvite(conviteToken)
+      .then((resolvido) => {
+        if (!ativo) return;
+        methods.setValue("nome", resolvido.nome);
+        if (resolvido.contatoTipo === "Email") {
+          methods.setValue("email", resolvido.contatoValor);
+        } else {
+          methods.setValue("telefone", paraTelefoneLocal(resolvido.contatoValor));
+        }
+        setSelectedTreinador({ treinadorId: resolvido.treinadorId, nome: resolvido.treinadorNome });
+        setTreinadorTravado(true);
+        setActiveStep(1);
+        fetchPacotes(resolvido.treinadorId);
+      })
+      // Falha aqui não pode virar erro visível: revelaria que um token foi tentado.
+      .catch(() => {});
+    return () => { ativo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conviteToken]);
 
   const goToStep = (step: number) => {
     setError("");
@@ -152,6 +191,7 @@ export default function CadastroAlunoPage() {
         observacoesAdicionais: data.observacoesAdicionais || null,
         consentimentoDadosSaude: true,
         consentimentoDadosSaudeEm: new Date().toISOString(),
+        conviteToken: treinadorTravado ? conviteToken : null,
       });
       setSuccess(true);
     } catch (e) {
@@ -250,9 +290,11 @@ export default function CadastroAlunoPage() {
         <Box>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
             <span>Treinador: <strong>{selectedTreinador?.nome}</strong></span>
-            <Button variant="text" size="small" onClick={() => goToStep(0)} sx={{ minWidth: 0 }}>
-              alterar
-            </Button>
+            {!treinadorTravado && (
+              <Button variant="text" size="small" onClick={() => goToStep(0)} sx={{ minWidth: 0 }}>
+                alterar
+              </Button>
+            )}
           </Typography>
           {loadingList ? (
             <LoadingSpinner />
@@ -445,5 +487,13 @@ export default function CadastroAlunoPage() {
         </Typography>
       </Box>
     </Box>
+  );
+}
+
+export default function CadastroAlunoPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <CadastroAlunoInner />
+    </Suspense>
   );
 }

@@ -8,6 +8,10 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 describe("CadastroAlunoPage (R6 resumo + R8 consentimento anamnese)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
