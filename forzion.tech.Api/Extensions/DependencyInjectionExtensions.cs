@@ -443,6 +443,8 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ExcluirPacoteHandler>();
         services.AddScoped<ListarPacotesHandler>();
 
+        services.AddScoped<forzion.tech.Application.UseCases.Agents.BusinessInfo.ObterBusinessInfoHandler>();
+
         services.AddScoped<IniciarOnboardingTreinadorHandler>();
         services.AddScoped<VerificarOnboardingTreinadorHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Treinadores.Dashboard.ObterTreinadorDashboardHandler>();

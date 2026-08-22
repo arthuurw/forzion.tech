@@ -65,6 +65,7 @@ public class AuthorizationGuardTests
         "NudgeAderenciaHandler",
         "ObterAdminDashboardHandler",
         "ObterAssinaturaAlunoHandler",
+        "ObterBusinessInfoHandler",
         "ObterDashboardStatsHandler",
         "ObterHealthReportConfigHandler",
         "ObterPreviewModoPagamentoTreinadorHandler",
