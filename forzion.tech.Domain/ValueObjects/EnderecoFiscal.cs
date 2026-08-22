@@ -5,12 +5,6 @@ namespace forzion.tech.Domain.ValueObjects;
 
 public sealed record EnderecoFiscal
 {
-    private static readonly HashSet<string> UfsValidas = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
-        "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"
-    };
-
     public string Logradouro { get; }
     public string Numero { get; }
     public string? Complemento { get; }
@@ -53,7 +47,7 @@ public sealed record EnderecoFiscal
             return Result.Failure<EnderecoFiscal>(EnderecoFiscalErrors.MunicipioIbgeInvalido);
 
         var ufNormalizada = (uf ?? string.Empty).Trim().ToUpperInvariant();
-        if (!UfsValidas.Contains(ufNormalizada))
+        if (!UfsBrasileiras.Validas.Contains(ufNormalizada))
             return Result.Failure<EnderecoFiscal>(EnderecoFiscalErrors.UfInvalida);
 
         var cepDigitos = Digitos.Apenas(cep);
