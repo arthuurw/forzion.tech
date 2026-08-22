@@ -60,8 +60,11 @@ public class LeadCriadoInAppHandlerTests
 
         await _handler.HandleAsync(Evento);
 
+        const string NomeDoLead = "Maria Aparecida Souza";
+        const string ContatoDoLead = "(11) 91234-5678";
         capturada.Should().NotBeNull();
-        capturada!.Corpo.Should().NotContain("@").And.NotContain("+55");
+        capturada!.Corpo.Should().Be("Você recebeu um novo lead. Confira os dados e o histórico no detalhe.");
+        capturada.Corpo.Should().NotContain(NomeDoLead).And.NotContain(ContatoDoLead);
     }
 
     [Fact]

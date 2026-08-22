@@ -90,14 +90,25 @@ public class LeadCriadoEmailTreinadorHandlerTests
         _contaRepo.Setup(r => r.ObterPorIdAsync(ContaTreinadorId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(conta);
 
+        string? htmlCapturado = null;
+        _emailService.Setup(e => e.EnviarAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()))
+            .Callback<string, string, string, CancellationToken, string?>((_, _, html, _, _) => htmlCapturado = html)
+            .Returns(Task.CompletedTask);
+
         await _handler.HandleAsync(Evento);
 
+        const string NomeDoLead = "Maria Aparecida Souza";
+        const string ContatoDoLead = "maria.souza@example.com";
+        var htmlEsperado = EmailTemplates.NovoLead("Coach Carlos", "assistente virtual");
         _emailService.Verify(e => e.EnviarAsync(
             "carlos@coach.com",
             It.Is<string>(s => s.Contains("lead", StringComparison.OrdinalIgnoreCase)),
-            It.Is<string>(html => html.Contains("Coach Carlos") && html.Contains("forzion.tech/treinador/leads")),
+            It.IsAny<string>(),
             It.IsAny<CancellationToken>()),
             Times.Once);
+        htmlCapturado.Should().Be(htmlEsperado);
+        htmlCapturado!.Should().NotContain(NomeDoLead).And.NotContain(ContatoDoLead);
     }
 
     [Fact]
