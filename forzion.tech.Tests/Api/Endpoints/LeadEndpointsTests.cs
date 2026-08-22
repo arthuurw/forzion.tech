@@ -27,7 +27,7 @@ using Moq;
 
 namespace forzion.tech.Tests.Api.Endpoints;
 
-// e2e in-process (sem Docker) das 6 rotas de /treinador/leads. ILeadRepository/IUnitOfWork
+// e2e in-process (sem Docker) das 7 rotas de /treinador/leads. ILeadRepository/IUnitOfWork
 // mockados via DI; os handlers reais rodam para exercitar de fato o colapso 404 de IDOR
 // (lead de outro treinador -> 404, nunca 403 — mesmo padrão de DefinirPreservacaoVinculoEndpointTests).
 public class LeadEndpointsTests : IClassFixture<LeadEndpointsTests.LeadWebFactory>
@@ -40,10 +40,11 @@ public class LeadEndpointsTests : IClassFixture<LeadEndpointsTests.LeadWebFactor
     public LeadEndpointsTests(LeadWebFactory factory)
     {
         _factory = factory;
-        _factory.LeadRepositoryMock.Invocations.Clear();
-        _factory.UnitOfWorkMock.Invocations.Clear();
         _factory.LeadRepositoryMock.Reset();
         _factory.UnitOfWorkMock.Reset();
+        _factory.LeadConviteRepositoryMock.Reset();
+        _factory.TreinadorRepositoryMock.Reset();
+        _factory.LeadConviteSenderMock.Reset();
     }
 
     private HttpClient ClienteTreinador()
@@ -163,6 +164,50 @@ public class LeadEndpointsTests : IClassFixture<LeadEndpointsTests.LeadWebFactor
     }
 
     [Fact]
+    public async Task Post_Convite_LeadProprioComEmail_Retorna200()
+    {
+        var lead = NovoLead(TreinadorAutenticadoId);
+        _factory.LeadRepositoryMock.Setup(r => r.ObterComHistoricoAsync(TreinadorAutenticadoId, lead.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(lead);
+        _factory.TreinadorRepositoryMock.Setup(r => r.ObterPorIdAsync(TreinadorAutenticadoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Treinador.Criar(Guid.NewGuid(), "Coach", Agora).Value);
+        _factory.LeadConviteSenderMock.Setup(s => s.EnviarAsync(
+                It.IsAny<TipoContatoLead>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var response = await ClienteTreinador().PostAsync($"/treinador/leads/{lead.Id}/convite", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Post_Convite_ContatoTelefone_Retorna422()
+    {
+        var lead = Lead.Criar(
+            TreinadorAutenticadoId, "Fulano",
+            ContatoLead.Criar(TipoContatoLead.Telefone, "+5511999998888").Value,
+            null,
+            ConsentimentoLead.Criar("Contato comercial", Agora, Agora).Value,
+            null, LeadSource.Agent, null, null, Agora).Value;
+        _factory.LeadRepositoryMock.Setup(r => r.ObterComHistoricoAsync(TreinadorAutenticadoId, lead.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(lead);
+
+        var response = await ClienteTreinador().PostAsync($"/treinador/leads/{lead.Id}/convite", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
+    public async Task Post_Convite_LeadDeOutroTreinador_Retorna404()
+    {
+        var leadDeOutro = NovoLead(Guid.NewGuid());
+
+        var response = await ClienteTreinador().PostAsync($"/treinador/leads/{leadDeOutro.Id}/convite", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Get_Metricas_Retorna200()
     {
         _factory.LeadRepositoryMock.Setup(r => r.AgregarMetricasAsync(
@@ -188,6 +233,9 @@ public class LeadEndpointsTests : IClassFixture<LeadEndpointsTests.LeadWebFactor
     {
         public Mock<ILeadRepository> LeadRepositoryMock { get; } = new();
         public Mock<IUnitOfWork> UnitOfWorkMock { get; } = new();
+        public Mock<ILeadConviteRepository> LeadConviteRepositoryMock { get; } = new();
+        public Mock<ITreinadorRepository> TreinadorRepositoryMock { get; } = new();
+        public Mock<ILeadConviteSender> LeadConviteSenderMock { get; } = new();
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -200,9 +248,15 @@ public class LeadEndpointsTests : IClassFixture<LeadEndpointsTests.LeadWebFactor
                 services.RemoveAll<ILeadRepository>();
                 services.RemoveAll<IUnitOfWork>();
                 services.RemoveAll<IUserContext>();
+                services.RemoveAll<ILeadConviteRepository>();
+                services.RemoveAll<ITreinadorRepository>();
+                services.RemoveAll<ILeadConviteSender>();
 
                 services.AddScoped(_ => LeadRepositoryMock.Object);
                 services.AddScoped(_ => UnitOfWorkMock.Object);
+                services.AddScoped(_ => LeadConviteRepositoryMock.Object);
+                services.AddScoped(_ => TreinadorRepositoryMock.Object);
+                services.AddScoped(_ => LeadConviteSenderMock.Object);
 
                 var userContextMock = new Mock<IUserContext>();
                 userContextMock.Setup(u => u.PerfilId).Returns(TreinadorAutenticadoId);

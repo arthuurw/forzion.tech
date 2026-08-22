@@ -3,6 +3,7 @@ using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.UseCases.Leads.AtualizarStatusLead;
 using forzion.tech.Application.UseCases.Leads.CriarLeadManual;
+using forzion.tech.Application.UseCases.Leads.EnviarConvite;
 using forzion.tech.Application.UseCases.Leads.ListarLeads;
 using forzion.tech.Application.UseCases.Leads.ObterLead;
 using forzion.tech.Application.UseCases.Leads.ObterMetricas;
@@ -115,6 +116,21 @@ public static class LeadEndpoints
         .WithSummary("Registra uma interação livre no histórico do lead")
         .Produces<RegistrarInteracaoLeadResponse>()
         .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapPost("/{id:guid}/convite", async (
+            Guid id,
+            [FromServices] EnviarConviteLeadHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(new EnviarConviteLeadCommand(userContext.PerfilId, id), cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithSummary("Emite convite de cadastro para o lead (invalida convite ativo anterior)")
+        .Produces<EnviarConviteLeadResponse>()
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 

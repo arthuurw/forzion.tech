@@ -1052,6 +1052,51 @@
         ]
       }
     },
+    "/auth/convite/{token}": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Resolve um token de convite de lead para pré-preencher o cadastro do aluno",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolverConviteLeadResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/auth/treinadores": {
       "get": {
         "tags": [
@@ -4811,6 +4856,62 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/treinador/leads/{id}/convite": {
+      "post": {
+        "tags": [
+          "Leads"
+        ],
+        "summary": "Emite convite de cadastro para o lead (invalida convite ativo anterior)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnviarConviteLeadResponse"
                 }
               }
             }
@@ -9643,6 +9744,17 @@
           }
         }
       },
+      "EnviarConviteLeadResponse": {
+        "required": [
+          "enviado"
+        ],
+        "type": "object",
+        "properties": {
+          "enviado": {
+            "type": "boolean"
+          }
+        }
+      },
       "EnviarMensagemSuporteRequest": {
         "required": [
           "categoria",
@@ -12316,6 +12428,34 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ResolverConviteLeadResponse": {
+        "required": [
+          "nome",
+          "contatoTipo",
+          "contatoValor",
+          "treinadorId",
+          "treinadorNome"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "contatoTipo": {
+            "$ref": "#/components/schemas/TipoContatoLead"
+          },
+          "contatoValor": {
+            "type": "string"
+          },
+          "treinadorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "treinadorNome": {
+            "type": "string"
           }
         }
       },

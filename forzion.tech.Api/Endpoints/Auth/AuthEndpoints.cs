@@ -2,6 +2,7 @@ using forzion.tech.Api.Extensions;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
+using forzion.tech.Application.UseCases.Leads.ResolverConviteLead;
 using forzion.tech.Application.UseCases.Auth.Login;
 using forzion.tech.Application.UseCases.Auth.RedefinirSenha;
 using forzion.tech.Application.UseCases.Auth.RenovarSessao;
@@ -219,6 +220,21 @@ public static class AuthEndpoints
         .RequireRateLimiting("auth")
         .WithSummary("Lista pacotes de um treinador específico (para escolha do aluno no cadastro)")
         .Produces<IReadOnlyList<PacoteResponse>>()
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapGet("/convite/{token}", async (
+            string token,
+            [FromServices] ResolverConviteLeadHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(new ResolverConviteLeadQuery(token), cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .AllowAnonymous()
+        .RequireRateLimiting("read")
+        .WithSummary("Resolve um token de convite de lead para pré-preencher o cadastro do aluno")
+        .Produces<ResolverConviteLeadResponse>()
         .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapGet("/treinadores", async (

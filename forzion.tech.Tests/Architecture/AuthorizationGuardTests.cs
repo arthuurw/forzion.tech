@@ -86,6 +86,7 @@ public class AuthorizationGuardTests
         "ReativarVinculoHandler",
         "ReconciliarPagamentosStripeHandler",
         "RegistrarInteracaoLeadHandler",
+        "ResolverConviteLeadHandler",
         "RegistrarLeadAgenteHandler",
         "ConfirmarTrocaEmailHandler",
         "RedefinirSenhaHandler",

@@ -8,4 +8,5 @@ public static class LeadConviteErrors
     public static Error JaInvalidado => Error.Business("lead_convite.ja_invalidado", "Este convite não está mais disponível.");
     public static Error Expirado => Error.Business("lead_convite.expirado", "Este convite expirou.");
     public static Error ContatoNaoSuportaConvite => Error.Business("lead_convite.contato_nao_suporta_convite", "O convite exige contato de e-mail (ou WhatsApp, quando disponível) — este lead só tem telefone.");
+    public static Error TokenInvalido => Error.NotFound("lead_convite.token_invalido", "Convite não encontrado ou não é mais válido.");
 }
