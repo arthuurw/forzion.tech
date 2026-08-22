@@ -35,6 +35,11 @@ export default function DetalheLeadPage() {
   const [observacaoDescarte, setObservacaoDescarte] = useState("");
   const [motivoErro, setMotivoErro] = useState("");
 
+  const [convidarOpen, setConvidarOpen] = useState(false);
+  const [convidando, setConvidando] = useState(false);
+  const [conviteEnviado, setConviteEnviado] = useState(false);
+  const [conviteAviso, setConviteAviso] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -112,6 +117,26 @@ export default function DetalheLeadPage() {
     }
   };
 
+  const handleConvidar = async () => {
+    if (!lead) return;
+    setConvidando(true);
+    setConviteAviso("");
+    try {
+      const res = await leadsApi.enviarConvite(lead.id);
+      setConvidarOpen(false);
+      setConviteEnviado(true);
+      if (res.data.enviado) {
+        setSuccess("Convite enviado.");
+      } else {
+        setConviteAviso("Convite gerado, mas o e-mail não saiu — tente reenviar.");
+      }
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao enviar convite."));
+    } finally {
+      setConvidando(false);
+    }
+  };
+
   if (loading) return <LoadingSpinner />;
   if (!lead) return <DetalheErro mensagem={error || "Lead não encontrado."} onRetry={load} />;
 
@@ -125,6 +150,7 @@ export default function DetalheLeadPage() {
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
+      <AlertBanner open={!!conviteAviso} severity="warning" message={conviteAviso} onClose={() => setConviteAviso("")} />
 
       {lead.anonimizado && (
         <AlertBanner
@@ -172,7 +198,19 @@ export default function DetalheLeadPage() {
               <Button variant="outlined" color="error" disabled={acaoLoading} onClick={abrirDescartar}>
                 Descartar
               </Button>
+              <Button
+                variant="outlined"
+                disabled={acaoLoading || lead.contatoTipo === "Telefone"}
+                onClick={() => setConvidarOpen(true)}
+              >
+                {conviteEnviado ? "Reenviar convite" : "Enviar convite"}
+              </Button>
             </Stack>
+            {lead.contatoTipo === "Telefone" && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
+                Convite exige contato por e-mail ou WhatsApp.
+              </Typography>
+            )}
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
               <TextField
                 size="small"
@@ -253,6 +291,20 @@ export default function DetalheLeadPage() {
           sx={{ mt: 2 }}
         />
       </ConfirmDialog>
+
+      <ConfirmDialog
+        open={convidarOpen}
+        title={conviteEnviado ? "Reenviar convite" : "Enviar convite"}
+        description={
+          conviteEnviado
+            ? `Reenviar o convite invalida o link anterior enviado a "${lead.nome}". Deseja continuar?`
+            : `Enviar convite de cadastro para "${lead.nome}"?`
+        }
+        confirmLabel="Enviar"
+        loading={convidando}
+        onConfirm={handleConvidar}
+        onClose={() => setConvidarOpen(false)}
+      />
     </Box>
   );
 }
