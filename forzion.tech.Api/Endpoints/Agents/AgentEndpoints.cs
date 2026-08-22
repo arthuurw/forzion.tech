@@ -1,8 +1,11 @@
 using forzion.tech.Api.Endpoints.Agents.Hmac;
 using forzion.tech.Application.UseCases.Agents.BusinessInfo;
+using forzion.tech.Application.UseCases.Agents.Leads;
 using forzion.tech.Application.UseCases.Agents.Services;
+using forzion.tech.Domain.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using System.Text.Json;
 
 namespace forzion.tech.Api.Endpoints.Agents;
 
@@ -68,6 +71,58 @@ public static class AgentEndpoints
                 : AgentProblem.Criar(AgentErrorCode.TenantNotFound, StatusCodes.Status404NotFound);
         });
 
+        grupo.MapPost("/tenants/{tenantId}/leads", async Task<IResult> (
+            string tenantId,
+            HttpContext httpContext,
+            [FromServices] RegistrarLeadAgenteHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            if (!Guid.TryParse(tenantId, out var tenantGuid))
+                return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+
+            // [FromBody] em tipo complexo faria o binder ler o corpo ANTES da cadeia de filtros —
+            // o HmacSignatureFilter, mais interno, hashearia um corpo já drenado (vazio) e toda
+            // requisição assinada corretamente cairia em signature_invalid. Leitura manual aqui
+            // roda dentro do handler, depois do filtro já ter recolocado o corpo bufferizado.
+            StageLeadRequest? request;
+            try
+            {
+                request = await httpContext.Request.ReadFromJsonAsync<StageLeadRequest>(cancellationToken).ConfigureAwait(false);
+            }
+            catch (JsonException)
+            {
+                return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+            }
+
+            if (request?.Contact is null || request.Consent is null)
+                return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+
+            var command = new RegistrarLeadAgenteCommand(
+                tenantGuid,
+                request.Name,
+                request.Contact.Type,
+                request.Contact.Value,
+                request.Interest,
+                request.Consent.Granted,
+                request.Consent.Purpose,
+                request.Consent.GrantedAt,
+                request.IdempotencyKey,
+                request.Origin?.UserAgent,
+                request.Origin?.Assistant);
+
+            var result = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
+
+            if (result.IsSuccess)
+                return Results.Json(result.Value, statusCode: StatusCodes.Status201Created);
+
+            return result.Error!.Type switch
+            {
+                ErrorType.NotFound => AgentProblem.Criar(AgentErrorCode.TenantNotFound, StatusCodes.Status404NotFound),
+                ErrorType.Conflict => AgentProblem.Criar(AgentErrorCode.IdempotencyConflict, StatusCodes.Status409Conflict),
+                _ => AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest),
+            };
+        });
+
         return endpoints;
     }
 
@@ -83,4 +138,18 @@ public static class AgentEndpoints
             .ExcludeFromDescription();
 
     internal sealed record AgentHealth(string Status, DateTimeOffset CheckedAt);
+
+    internal sealed record StageLeadContactRequest(string Type, string Value);
+
+    internal sealed record StageLeadConsentRequest(bool Granted, string Purpose, DateTime? GrantedAt);
+
+    internal sealed record StageLeadOriginRequest(string? UserAgent, string? Assistant);
+
+    internal sealed record StageLeadRequest(
+        string Name,
+        StageLeadContactRequest Contact,
+        string? Interest,
+        StageLeadConsentRequest Consent,
+        string? IdempotencyKey,
+        StageLeadOriginRequest? Origin);
 }
