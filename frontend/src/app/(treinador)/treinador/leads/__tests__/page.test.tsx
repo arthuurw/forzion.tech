@@ -51,7 +51,7 @@ describe("LeadsTreinadorPage", () => {
     server.use(http.get("*/treinador/leads", () => HttpResponse.json(listResponse([]))));
     await renderPage();
 
-    expect(await screen.findByText(/agente conversacional/i)).toBeInTheDocument();
+    expect(await screen.findByText(/nenhum lead ainda/i)).toBeInTheDocument();
     expect(screen.getByText(/cadastrar um lead manualmente/i)).toBeInTheDocument();
   });
 
@@ -71,7 +71,7 @@ describe("LeadsTreinadorPage", () => {
       }),
     );
     await renderPage();
-    await screen.findByText(/agente conversacional/i);
+    await screen.findByText(/nenhum lead ainda/i);
 
     fireEvent.mouseDown(screen.getByLabelText("Status"));
     fireEvent.click(await screen.findByRole("option", { name: "Em contato" }));
@@ -88,7 +88,7 @@ describe("LeadsTreinadorPage", () => {
       }),
     );
     await renderPage();
-    await screen.findByText(/agente conversacional/i);
+    await screen.findByText(/nenhum lead ainda/i);
 
     fireEvent.mouseDown(screen.getByLabelText("Origem"));
     fireEvent.click(await screen.findByRole("option", { name: "Manual" }));
@@ -105,7 +105,7 @@ describe("LeadsTreinadorPage", () => {
       }),
     );
     await renderPage();
-    await screen.findByText(/agente conversacional/i);
+    await screen.findByText(/nenhum lead ainda/i);
 
     fireEvent.change(screen.getByLabelText(/buscar por nome ou contato/i), { target: { value: "maria" } });
     fireEvent.keyDown(screen.getByLabelText(/buscar por nome ou contato/i), { key: "Enter" });
@@ -125,7 +125,7 @@ describe("LeadsTreinadorPage", () => {
       }),
     );
     await renderPage();
-    await screen.findByText(/agente conversacional/i);
+    await screen.findByText(/nenhum lead ainda/i);
 
     fireEvent.change(screen.getByLabelText("De"), { target: { value: "2026-07-01" } });
     fireEvent.change(screen.getByLabelText("Até"), { target: { value: "2026-08-01" } });

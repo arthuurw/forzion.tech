@@ -1,8 +1,8 @@
 "use client";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Box, Select, MenuItem, FormControl, InputLabel, TextField,
-  InputAdornment, IconButton, Typography, Chip,
+  InputAdornment, IconButton, Typography, Chip, ToggleButtonGroup, ToggleButton,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { useRouter } from "next/navigation";
@@ -12,17 +12,29 @@ import DataList from "@/components/ui/DataList";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { leadsApi } from "@/lib/api/leads";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
-import type { LeadListItem, LeadStatus, LeadSource } from "@/types";
+import type { LeadListItem, LeadStatus, LeadSource, ObterMetricasLeadsResponse } from "@/types";
 import {
   LEAD_STATUS_LABEL, LEAD_STATUS_COLOR, LEAD_SOURCE_LABEL, TIPO_CONTATO_LEAD_LABEL,
 } from "@/lib/constants/labels";
-import { formatarDataHora } from "@/lib/utils/formatting";
+import { formatarDataHora, periodoParaDatas } from "@/lib/utils/formatting";
+import LeadsMetricasCharts from "./_charts/LeadsMetricasCharts";
 
 const COLUMNS: Column[] = [
   { label: "Lead" },
   { label: "Origem" },
   { label: "Status" },
   { label: "Chegada" },
+];
+
+type Periodo = "7d" | "30d" | "60d" | "90d" | "6m" | "1a" | "tudo";
+
+const PERIODOS: { value: Periodo; label: string }[] = [
+  { value: "7d", label: "7 dias" },
+  { value: "30d", label: "30 dias" },
+  { value: "90d", label: "90 dias" },
+  { value: "6m", label: "6 meses" },
+  { value: "1a", label: "1 ano" },
+  { value: "tudo", label: "Tudo" },
 ];
 
 export default function LeadsTreinadorPage() {
@@ -33,6 +45,18 @@ export default function LeadsTreinadorPage() {
   const [fim, setFim] = useState("");
   const [termoInput, setTermoInput] = useState("");
   const [termo, setTermo] = useState("");
+
+  const [periodo, setPeriodo] = useState<Periodo>("30d");
+  const [metricas, setMetricas] = useState<ObterMetricasLeadsResponse | null>(null);
+  const [metricasError, setMetricasError] = useState("");
+
+  useEffect(() => {
+    const { de, ate } = periodoParaDatas(periodo);
+    leadsApi
+      .metricas(de, ate)
+      .then((res) => setMetricas(res.data))
+      .catch(() => setMetricasError("Não foi possível carregar as métricas do período."));
+  }, [periodo]);
 
   const fetcher = useCallback(
     (p: number, ps: number) =>
@@ -66,6 +90,27 @@ export default function LeadsTreinadorPage() {
       />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
+      <AlertBanner open={!!metricasError} severity="warning" message={metricasError} onClose={() => setMetricasError("")} />
+
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", mb: 1 }}>
+        <Box sx={{ overflowX: "auto", maxWidth: "100%", pb: 0.5 }}>
+          <ToggleButtonGroup
+            value={periodo}
+            exclusive
+            onChange={(_, val) => { if (val) setPeriodo(val); }}
+            size="small"
+            sx={{ flexWrap: "nowrap" }}
+          >
+            {PERIODOS.map((p) => (
+              <ToggleButton key={p.value} value={p.value} sx={{ fontSize: "0.75rem", px: 1.5, whiteSpace: "nowrap" }}>
+                {p.label}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+        </Box>
+      </Box>
+
+      {metricas && <LeadsMetricasCharts metricas={metricas} />}
 
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
         <FormControl size="small" sx={{ minWidth: 160 }}>
