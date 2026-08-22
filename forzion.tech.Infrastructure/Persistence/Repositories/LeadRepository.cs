@@ -119,4 +119,11 @@ public class LeadRepository(AppDbContext context) : ILeadRepository
             .Where(l => l.Contato.Valor == valorNormalizado)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+    // Tracked de propósito: único outro caminho cross-tenant do repositório, ao lado de
+    // BuscarPorContatoCrossTenantAsync — usado pelo admin para anonimizar (precisa mutar).
+    public async Task<Lead?> ObterPorIdCrossTenantAsync(Guid leadId, CancellationToken cancellationToken = default) =>
+        await context.Leads
+            .FirstOrDefaultAsync(l => l.Id == leadId, cancellationToken)
+            .ConfigureAwait(false);
 }

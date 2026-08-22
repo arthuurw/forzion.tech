@@ -43,6 +43,7 @@ public class AutorizacaoNegativaMatrixTests : IClassFixture<AutorizacaoNegativaM
         "/admin/stats/dashboard",
         "/admin/health-report/config",
         "/admin/treinadores/" + Guid1,
+        "/admin/leads",
     ];
 
     public static TheoryData<string> RotasSomenteTreinador => Montar(SomenteTreinador);

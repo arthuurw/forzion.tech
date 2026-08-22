@@ -8,6 +8,7 @@ using forzion.tech.Application.UseCases.Admin.GruposMusculares.AtualizarGrupoMus
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.CriarGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ExcluirGrupoMuscular;
 using forzion.tech.Application.UseCases.Admin.GruposMusculares.ListarGruposMusculares;
+using forzion.tech.Application.UseCases.Admin.Leads;
 using forzion.tech.Application.UseCases.Alunos;
 using forzion.tech.Application.UseCases.Alunos.ListarAlunos;
 using forzion.tech.Application.UseCases.Alunos.ListarExecucoesAluno;
@@ -605,6 +606,35 @@ public static class AdminEndpoints
         .Produces(StatusCodes.Status204NoContent)
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
         .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapGet("/leads", async (
+            string? contato,
+            [FromServices] BuscarLeadsPorContatoHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            if (string.IsNullOrWhiteSpace(contato))
+                return Results.Ok(Array.Empty<LeadAdminItem>());
+
+            var result = await handler.HandleAsync(new BuscarLeadsPorContatoQuery(contato), cancellationToken).ConfigureAwait(false);
+            return Results.Ok(result);
+        })
+        .RequireRateLimiting("read")
+        .WithSummary("Busca leads por contato (cross-tenant) para atendimento ao titular sem conta (LGPD art. 18)")
+        .Produces<IReadOnlyList<LeadAdminItem>>();
+
+        group.MapPost("/leads/{id:guid}/anonimizar", async (
+            Guid id,
+            [FromServices] AnonimizarLeadHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(new AnonimizarLeadCommand(id, userContext.ContaId), cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.NoContent();
+        })
+        .WithSummary("Anonimiza um lead a pedido do titular sem conta (LGPD art. 18)")
+        .Produces(StatusCodes.Status204NoContent)
+        .ProducesProblem(StatusCodes.Status404NotFound);
 
         return endpoints;
     }

@@ -29,4 +29,6 @@ public interface ILeadRepository
     Task<int> AnonimizarPorTreinadorAsync(Guid treinadorId, DateTime agora, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Lead>> BuscarPorContatoCrossTenantAsync(string valorNormalizado, CancellationToken cancellationToken = default);
+
+    Task<Lead?> ObterPorIdCrossTenantAsync(Guid leadId, CancellationToken cancellationToken = default);
 }

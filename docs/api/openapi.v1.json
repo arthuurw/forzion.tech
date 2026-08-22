@@ -2884,6 +2884,82 @@
         ]
       }
     },
+    "/admin/leads": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Busca leads por contato (cross-tenant) para atendimento ao titular sem conta (LGPD art. 18)",
+        "parameters": [
+          {
+            "name": "contato",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LeadAdminItem"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/admin/leads/{id}/anonimizar": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Anonimiza um lead a pedido do titular sem conta (LGPD art. 18)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/admin/test-data/contas": {
       "get": {
         "tags": [
@@ -10357,6 +10433,48 @@
         "properties": {
           "fator": {
             "$ref": "#/components/schemas/MfaFator"
+          }
+        }
+      },
+      "LeadAdminItem": {
+        "required": [
+          "id",
+          "treinadorId",
+          "nome",
+          "contatoTipo",
+          "contatoValor",
+          "status",
+          "anonimizado",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "treinadorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "contatoTipo": {
+            "$ref": "#/components/schemas/TipoContatoLead"
+          },
+          "contatoValor": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LeadStatus"
+          },
+          "anonimizado": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

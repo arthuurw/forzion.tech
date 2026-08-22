@@ -12,6 +12,7 @@ public class AuthorizationGuardTests
     private static readonly IReadOnlySet<string> SemUserContextPermitidos = new HashSet<string>
     {
         "AlterarModoPagamentoTreinadorHandler",
+        "AnonimizarLeadHandler",
         "AprovarTreinadorHandler",
         "AprovarVinculoHandler",
         "AtualizarExercicioHandler",
@@ -20,6 +21,7 @@ public class AuthorizationGuardTests
         "AtualizarPacoteHandler",
         "AtualizarPlanoPlataformaHandler",
         "AtualizarStatusLeadHandler",
+        "BuscarLeadsPorContatoHandler",
         "CadastrarAlunoHandler",
         "CriarLeadManualHandler",
         "CancelarAssinaturaAlunoHandler",
