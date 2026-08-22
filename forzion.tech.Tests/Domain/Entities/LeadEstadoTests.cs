@@ -114,10 +114,21 @@ public class LeadEstadoTests
     }
 
     [Fact]
-    public void RegistrarInteracao_APartirDeEstadoTerminal_Falha()
+    public void RegistrarInteracao_APartirDeConvertido_Falha()
     {
         var lead = NovoLead();
         lead.Converter(Guid.NewGuid(), Agora);
+
+        var r = lead.RegistrarInteracao(RealizadoPorId, "nota", Agora.AddHours(1));
+
+        r.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void RegistrarInteracao_APartirDeDescartado_Falha()
+    {
+        var lead = NovoLead();
+        lead.Descartar(MotivoDescarteLead.SemInteresse, RealizadoPorId, null, Agora);
 
         var r = lead.RegistrarInteracao(RealizadoPorId, "nota", Agora.AddHours(1));
 
@@ -152,7 +163,7 @@ public class LeadEstadoTests
     }
 
     [Fact]
-    public void Converter_APartirDeEstadoTerminal_Falha()
+    public void Converter_APartirDeDescartado_Falha()
     {
         var lead = NovoLead();
         lead.Descartar(MotivoDescarteLead.SemInteresse, RealizadoPorId, null, Agora);
@@ -160,6 +171,19 @@ public class LeadEstadoTests
         var r = lead.Converter(Guid.NewGuid(), Agora.AddHours(1));
 
         r.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Converter_APartirDeConvertido_Falha()
+    {
+        var lead = NovoLead();
+        var alunoIdOriginal = Guid.NewGuid();
+        lead.Converter(alunoIdOriginal, Agora);
+
+        var r = lead.Converter(Guid.NewGuid(), Agora.AddHours(1));
+
+        r.IsFailure.Should().BeTrue();
+        lead.AlunoId.Should().Be(alunoIdOriginal);
     }
 
     [Fact]
@@ -178,7 +202,7 @@ public class LeadEstadoTests
     }
 
     [Fact]
-    public void Descartar_APartirDeEstadoTerminal_Falha()
+    public void Descartar_APartirDeConvertido_Falha()
     {
         var lead = NovoLead();
         lead.Converter(Guid.NewGuid(), Agora);
@@ -186,5 +210,17 @@ public class LeadEstadoTests
         var r = lead.Descartar(MotivoDescarteLead.Outro, RealizadoPorId, null, Agora.AddHours(1));
 
         r.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Descartar_APartirDeDescartado_Falha()
+    {
+        var lead = NovoLead();
+        lead.Descartar(MotivoDescarteLead.SemInteresse, RealizadoPorId, null, Agora);
+
+        var r = lead.Descartar(MotivoDescarteLead.Outro, RealizadoPorId, null, Agora.AddHours(1));
+
+        r.IsFailure.Should().BeTrue();
+        lead.MotivoDescarte.Should().Be(MotivoDescarteLead.SemInteresse);
     }
 }
