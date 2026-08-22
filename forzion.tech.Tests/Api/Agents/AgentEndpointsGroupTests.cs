@@ -24,6 +24,7 @@ public class AgentEndpointsGroupTests
 {
     private const string Segredo = "segredo-atual-com-pelo-menos-32-bytes!!";
     private const string CaminhoDeEco = AgentEndpoints.Prefixo + "/eco";
+    private const string CaminhoQueLancaExcecao = AgentEndpoints.Prefixo + "/lanca-excecao";
     private const string CaminhoForaDoGrupo = "/fora-do-grupo";
 
     public static TheoryData<string, string> CaminhosDoContratoAindaNaoImplementados() => new()
@@ -68,6 +69,8 @@ public class AgentEndpointsGroupTests
         app.MapOpenApi();
         app.MapAgentEndpoints();
         AgentEndpoints.CriarGrupo(app).MapGet("/eco", () => Results.Ok());
+        AgentEndpoints.CriarGrupo(app).MapGet("/lanca-excecao", IResult () =>
+            throw new InvalidOperationException("timeout de conexao com o postgres"));
         app.MapGet(CaminhoForaDoGrupo, () => Results.Ok());
 
         await app.StartAsync();
@@ -134,6 +137,17 @@ public class AgentEndpointsGroupTests
         using var resposta = await EnviarAssinadaAsync(servidor.Cliente, new HttpMethod(metodo), caminho);
 
         resposta.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task EndpointDoGrupoLancaExcecao_RespondeQuinhentosETresComDependencyUnavailable()
+    {
+        await using var servidor = await IniciarAsync();
+
+        using var resposta = await EnviarAssinadaAsync(servidor.Cliente, HttpMethod.Get, CaminhoQueLancaExcecao);
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        (await LerCodeAsync(resposta)).Should().Be("dependency_unavailable");
     }
 
     [Fact]

@@ -41,6 +41,7 @@ public static class AgentEndpoints
     // a superfície. Exposto para o teste montar um endpoint no mesmo grupo que a produção usa.
     internal static RouteGroupBuilder CriarGrupo(IEndpointRouteBuilder endpoints) =>
         endpoints.MapGroup(Prefixo)
+            .AddEndpointFilter<AgentExceptionFilter>()
             .AddEndpointFilter<HmacSignatureFilter>()
             .RequireRateLimiting("agents")
             .AllowAnonymous()
