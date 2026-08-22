@@ -93,6 +93,37 @@ public class PacoteRepositoryTests(InfrastructureTestFixture fixture)
         result[0].Id.Should().Be(ativo.Id);
     }
 
+    // --- ListarPublicosPorTreinadorAsync ---
+
+    [Fact]
+    public async Task ListarPublicosPorTreinadorAsync_ExcluiPrivados()
+    {
+        await using var ctx = fixture.CreateContext();
+        var treinadorId = await SeedTreinadorAsync(ctx);
+        var publico = await SeedPacoteAsync(ctx, treinadorId, $"Publico-{Guid.NewGuid():N}");
+        publico.AtualizarCatalogoPublico("Pilates", null, null, DateTime.UtcNow);
+        publico.TornarPublico(DateTime.UtcNow);
+        await SeedPacoteAsync(ctx, treinadorId, $"Privado-{Guid.NewGuid():N}");
+        await ctx.SaveChangesAsync();
+
+        var result = await Repo(ctx).ListarPublicosPorTreinadorAsync(treinadorId);
+
+        result.Should().ContainSingle();
+        result[0].Id.Should().Be(publico.Id);
+    }
+
+    [Fact]
+    public async Task ListarPublicosPorTreinadorAsync_TreinadorSemPacotePublico_RetornaVazio()
+    {
+        await using var ctx = fixture.CreateContext();
+        var treinadorId = await SeedTreinadorAsync(ctx);
+        await SeedPacoteAsync(ctx, treinadorId, $"Privado-{Guid.NewGuid():N}");
+
+        var result = await Repo(ctx).ListarPublicosPorTreinadorAsync(treinadorId);
+
+        result.Should().BeEmpty();
+    }
+
     // --- ExisteVinculoComPacoteAsync ---
 
     [Fact]

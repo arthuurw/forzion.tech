@@ -35,4 +35,10 @@ public class PacoteRepository(AppDbContext context) : IPacoteRepository
             .Where(p => p.TreinadorId == treinadorId && p.IsAtivo)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<Pacote>> ListarPublicosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
+        await context.Pacotes
+            .Where(p => p.TreinadorId == treinadorId && p.IsPublico)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
 }
