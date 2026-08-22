@@ -276,7 +276,8 @@ export type TipoNotificacao =
   | "LembreteLeve"
   | "Recuperacao"
   | "MarcoStreak"
-  | "DigestTreinador";
+  | "DigestTreinador"
+  | "NovoLead";
 
 export interface NotificacaoResponse {
   id: string;
@@ -562,4 +563,91 @@ export interface AlunoDashboardResponse {
   totalExecucoes: number;
   sessoesPorSemana: SessaoSemanaItem[];
   vinculo: VinculoResumo;
+}
+
+// Espelha os enums C# Domain/Enums/Lead* (JsonStringEnumConverter casa por nome).
+export type LeadStatus = "Novo" | "EmContato" | "Convertido" | "Descartado";
+export type LeadSource = "Agent" | "Manual";
+export type TipoContatoLead = "Email" | "Telefone" | "WhatsApp";
+export type MotivoDescarteLead = "SemInteresse" | "ForaDoPerfil" | "SemResposta" | "Duplicado" | "Outro";
+
+export interface LeadListItem {
+  id: string;
+  nome: string;
+  contatoTipo: TipoContatoLead;
+  contatoValor: string;
+  source: LeadSource;
+  status: LeadStatus;
+  createdAt: string;
+  anonimizado: boolean;
+}
+
+export interface ListarLeadsResponse {
+  items: LeadListItem[];
+  total: number;
+  pagina: number;
+  tamanhoPagina: number;
+}
+
+export interface LeadInteracaoResponse {
+  id: string;
+  ocorridaEm: string;
+  statusAnterior: LeadStatus | null;
+  statusNovo: LeadStatus | null;
+  observacao: string | null;
+  realizadoPorId: string | null;
+}
+
+export interface LeadDetalheResponse {
+  id: string;
+  nome: string;
+  contatoTipo: TipoContatoLead;
+  contatoValor: string;
+  interesse: string | null;
+  consentimentoFinalidade: string;
+  consentimentoConcedidoEm: string;
+  consentimentoRegistradoEm: string;
+  origemUserAgent: string | null;
+  origemAssistente: string | null;
+  source: LeadSource;
+  status: LeadStatus;
+  motivoDescarte: MotivoDescarteLead | null;
+  alunoId: string | null;
+  anonimizado: boolean;
+  ultimoToqueEm: string;
+  createdAt: string;
+  updatedAt: string | null;
+  historico: LeadInteracaoResponse[];
+}
+
+export interface ObterMetricasLeadsResponse {
+  total: number;
+  porOrigemAgente: number;
+  porOrigemManual: number;
+  convertidos: number;
+  taxaConversao: number;
+  porMotivoDescarte: Record<string, number>;
+}
+
+export interface EnviarConviteLeadResponse {
+  enviado: boolean;
+}
+
+export interface ResolverConviteLeadResponse {
+  nome: string;
+  contatoTipo: TipoContatoLead;
+  contatoValor: string;
+  treinadorId: string;
+  treinadorNome: string;
+}
+
+export interface LeadAdminItem {
+  id: string;
+  treinadorId: string;
+  nome: string;
+  contatoTipo: TipoContatoLead;
+  contatoValor: string;
+  status: LeadStatus;
+  anonimizado: boolean;
+  createdAt: string;
 }

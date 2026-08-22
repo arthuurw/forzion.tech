@@ -1,4 +1,7 @@
-import type { DificuldadeTreino, ObjetivoTreino, PagamentoStatus } from "@/types";
+import type {
+  DificuldadeTreino, ObjetivoTreino, PagamentoStatus,
+  LeadStatus, LeadSource, TipoContatoLead, MotivoDescarteLead,
+} from "@/types";
 
 type MuiChipColor = "default" | "success" | "warning" | "error" | "info";
 
@@ -95,4 +98,37 @@ export const PAGAMENTO_STATUS_LABEL: Record<PagamentoStatus, string> = {
   Falhou: "Falhou",
   Estornado: "Estornado",
   EmDisputa: "Em disputa",
+};
+
+export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
+  Novo: "Novo",
+  EmContato: "Em contato",
+  Convertido: "Convertido",
+  Descartado: "Descartado",
+};
+
+export const LEAD_STATUS_COLOR: Record<LeadStatus, MuiChipColor> = {
+  Novo: "info",
+  EmContato: "warning",
+  Convertido: "success",
+  Descartado: "default",
+};
+
+export const LEAD_SOURCE_LABEL: Record<LeadSource, string> = {
+  Agent: "Agente",
+  Manual: "Manual",
+};
+
+export const TIPO_CONTATO_LEAD_LABEL: Record<TipoContatoLead, string> = {
+  Email: "E-mail",
+  Telefone: "Telefone",
+  WhatsApp: "WhatsApp",
+};
+
+export const MOTIVO_DESCARTE_LEAD_LABEL: Record<MotivoDescarteLead, string> = {
+  SemInteresse: "Sem interesse",
+  ForaDoPerfil: "Fora do perfil",
+  SemResposta: "Sem resposta",
+  Duplicado: "Duplicado",
+  Outro: "Outro",
 };
