@@ -12,6 +12,9 @@ public class Lead : IHasDomainEvents
     public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
     public void ClearDomainEvents() => _domainEvents.Clear();
 
+    private readonly List<LeadInteracao> _interacoes = [];
+    public IReadOnlyList<LeadInteracao> Interacoes => _interacoes.AsReadOnly();
+
     public Guid Id { get; private set; }
     public Guid TreinadorId { get; private set; }
     public string Nome { get; private set; } = string.Empty;
@@ -21,14 +24,14 @@ public class Lead : IHasDomainEvents
     public OrigemLead? Origem { get; private set; }
     public LeadSource Source { get; private set; }
     public LeadStatus Status { get; private set; }
-    public MotivoDescarteLead? MotivoDescarte { get; }
-    public Guid? AlunoId { get; }
+    public MotivoDescarteLead? MotivoDescarte { get; private set; }
+    public Guid? AlunoId { get; private set; }
     public string? IdempotencyKey { get; private set; }
     public string? ArgumentosHash { get; private set; }
     public DateTime UltimoToqueEm { get; private set; }
     public bool Anonimizado { get; private set; }
     public DateTime CreatedAt { get; private set; }
-    public DateTime? UpdatedAt { get; }
+    public DateTime? UpdatedAt { get; private set; }
 
     private Lead() { }
 
@@ -78,4 +81,107 @@ public class Lead : IHasDomainEvents
         lead._domainEvents.Add(new LeadCriadoEvent(lead.Id, treinadorId, source, agora));
         return Result.Success(lead);
     }
+
+    public Result MarcarEmContato(Guid realizadoPorId, string? observacao, DateTime agora)
+    {
+        if (Status is LeadStatus.Convertido or LeadStatus.Descartado)
+            return Result.Failure(LeadErrors.EstadoTerminal);
+        if (Status == LeadStatus.EmContato)
+            return Result.Failure(LeadErrors.JaEmContato);
+
+        var interacaoResult = CriarInteracao(Status, LeadStatus.EmContato, observacao, realizadoPorId, agora);
+        if (interacaoResult.IsFailure)
+            return Result.Failure(interacaoResult.Error!);
+
+        Status = LeadStatus.EmContato;
+        _interacoes.Add(interacaoResult.Value);
+        UltimoToqueEm = agora;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
+    public Result RegistrarInteracao(Guid realizadoPorId, string observacao, DateTime agora)
+    {
+        if (Status is LeadStatus.Convertido or LeadStatus.Descartado)
+            return Result.Failure(LeadErrors.EstadoTerminal);
+        if (string.IsNullOrWhiteSpace(observacao))
+            return Result.Failure(LeadErrors.ObservacaoObrigatoria);
+
+        var interacaoResult = CriarInteracao(Status, null, observacao, realizadoPorId, agora);
+        if (interacaoResult.IsFailure)
+            return Result.Failure(interacaoResult.Error!);
+
+        _interacoes.Add(interacaoResult.Value);
+        UltimoToqueEm = agora;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
+    public Result Converter(Guid alunoId, DateTime agora)
+    {
+        if (Status is LeadStatus.Convertido or LeadStatus.Descartado)
+            return Result.Failure(LeadErrors.EstadoTerminal);
+        if (alunoId == Guid.Empty)
+            return Result.Failure(LeadErrors.AlunoIdInvalido);
+
+        var interacaoResult = CriarInteracao(Status, LeadStatus.Convertido, null, null, agora);
+        if (interacaoResult.IsFailure)
+            return Result.Failure(interacaoResult.Error!);
+
+        Status = LeadStatus.Convertido;
+        AlunoId = alunoId;
+        _interacoes.Add(interacaoResult.Value);
+        UltimoToqueEm = agora;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
+    public Result Descartar(MotivoDescarteLead motivo, Guid realizadoPorId, string? observacao, DateTime agora)
+    {
+        if (Status is LeadStatus.Convertido or LeadStatus.Descartado)
+            return Result.Failure(LeadErrors.EstadoTerminal);
+
+        var interacaoResult = CriarInteracao(Status, LeadStatus.Descartado, observacao, realizadoPorId, agora);
+        if (interacaoResult.IsFailure)
+            return Result.Failure(interacaoResult.Error!);
+
+        Status = LeadStatus.Descartado;
+        MotivoDescarte = motivo;
+        _interacoes.Add(interacaoResult.Value);
+        UltimoToqueEm = agora;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
+    private static Result<LeadInteracao> CriarInteracao(LeadStatus? statusAnterior, LeadStatus? statusNovo, string? observacao, Guid? realizadoPorId, DateTime agora)
+    {
+        var observacaoNormalizada = string.IsNullOrWhiteSpace(observacao) ? null : observacao.Trim();
+        if (observacaoNormalizada is not null && observacaoNormalizada.Length > 1000)
+            return Result.Failure<LeadInteracao>(LeadErrors.ObservacaoMuitoLonga);
+
+        return Result.Success(LeadInteracao.Criar(statusAnterior, statusNovo, observacaoNormalizada, realizadoPorId, agora));
+    }
+}
+
+public sealed class LeadInteracao
+{
+    public Guid Id { get; private set; }
+    public DateTime OcorridaEm { get; private set; }
+    public LeadStatus? StatusAnterior { get; private set; }
+    public LeadStatus? StatusNovo { get; private set; }
+    public string? Observacao { get; private set; }
+    public Guid? RealizadoPorId { get; private set; }
+
+    private LeadInteracao() { }
+
+    internal static LeadInteracao Criar(LeadStatus? statusAnterior, LeadStatus? statusNovo, string? observacao, Guid? realizadoPorId, DateTime agora) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            OcorridaEm = agora,
+            StatusAnterior = statusAnterior,
+            StatusNovo = statusNovo,
+            Observacao = observacao,
+            RealizadoPorId = realizadoPorId
+        };
 }
