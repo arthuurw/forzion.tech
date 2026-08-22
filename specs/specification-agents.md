@@ -5,19 +5,23 @@ DOC PARA AGENTES. Fonte de verdade da API interna consumida pelo **Forzion Agent
 Atualizar quando mudar: payload canônico ou qualquer campo que entre nele, ordem de verificação, janela de timestamp, formato do header de assinatura, nomes/semântica dos segredos `Agents:Hmac:*`, tabela domínio→`code`, composição da tag `agents-ready`, policy de rate limit do grupo, ou quando uma fatia (1-4) for entregue. Contrato canônico do wire = `.specs/contracts/forzion-internal-api.v1.yaml` (repo `forzion.tech-agents`, decisão D31) — este arquivo descreve a IMPLEMENTAÇÃO deste lado, não substitui o YAML.
 
 ## 1. O QUE EXISTE HOJE
-Fatia 0 (`agents-f0-hmac`) entregue: grupo de rota + verificação de assinatura + envelope de erro + rate limit + `GET /health`. Os outros cinco caminhos do contrato **não existem** (404 de rota, sem stub, sem 501) — são as fatias 1-4 (§8).
+Fatia 0 (`agents-f0-hmac`) e fatia 1 (`agents-f1-perfil-publico`) entregues: grupo de rota + verificação de assinatura + envelope de erro + rate limit + `GET /health` + `GET business-info` + `GET services` (§6-A). Os outros três caminhos do contrato (`GET availability`, `POST leads`, `POST booking-requests`) **não existem** (404 de rota, sem stub, sem 501) — são as fatias 2-4 (§8).
 
 | Componente | Local | Papel |
 |---|---|---|
-| `AgentEndpoints` | `Api/Endpoints/Agents/AgentEndpoints.cs` | grupo `/internal/agents/v1` + `GET /health` |
+| `AgentEndpoints` | `Api/Endpoints/Agents/AgentEndpoints.cs` | grupo `/internal/agents/v1` + `GET /health` + `GET business-info` + `GET services` |
 | `AgentErrorCode` / `AgentProblem` | `Api/Endpoints/Agents/` | os 9 `code` do contrato + envelope RFC 9457 |
+| `AgentExceptionFilter` | `Api/Endpoints/Agents/AgentExceptionFilter.cs` | captura exceção não tratada em QUALQUER endpoint do grupo, loga real (Error) server-side, responde `503 dependency_unavailable` — nunca o formato PT-BR do `GlobalExceptionHandler` |
 | `CanonicalPayload` | `Api/Endpoints/Agents/Hmac/` | montagem do payload canônico (puro) |
 | `HmacSignatureVerifier` | `Api/Endpoints/Agents/Hmac/` | parse `v1=`, HMAC, constant-time, 2 chaves, janela |
 | `HmacSignatureFilter` | `Api/Endpoints/Agents/Hmac/` | I/O: cap de corpo, buffer verificado, headers, `Problem`, log |
 | `AgentsHmacOptions` / `AddAgentsHmac` | `Api/Configuration/AgentsHmacExtensions.cs` | ligação de `Agents:Hmac` + fail-closed no boot |
 | policy `agents` / tag `agents-ready` | `Api/Extensions/DependencyInjectionExtensions.cs` | 120/min por IP; `db`+`schema` |
+| `AgentTenantGuard` | `Application/UseCases/Agents/AgentTenantGuard.cs` | guard de colapso 404 compartilhado (not-found ∪ inativo ∪ não-publicado) — 1 única implementação para todo handler de leitura não divergir por engano |
+| `ObterBusinessInfoHandler` | `Application/UseCases/Agents/BusinessInfo/` | projeta `Treinador`+`PerfilPublico` publicados pro DTO de wire `BusinessInfo` |
+| `ListarServicosHandler` | `Application/UseCases/Agents/Services/` | projeta `Pacote`s públicos (+ filtro opcional `category`) pro DTO de wire `Service` |
 
-**Proteção vive no GRUPO, não no endpoint** (`MapGroup(...).AddEndpointFilter<HmacSignatureFilter>().RequireRateLimiting("agents").ExcludeFromDescription()`). Endpoint acrescentado ao grupo nasce assinado, com rate limit próprio e fora do OpenAPI, sem declarar nada. Esquecer anotação deixa de ser uma forma de abrir a superfície.
+**Proteção vive no GRUPO, não no endpoint** (`MapGroup(...).AddEndpointFilter<AgentExceptionFilter>().AddEndpointFilter<HmacSignatureFilter>().RequireRateLimiting("agents").ExcludeFromDescription()`). `AgentExceptionFilter` é registrado ANTES do `HmacSignatureFilter` na cadeia de `.AddEndpointFilter<>()` — outermost wrapper, primeiro a executar, cobre até uma exceção hipotética dentro do próprio filtro HMAC. Endpoint acrescentado ao grupo nasce assinado, com rate limit próprio, coberto contra exceção não tratada e fora do OpenAPI, sem declarar nada. Esquecer anotação deixa de ser uma forma de abrir a superfície.
 
 ## 2. PAYLOAD CANÔNICO
 ```
@@ -83,7 +87,7 @@ Envelope `application/problem+json` (RFC 9457) com `type`/`title`/`status`/`code
 | `timestamp_out_of_window` | 401 | assinatura válida e `\|agora − ts\| > 300s` |
 | `validation_failed` | 400 | corpo ≥ 64 KB; validação de request das fatias 1-4 |
 | `tenant_not_found` | 404 | `tenantId` inexistente **ou** fora do escopo (colapso deliberado — não confirma existência) |
-| `service_not_found` | 404 | `Pacote` inexistente/não-público no tenant (fatia 1) |
+| `service_not_found` | 404 | reservado para consulta por serviço único (fatias 3/4 — `serviceId` referenciado em `GET availability`/`POST booking-requests`); **não emitido pela fatia 1** — `GET services` lista, nunca resolve um item, então não há 404 por serviço |
 | `slot_not_found` | 404 | slot derivado que nunca existiu (fatia 3/4) |
 | `slot_unavailable` | 409 | slot existia e lotou/sumiu entre a consulta e o write (fatia 4) |
 | `idempotency_conflict` | 409 | mesma `idempotencyKey` com argumentos diferentes (fatias 2/4) |
@@ -99,6 +103,25 @@ Mensagem interna PT-BR **nunca** vira `detail`. `code` NUNCA sai de `ToString()`
 - `Healthy` ⇒ `200 {"status":"healthy","checkedAt":<ISO 8601>}`; `Degraded` ⇒ `200 "degraded"`; `Unhealthy` ⇒ **`503` + `Problem{code=dependency_unavailable}`**. Consequência registrada: o valor `unhealthy` do enum `HealthStatus` do contrato é **inalcançável por desenho** — o 503 é o sinal mais forte e é o que o contrato lista.
 - Resposta não expõe nome de check, descrição, mensagem de exceção nem dado de infra: só o status agregado e o instante.
 - `checkedAt` vem do `TimeProvider` do servidor, **nunca ecoado do cliente**.
+
+## 6-A. ENDPOINTS DE LEITURA — FATIA 1 (`GET business-info`, `GET services`)
+
+Ambos vivem no MESMO grupo `/internal/agents/v1`, herdam HMAC + `AgentExceptionFilter` + rate limit sem declarar nada. `tenantId` = `Treinador.Id` (D1).
+
+**Bind de `tenantId`**: manual como `string` + `Guid.TryParse` no próprio endpoint — NUNCA o model-binding automático do ASP.NET Core para `Guid` (esse erraria fora do envelope `AgentProblem`, quebrando o contrato). Malformado ⇒ `400 validation_failed`.
+
+**Guard de colapso 404 (`AgentTenantGuard.EstaPublicado`)**: `treinador is null || treinador.Status != Ativo || !treinador.PerfilPublico.IsPublicado` ⇒ **1 única branch**, `tenant_not_found` — tenant inexistente, treinador inativo e perfil não-publicado respondem byte-a-byte idêntico (mesmo `detail` fixo). Divergir confirmaria a um chamador não autorizado que o tenant existe (mesma defesa IDOR do vínculo aluno-treinador). Compartilhado pelos dois handlers — nunca reimplementado por handler.
+
+### `GET /tenants/{tenantId}/business-info`
+- `200` com `BusinessInfoResponse`: `name` (=`PerfilPublico.NomeFantasia`), `modalities` (ver abaixo), `address`/`openingHours`/`policies` **omitidos do JSON** (`JsonIgnore(WhenWritingNull)`, não serializados como `null` nem `{}`) quando o dado correspondente é nulo/vazio. `plans` **nunca populado — nem existe como propriedade do DTO** (fora de escopo, ver `spec.md` da fatia).
+- `modalities` = `Categoria` distintos (case-insensitive, preserva a 1ª grafia encontrada) dos `Pacote` do treinador com `IsPublico=true`. Lista vazia (`[]`) quando não há nenhum pacote público — **`200`, nunca `404`**: treinador publicado sem catálogo é estado válido (AGF1-05).
+- 404 pelo guard de colapso acima.
+
+### `GET /tenants/{tenantId}/services`
+- `200` com array de `ServiceResponse` (um por `Pacote` público): `id`=`Pacote.Id.ToString()`, `name`, `category`, `description`, `durationMinutes`, `price`={`amount`=`Pacote.Preco`, `currency`="BRL"} **sempre presente mesmo quando `Preco=0`**, `trialAvailable`.
+- Query opcional `category`: filtro case-insensitive (`OrdinalIgnoreCase`) sobre `Pacote.Categoria`, aplicado em memória após `IPacoteRepository.ListarPublicosPorTreinadorAsync` já ter restringido a `IsPublico=true` — filtro de categoria NUNCA contorna o filtro de público. `> 100` caracteres ⇒ `400 validation_failed` (validado no endpoint, antes de chamar o handler).
+- Catálogo vazio, com ou sem filtro `category` — `200 []`, **nunca `404`/`503`** só por catálogo vazio.
+- 404 pelo mesmo guard de colapso do `business-info` (`AgentTenantGuard`, não duplicado).
 
 ## 7. BORDA / RATE LIMIT / SUPERFÍCIE
 - **GOTCHA nginx (D5) — NÃO É O CAMINHO ATIVO (decisão 2026-08-19, AD-016).** O design original (D5) presumia o gateway atravessando o nginx público; **decisão do usuário inverteu essa premissa**: `location /internal/ { return 404; }` (F3) fica INTOCADO — o gateway alcança por rede privada, mesma postura dos crons ([specification-infrastructure] §Workflows de billing/cron), nunca pela borda pública. Isolamento de rede + HMAC, não HMAC como única barreira de um endpoint internet-facing. Mecanismo exato de acesso privado (peer Tailscale dedicado, reuso do padrão SSH+`docker compose exec`, outro) é provisionamento de infra ainda não decidido — fora do escopo desta fatia. O gotcha de reescrita/normalização do payload (abaixo) permanece TECNICAMENTE válido caso a decisão mude no futuro, mas não é risco ativo hoje. **AGF0-37** ("verificação através do caminho de rede real") continua ⏳ pendente — bloqueado por essa decisão de infra, não só por deploy ainda não ter ocorrido (lição L-007 é o caso normal; aqui há também o provisionamento em aberto).
@@ -118,7 +141,7 @@ Mensagem interna PT-BR **nunca** vira `detail`. `code` NUNCA sai de `ToString()`
 | # | Fatia | Entrega | Endpoints | Design-review |
 |---|---|---|---|---|
 | 0 | `agents-f0-hmac` | HMAC + `Problem`/`code` + rate limit + grupo | `GET /health` | sim (auth) — **FEITA** |
-| 1 | catálogo público | `PerfilPublico` novo + `Pacote` com `Categoria`/`DuracaoMinutos`/`TrialDisponivel`/`IsPublico` (nasce `false`) + UI do treinador | `GET business-info`, `GET services` | não |
+| 1 | catálogo público | `PerfilPublico` novo + `Pacote` com `Categoria`/`DuracaoMinutos`/`TrialDisponivel`/`IsPublico` (nasce `false`) + UI do treinador | `GET business-info`, `GET services` | não — **FEITA** |
 | 2 | leads | `Lead` + esteira completa (lista, filtros, histórico, conversão→aluno, métricas) + idempotência | `POST leads` | **sim** (PII/LGPD) |
 | 3 | agenda | `JanelaAtendimento` + `BloqueioAgenda` + UI; slots DERIVADOS no read, `slotId` = hash determinístico de `(TreinadorId, PacoteId, inícioUTC)` | `GET availability` | não |
 | 4 | agendamento | `SolicitacaoAgendamento` + esteira (confirmar→compromisso, recusar) | `POST booking-requests` | **sim** (concorrência) |

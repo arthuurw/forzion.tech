@@ -472,7 +472,7 @@ Contrato completo (rotas, request/response, códigos de erro): UI **Scalar** em 
 | Suporte | `/suporte` | JWT | Abertura de ticket de suporte |
 | Webhooks | `/webhooks/*` | público, verificação por assinatura · `webhook`, body ≤64 KB | Stripe (`Stripe-Signature`), Resend (Svix), WhatsApp (handshake Meta + `X-Hub-Signature-256`) |
 | Internal | `/internal/*` | `X-Internal-Key` · `internal` | Jobs de cron: renovações, pré-avisos, engajamento, reconciliação Stripe (503 se truncada), graça/apara de limite de alunos, elegibilidade/purga LGPD |
-| Agentes (gateway) | `/internal/agents/v1` | assinatura HMAC (`X-Forzion-Signature`/`X-Forzion-Timestamp`) · `agents` | Consumida por gateway externo de agentes, não pela borda pública. Só `GET /health` implementado (fatia 0); os demais 5 caminhos do contrato são 404 por desenho — ver `specs/specification-agents.md` |
+| Agentes (gateway) | `/internal/agents/v1` | assinatura HMAC (`X-Forzion-Signature`/`X-Forzion-Timestamp`) · `agents` | Consumida por gateway externo de agentes, não pela borda pública. `GET /health`, `GET .../business-info`, `GET .../services` implementados (fatias 0-1); os demais 3 caminhos do contrato são 404 por desenho — ver `specs/specification-agents.md` |
 | Infra | `/health`, `/health/ready` | — | Liveness / readiness (db + schema + integrações) |
 
 ---
