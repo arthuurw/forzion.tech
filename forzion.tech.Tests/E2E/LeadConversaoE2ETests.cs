@@ -6,12 +6,14 @@ using FluentAssertions;
 using forzion.tech.Api.Filters;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace forzion.tech.Tests.E2E;
 
@@ -95,6 +97,103 @@ public class LeadConversaoE2ETests(RealPipelineFixture fixture)
 
         var vinculoSegundo = await db.VinculosTreinadorAluno.SingleAsync(v => v.AlunoId == segundoAlunoId);
         vinculoSegundo.TreinadorId.Should().Be(treinadorId, "sem convite válido, usa o treinadorId enviado pelo cliente");
+    }
+
+    // Prova de atomicidade contra Postgres real (AGF2-41/43): o pacote é apagado por fora
+    // (conexao/transacao separada, ja commitada) depois que o handler ja leu e validou o
+    // pacote e ja mutou Convite.Consumir()/Lead.Converter() em memoria — o INSERT do vinculo,
+    // na mesma SaveChangesAsync que carrega essas mutacoes, esbarra na FK real e todo o
+    // batch reverte junto, nao só o vinculo.
+    [Fact]
+    public async Task Lead_Convite_Cadastro_FalhaRealDePostgresAposConverterLead_NaoPersisteNadaDaConversao()
+    {
+        var treinadorId = await TreinadorAprovadoComPlanoAsync();
+        var treinador = ClienteComToken(await LoginTokenAsync(_emailPorTreinador[treinadorId]));
+        var pacoteId = await CriarPacoteAsync(treinador);
+        var leadId = await SeedLeadAsync(treinadorId, "lead-rollback@e2e.test");
+
+        var emitirConvite = await treinador.PostAsync($"/treinador/leads/{leadId}/convite", null);
+        emitirConvite.StatusCode.Should().Be(HttpStatusCode.OK);
+        var tokenCru = fixture.LeadConviteSenderSpy.UltimoTokenCapturado;
+        tokenCru.Should().NotBeNullOrEmpty();
+
+        var emailAluno = $"aluno-rollback-{Guid.NewGuid():N}@e2e.test";
+
+        using var scope = fixture.Services.CreateScope();
+        var sp = scope.ServiceProvider;
+        var pacoteRepoQueApagaAoLer = new PacoteRepositoryApagandoAposLer(
+            sp.GetRequiredService<IPacoteRepository>(),
+            fixture.Services.GetRequiredService<IServiceScopeFactory>());
+
+        var handler = new RegistrarAlunoHandler(
+            sp.GetRequiredService<IContaRepository>(),
+            sp.GetRequiredService<IAlunoRepository>(),
+            sp.GetRequiredService<IVinculoTreinadorAlunoRepository>(),
+            sp.GetRequiredService<ITreinadorRepository>(),
+            pacoteRepoQueApagaAoLer,
+            sp.GetRequiredService<IPasswordHasher>(),
+            sp.GetRequiredService<IUnitOfWork>(),
+            sp.GetRequiredService<ILogAprovacaoRepository>(),
+            sp.GetRequiredService<FluentValidation.IValidator<RegistrarAlunoCommand>>(),
+            sp.GetRequiredService<LeadConviteResolver>(),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<ILogger<RegistrarAlunoHandler>>());
+
+        var command = new RegistrarAlunoCommand(
+            emailAluno, SenhaPadrao, "Aluno Rollback", Guid.NewGuid(), pacoteId, ConviteToken: tokenCru);
+
+        var act = async () => await handler.HandleAsync(command);
+        await act.Should().ThrowAsync<DbUpdateException>();
+
+        using var verifyScope = fixture.Services.CreateScope();
+        var verifySp = verifyScope.ServiceProvider;
+        var verifyDb = verifySp.GetRequiredService<AppDbContext>();
+
+        var leadPersistido = await verifyDb.Leads.AsNoTracking().SingleAsync(l => l.Id == leadId);
+        leadPersistido.Status.Should().Be(LeadStatus.Novo, "a conversao inteira deve reverter, nao so o vinculo");
+        leadPersistido.AlunoId.Should().BeNull();
+
+        var convitePersistido = await verifyDb.LeadConvites.AsNoTracking().SingleAsync(c => c.LeadId == leadId);
+        convitePersistido.UsadoEm.Should().BeNull("o consumo do convite faz parte da mesma transacao revertida");
+
+        var contaCriada = await verifySp.GetRequiredService<IContaRepository>()
+            .ObterPorEmailAsync(emailAluno.Trim().ToLowerInvariant());
+        contaCriada.Should().BeNull("nenhuma Conta/Aluno deve sobreviver a reversao");
+    }
+
+    private sealed class PacoteRepositoryApagandoAposLer(
+        IPacoteRepository interno, IServiceScopeFactory scopeFactoryDeOutraConexao) : IPacoteRepository
+    {
+        public async Task<Pacote?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var pacote = await interno.ObterPorIdAsync(id, cancellationToken).ConfigureAwait(false);
+            if (pacote is not null)
+            {
+                using var scopeApagador = scopeFactoryDeOutraConexao.CreateScope();
+                var dbApagador = scopeApagador.ServiceProvider.GetRequiredService<AppDbContext>();
+                await dbApagador.Database
+                    .ExecuteSqlInterpolatedAsync($"DELETE FROM pacotes WHERE id = {id}", cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            return pacote;
+        }
+
+        public Task<IReadOnlyList<Pacote>> ListarPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
+            interno.ListarPorTreinadorAsync(treinadorId, cancellationToken);
+
+        public Task AdicionarAsync(Pacote pacote, CancellationToken cancellationToken = default) =>
+            interno.AdicionarAsync(pacote, cancellationToken);
+
+        public void Remover(Pacote pacote) => interno.Remover(pacote);
+
+        public Task<bool> ExisteVinculoComPacoteAsync(Guid pacoteId, CancellationToken cancellationToken = default) =>
+            interno.ExisteVinculoComPacoteAsync(pacoteId, cancellationToken);
+
+        public Task<IReadOnlyList<Pacote>> ListarAtivosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
+            interno.ListarAtivosPorTreinadorAsync(treinadorId, cancellationToken);
+
+        public Task<IReadOnlyList<Pacote>> ListarPublicosPorTreinadorAsync(Guid treinadorId, CancellationToken cancellationToken = default) =>
+            interno.ListarPublicosPorTreinadorAsync(treinadorId, cancellationToken);
     }
 
     // --- Helpers (mesmo padrão duplicado dos outros E2E — sem base compartilhada no repo) ---
