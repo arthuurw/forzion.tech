@@ -504,7 +504,7 @@ public class ExportarDadosPessoaisHandlerTests
     [Fact]
     public void DadosPessoaisExport_NaoExpoeCredencialOuSegredoMfa()
     {
-        var proibidos = new[] { "secret", "senha", "password", "recovery", "totp", "tokenhash", "codigohash" };
+        var proibidos = new[] { "secret", "senha", "password", "recovery", "totp", "tokenhash", "codigohash", "lead" };
 
         var tipos = new[]
         {
@@ -517,6 +517,54 @@ public class ExportarDadosPessoaisHandlerTests
         var nomes = tipos.SelectMany(t => t.GetProperties()).Select(p => p.Name.ToLowerInvariant());
 
         nomes.Should().NotContain(n => proibidos.Any(n.Contains));
+    }
+
+    [Fact]
+    public void ExportarDadosPessoaisHandler_NaoDependeDeLeadRepository()
+    {
+        // Guard estrutural (AGF2-33): leads são dado de terceiro, não do próprio titular.
+        // Se algum dia alguém injetar ILeadRepository aqui, este teste falha antes de qualquer
+        // propriedade de export vazar PII de lead.
+        typeof(ExportarDadosPessoaisHandler).GetConstructors().Single().GetParameters()
+            .Should().NotContain(p => p.ParameterType.Name.Contains("Lead"));
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorComLeadsNaBase_ExportNaoContemNomeOuContatoDoLead()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarConta(TipoConta.Treinador);
+        var treinador = Treinador.Criar(contaId, "Titular", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(treinador);
+        _vinculoRepo.Setup(r => r.ListarTodosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync([]);
+        _pacoteRepo.Setup(r => r.ListarPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
+                   .ReturnsAsync([]);
+        _treinoRepo.Setup(r => r.ListarPorTreinadorAsync(treinador.Id, 1, int.MaxValue, It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                   .ReturnsAsync((new List<(Treino Treino, string? NomeAluno)>().AsReadOnly() as IReadOnlyList<(Treino Treino, string? NomeAluno)>, 0));
+        SetupEmailLogs(conta.Email.Value);
+        SetupLogAprovacao();
+
+        // O lead abaixo NUNCA é passado pro handler — ele não conhece ILeadRepository.
+        // Existe aqui só pra provar, textualmente, o que a exportação deveria omitir.
+        var leadNomeSentinela = "Fulano Lead Nunca Deveria Aparecer";
+        var leadContatoSentinela = "lead-nao-deveria-vazar@example.com";
+        Lead.Criar(
+            treinador.Id, leadNomeSentinela,
+            ContatoLead.Criar(TipoContatoLead.Email, leadContatoSentinela).Value,
+            null, ConsentimentoLead.Criar("Contato comercial", TestData.Agora, TestData.Agora).Value,
+            null, LeadSource.Agent, null, null, TestData.Agora);
+
+        var result = await _handler.HandleAsync(new ExportarDadosPessoaisCommand(contaId, contaId));
+
+        result.IsSuccess.Should().BeTrue();
+        var json = System.Text.Json.JsonSerializer.Serialize(result.Value);
+        json.Should().NotContain(leadNomeSentinela);
+        json.Should().NotContain(leadContatoSentinela);
     }
 
     [Fact]
