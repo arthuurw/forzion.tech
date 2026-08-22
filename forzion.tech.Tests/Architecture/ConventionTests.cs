@@ -24,6 +24,7 @@ public class ConventionTests
         "Registrar",
         "CriarAssinatura",
         "CriarComissao",
+        "CriarVazio",
     };
 
     private static IEnumerable<Type> EntidadesDeDominio() =>
