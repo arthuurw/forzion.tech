@@ -30,10 +30,10 @@ public class LeadAnonimizarTests
 
         r.IsSuccess.Should().BeTrue();
         lead.Anonimizado.Should().BeTrue();
-        lead.Nome.Should().NotBe("Fulano");
-        lead.Contato.Valor.Should().NotBe("lead@example.com");
+        lead.Nome.Should().Be("Lead anonimizado");
+        lead.Contato.Valor.Should().Be("[anonimizado]");
         lead.Interesse.Should().BeNull();
-        lead.Consentimento.Finalidade.Should().NotBe("Contato comercial");
+        lead.Consentimento.Finalidade.Should().Be("[anonimizado]");
     }
 
     [Fact]
@@ -43,7 +43,7 @@ public class LeadAnonimizarTests
 
         lead.Anonimizar(Agora.AddDays(180));
 
-        lead.Interacoes.Should().OnlyContain(i => i.Observacao == null || i.Observacao != "liguei ontem");
+        lead.Interacoes.Should().ContainSingle().Which.Observacao.Should().Be("[anonimizado]");
     }
 
     [Fact]
