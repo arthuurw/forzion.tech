@@ -23,6 +23,7 @@ public class AnonimizarContaHandler(
     IAlunoRepository alunoRepository,
     ITreinadorRepository treinadorRepository,
     IVinculoTreinadorAlunoRepository vinculoRepository,
+    ILeadRepository leadRepository,
     IExecucaoTreinoRepository execucaoTreinoRepository,
     IAssinanteRepository assinanteRepository,
     IEmailDeliveryLogRepository emailDeliveryLogRepository,
@@ -141,6 +142,8 @@ public class AnonimizarContaHandler(
                     var treinadorResult = treinador.Anonimizar(agora);
                     if (treinadorResult.IsFailure)
                         return treinadorResult;
+
+                    await leadRepository.AnonimizarPorTreinadorAsync(treinador.Id, agora, cancellationToken).ConfigureAwait(false);
                 }
             }
 

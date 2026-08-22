@@ -18,6 +18,7 @@ public class AnonimizarContaHandlerTests
     private readonly Mock<IAlunoRepository> _alunoRepo = new();
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IVinculoTreinadorAlunoRepository> _vinculoRepo = new();
+    private readonly Mock<ILeadRepository> _leadRepo = new();
     private readonly Mock<IExecucaoTreinoRepository> _execucaoRepo = new();
     private readonly Mock<IAssinaturaAlunoRepository> _assinaturaRepo = new();
     private readonly Mock<IAssinanteRepository> _assinanteRepo = new();
@@ -76,6 +77,7 @@ public class AnonimizarContaHandlerTests
             _alunoRepo.Object,
             _treinadorRepo.Object,
             _vinculoRepo.Object,
+            _leadRepo.Object,
             _execucaoRepo.Object,
             _assinanteRepo.Object,
             _emailLogRepo.Object,
@@ -436,6 +438,47 @@ public class AnonimizarContaHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         _trocaEmailTokenRepo.Verify(r => r.ExcluirPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Treinador_CascateiaAnonimizacaoDeLeadsNaMesmaTransacao()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Treinador, "treinador@leads.com");
+        var treinador = Treinador.Criar(contaId, "Coach Com Leads", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(treinador);
+        _vinculoRepo.Setup(r => r.TemVinculosAtivosAsync(treinador.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(false);
+        _leadRepo.Setup(r => r.AnonimizarPorTreinadorAsync(treinador.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(3);
+
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsSuccess.Should().BeTrue();
+        _leadRepo.Verify(r => r.AnonimizarPorTreinadorAsync(treinador.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Aluno_NaoTocaEmLeads()
+    {
+        var contaId = Guid.NewGuid();
+        var conta = CriarContaComHash(TipoConta.Aluno, "aluno@semleads.com");
+        var aluno = Aluno.Criar(contaId, "Aluno Sem Leads", TestData.Agora).Value;
+
+        _contaRepo.Setup(r => r.ObterPorIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(conta);
+        _alunoRepo.Setup(r => r.ObterPorContaIdAsync(contaId, It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(aluno);
+
+        var result = await _handler.HandleAsync(new AnonimizarContaCommand(contaId, contaId, SenhaCorreta));
+
+        result.IsSuccess.Should().BeTrue();
+        _leadRepo.Verify(r => r.AnonimizarPorTreinadorAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ── admin bypass ──────────────────────────────────────────────────────────

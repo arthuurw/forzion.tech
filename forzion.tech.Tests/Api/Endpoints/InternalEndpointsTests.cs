@@ -33,7 +33,7 @@ public class InternalEndpointsTests(InternalEndpointsTests.InternalWebFactory fa
 
         public Mock<AnonimizarContaHandler> AnonimizarMock { get; } = new(
             Mock.Of<IContaRepository>(), Mock.Of<IAlunoRepository>(), Mock.Of<ITreinadorRepository>(),
-            Mock.Of<IVinculoTreinadorAlunoRepository>(), Mock.Of<IExecucaoTreinoRepository>(),
+            Mock.Of<IVinculoTreinadorAlunoRepository>(), Mock.Of<ILeadRepository>(), Mock.Of<IExecucaoTreinoRepository>(),
             Mock.Of<IAssinanteRepository>(), Mock.Of<IEmailDeliveryLogRepository>(),
             Mock.Of<IWhatsAppDeliveryLogRepository>(), Mock.Of<IMensagemSuporteRepository>(),
             Mock.Of<ILogAprovacaoRepository>(),

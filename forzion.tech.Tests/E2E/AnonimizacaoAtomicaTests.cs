@@ -56,6 +56,7 @@ public class AnonimizacaoAtomicaTests(RealPipelineFixture fixture)
             sp.GetRequiredService<IAlunoRepository>(),
             sp.GetRequiredService<ITreinadorRepository>(),
             sp.GetRequiredService<IVinculoTreinadorAlunoRepository>(),
+            sp.GetRequiredService<ILeadRepository>(),
             sp.GetRequiredService<IExecucaoTreinoRepository>(),
             sp.GetRequiredService<IAssinanteRepository>(),
             sp.GetRequiredService<IEmailDeliveryLogRepository>(),
@@ -88,5 +89,76 @@ public class AnonimizacaoAtomicaTests(RealPipelineFixture fixture)
         logPersistido.RecipientEmailHash.Should().Be(emailHash, "scrub via ExecuteUpdate deve ter sido revertido com a transação");
         var contaPersistida = await verifyDb.Contas.AsNoTracking().FirstAsync(c => c.Id == contaId);
         contaPersistida.AnonimizadaEm.Should().BeNull("anonimização é all-or-nothing");
+    }
+
+    [Fact]
+    public async Task Anonimizar_TreinadorFalhaNoLogAuditoria_NaoDeixaLeadAnonimizadoOrfao()
+    {
+        var email = $"atomtreinador{Guid.NewGuid():N}@e2e.test";
+        Guid contaId;
+        Guid leadId;
+
+        using (var seedScope = fixture.Services.CreateScope())
+        {
+            var seedDb = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var contaSeed = Conta.Criar(Email.Criar(email).Value, "$2a$12$x", TipoConta.Treinador, DateTime.UtcNow, emitirRegistro: false).Value;
+            contaId = contaSeed.Id;
+            seedDb.Contas.Add(contaSeed);
+            var treinadorSeed = Treinador.Criar(contaId, "Treinador Atomico", DateTime.UtcNow).Value;
+            seedDb.Treinadores.Add(treinadorSeed);
+            var leadSeed = Lead.Criar(
+                treinadorSeed.Id, "Lead Atomico",
+                ContatoLead.Criar(TipoContatoLead.Email, "lead-atomico@e2e.test").Value,
+                null,
+                ConsentimentoLead.Criar("Contato comercial", DateTime.UtcNow, DateTime.UtcNow).Value,
+                null, LeadSource.Agent, null, null, DateTime.UtcNow).Value;
+            leadId = leadSeed.Id;
+            seedDb.Set<Lead>().Add(leadSeed);
+            await seedDb.SaveChangesAsync();
+        }
+
+        using var scope = fixture.Services.CreateScope();
+        var sp = scope.ServiceProvider;
+        var db = sp.GetRequiredService<AppDbContext>();
+
+        var logFalho = new Mock<ILogAprovacaoRepository>();
+        logFalho.Setup(r => r.AdicionarAsync(It.IsAny<LogAprovacao>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("falha simulada no log de auditoria"));
+
+        var handler = new AnonimizarContaHandler(
+            sp.GetRequiredService<IContaRepository>(),
+            sp.GetRequiredService<IAlunoRepository>(),
+            sp.GetRequiredService<ITreinadorRepository>(),
+            sp.GetRequiredService<IVinculoTreinadorAlunoRepository>(),
+            sp.GetRequiredService<ILeadRepository>(),
+            sp.GetRequiredService<IExecucaoTreinoRepository>(),
+            sp.GetRequiredService<IAssinanteRepository>(),
+            sp.GetRequiredService<IEmailDeliveryLogRepository>(),
+            sp.GetRequiredService<IWhatsAppDeliveryLogRepository>(),
+            sp.GetRequiredService<IMensagemSuporteRepository>(),
+            logFalho.Object,
+            sp.GetRequiredService<IPasswordHasher>(),
+            db,
+            db,
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<IUserContext>(),
+            sp.GetRequiredService<ITokenRevogadoRepository>(),
+            sp.GetRequiredService<IDatabaseErrorInspector>(),
+            sp.GetRequiredService<IRefreshTokenFamilyRepository>(),
+            sp.GetRequiredService<IContaMfaRepository>(),
+            sp.GetRequiredService<IMfaRecoveryCodeRepository>(),
+            sp.GetRequiredService<IMfaChallengeRepository>(),
+            sp.GetRequiredService<ITrustedDeviceRepository>(),
+            sp.GetRequiredService<IPasswordResetTokenRepository>(),
+            sp.GetRequiredService<ITrocaEmailTokenRepository>());
+
+        var act = async () => await handler.HandleAsync(new AnonimizarContaCommand(contaId, Guid.NewGuid()));
+        await act.Should().ThrowAsync<InvalidOperationException>();
+
+        using var verifyScope = fixture.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var leadPersistido = await verifyDb.Leads.AsNoTracking().FirstAsync(l => l.Id == leadId);
+        leadPersistido.Anonimizado.Should().BeFalse("o scrub do lead, feito no change tracker, não pode sobreviver a um rollback");
+        leadPersistido.Nome.Should().Be("Lead Atomico");
     }
 }
