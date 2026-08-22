@@ -7,6 +7,7 @@ public class LimparTokensRevogadosService(
     ILogger<LimparTokensRevogadosService> logger) : BackgroundService
 {
     private const int RetencaoNotificacaoDias = 90;
+    private const int RetencaoLeadSemToqueDias = 180;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -119,6 +120,33 @@ public class LimparTokensRevogadosService(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Erro ao limpar notificações além da retenção.");
+        }
+
+        try
+        {
+            var leadRepo = scope.ServiceProvider.GetRequiredService<ILeadRepository>();
+            var agora = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
+            var cutoff = agora.AddDays(-RetencaoLeadSemToqueDias);
+            var leadsAnonimizados = await leadRepo.AnonimizarInativosAsync(cutoff, agora, stoppingToken).ConfigureAwait(false);
+            if (leadsAnonimizados > 0)
+                logger.LogInformation("Anonimização de leads (retenção {Dias}d sem toque): {Count} registros.", RetencaoLeadSemToqueDias, leadsAnonimizados);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Erro ao anonimizar leads além da retenção.");
+        }
+
+        try
+        {
+            var conviteRepo = scope.ServiceProvider.GetRequiredService<ILeadConviteRepository>();
+            var agora = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
+            var convitesRemovidos = await conviteRepo.LimparExpiradosOuConsumidosAsync(agora, stoppingToken).ConfigureAwait(false);
+            if (convitesRemovidos > 0)
+                logger.LogInformation("Limpeza de convites de lead expirados/consumidos: {Count} registros removidos.", convitesRemovidos);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Erro ao limpar convites de lead expirados/consumidos.");
         }
     }
 }

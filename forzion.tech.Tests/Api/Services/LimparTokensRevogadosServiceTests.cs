@@ -17,6 +17,8 @@ public class LimparTokensRevogadosServiceTests
     private readonly Mock<ITrocaEmailTokenRepository> _trocaEmailTokenRepo = new();
     private readonly Mock<IErrorLogRepository> _errorLogRepo = new();
     private readonly Mock<INotificacaoRepository> _notificacaoRepo = new();
+    private readonly Mock<ILeadRepository> _leadRepo = new();
+    private readonly Mock<ILeadConviteRepository> _leadConviteRepo = new();
 
     private LimparTokensRevogadosService CriarService(TimeProvider? timeProvider = null)
     {
@@ -28,6 +30,8 @@ public class LimparTokensRevogadosServiceTests
         services.AddScoped(_ => _trocaEmailTokenRepo.Object);
         services.AddScoped(_ => _errorLogRepo.Object);
         services.AddScoped(_ => _notificacaoRepo.Object);
+        services.AddScoped(_ => _leadRepo.Object);
+        services.AddScoped(_ => _leadConviteRepo.Object);
         services.AddSingleton(timeProvider ?? TimeProvider.System);
         return new LimparTokensRevogadosService(
             services.BuildServiceProvider(),
@@ -123,5 +127,57 @@ public class LimparTokensRevogadosServiceTests
         await CriarService().LimparAsync(CancellationToken.None);
 
         _notificacaoRepo.Verify(r => r.PurgarAntesDeAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task LimparAsync_AnonimizaLeadsComCutoffDe180DiasEPurgaConvites()
+    {
+        var agora = new DateTimeOffset(2026, 8, 1, 12, 0, 0, TimeSpan.Zero);
+        DateTime cutoffCapturado = default;
+        _leadRepo.Setup(r => r.AnonimizarInativosAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Callback<DateTime, DateTime, CancellationToken>((cutoff, _, _) => cutoffCapturado = cutoff)
+            .ReturnsAsync(2);
+        _leadConviteRepo.Setup(r => r.LimparExpiradosOuConsumidosAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(4);
+
+        await CriarService(new FakeTimeProvider(agora)).LimparAsync(CancellationToken.None);
+
+        _leadRepo.Verify(r => r.AnonimizarInativosAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        _leadConviteRepo.Verify(r => r.LimparExpiradosOuConsumidosAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        cutoffCapturado.Should().Be(agora.UtcDateTime.AddDays(-180));
+    }
+
+    [Fact]
+    public async Task LimparAsync_FalhaNaAnonimizacaoDeLeads_NaoPulaPurgaDeConvites()
+    {
+        _leadRepo.Setup(r => r.AnonimizarInativosAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("db down"));
+        _leadConviteRepo.Setup(r => r.LimparExpiradosOuConsumidosAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        await CriarService().LimparAsync(CancellationToken.None);
+
+        _leadConviteRepo.Verify(r => r.LimparExpiradosOuConsumidosAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task LimparAsync_FalhaNaPurgaDeConvites_NaoQuebraOCiclo()
+    {
+        _leadConviteRepo.Setup(r => r.LimparExpiradosOuConsumidosAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("db down"));
+
+        var act = async () => await CriarService().LimparAsync(CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task LimparAsync_FalhaNasNotificacoes_NaoPulaAnonimizacaoDeLeads()
+    {
+        _notificacaoRepo.Setup(r => r.PurgarAntesDeAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("db down"));
+        _leadRepo.Setup(r => r.AnonimizarInativosAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        await CriarService().LimparAsync(CancellationToken.None);
+
+        _leadRepo.Verify(r => r.AnonimizarInativosAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 }
