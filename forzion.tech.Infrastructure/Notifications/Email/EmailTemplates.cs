@@ -559,6 +559,23 @@ internal static class EmailTemplates
             </a>
             """);
 
+    public static string ConviteLead(string nomeLead, string nomeTreinador, string link) =>
+        Layout(
+            "Convite para se cadastrar",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeLead)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              <strong>{Enc(nomeTreinador)}</strong> te convidou para se cadastrar na forzion.tech.
+            </p>
+            <a href="{Enc(link)}"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Completar cadastro
+            </a>
+            <p style="color:#999;font-size:12px;margin-top:16px">
+              Este link expira em 14 dias e só pode ser usado uma vez.
+            </p>
+            """);
+
     public static string AlunoCancelouAssinatura(string nomeTreinador, string nomeAluno, decimal valor)
     {
         var ptBr = CultureInfo.GetCultureInfo("pt-BR");

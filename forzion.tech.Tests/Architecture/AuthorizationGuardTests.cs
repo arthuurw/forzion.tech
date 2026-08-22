@@ -38,6 +38,7 @@ public class AuthorizationGuardTests
         "DespacharPreAvisosAlunoHandler",
         "DespacharPreAvisosTreinadorHandler",
         "DigestTreinadorHandler",
+        "EnviarConviteLeadHandler",
         "ExcluirContaTesteHandler",
         "ExcluirPacoteHandler",
         "ExcluirTreinadorHandler",

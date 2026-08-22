@@ -453,6 +453,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<forzion.tech.Application.UseCases.Leads.AtualizarStatusLead.AtualizarStatusLeadHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Leads.RegistrarInteracao.RegistrarInteracaoLeadHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Leads.ObterMetricas.ObterMetricasLeadsHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Leads.EnviarConvite.EnviarConviteLeadHandler>();
 
         services.AddScoped<IniciarOnboardingTreinadorHandler>();
         services.AddScoped<VerificarOnboardingTreinadorHandler>();
