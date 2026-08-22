@@ -84,6 +84,8 @@ public class Lead : IHasDomainEvents
 
     public Result MarcarEmContato(Guid realizadoPorId, string? observacao, DateTime agora)
     {
+        if (Anonimizado)
+            return Result.Failure(LeadErrors.Anonimizado);
         if (Status is LeadStatus.Convertido or LeadStatus.Descartado)
             return Result.Failure(LeadErrors.EstadoTerminal);
         if (Status == LeadStatus.EmContato)
@@ -102,6 +104,8 @@ public class Lead : IHasDomainEvents
 
     public Result RegistrarInteracao(Guid realizadoPorId, string observacao, DateTime agora)
     {
+        if (Anonimizado)
+            return Result.Failure(LeadErrors.Anonimizado);
         if (Status is LeadStatus.Convertido or LeadStatus.Descartado)
             return Result.Failure(LeadErrors.EstadoTerminal);
         if (string.IsNullOrWhiteSpace(observacao))
@@ -119,6 +123,8 @@ public class Lead : IHasDomainEvents
 
     public Result Converter(Guid alunoId, DateTime agora)
     {
+        if (Anonimizado)
+            return Result.Failure(LeadErrors.Anonimizado);
         if (Status is LeadStatus.Convertido or LeadStatus.Descartado)
             return Result.Failure(LeadErrors.EstadoTerminal);
         if (alunoId == Guid.Empty)
@@ -138,6 +144,8 @@ public class Lead : IHasDomainEvents
 
     public Result Descartar(MotivoDescarteLead motivo, Guid realizadoPorId, string? observacao, DateTime agora)
     {
+        if (Anonimizado)
+            return Result.Failure(LeadErrors.Anonimizado);
         if (Status is LeadStatus.Convertido or LeadStatus.Descartado)
             return Result.Failure(LeadErrors.EstadoTerminal);
 
@@ -149,6 +157,23 @@ public class Lead : IHasDomainEvents
         MotivoDescarte = motivo;
         _interacoes.Add(interacaoResult.Value);
         UltimoToqueEm = agora;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
+    public Result Anonimizar(DateTime agora)
+    {
+        if (Anonimizado)
+            return Result.Success();
+
+        Nome = "Lead anonimizado";
+        Contato = Contato.Anonimizar();
+        Interesse = null;
+        Consentimento = Consentimento.Anonimizar();
+        foreach (var interacao in _interacoes)
+            interacao.Anonimizar();
+
+        Anonimizado = true;
         UpdatedAt = agora;
         return Result.Success();
     }
@@ -184,4 +209,10 @@ public sealed class LeadInteracao
             Observacao = observacao,
             RealizadoPorId = realizadoPorId
         };
+
+    internal void Anonimizar()
+    {
+        if (Observacao is not null)
+            Observacao = "[anonimizado]";
+    }
 }

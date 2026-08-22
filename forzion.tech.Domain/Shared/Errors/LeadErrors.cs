@@ -11,4 +11,5 @@ public static class LeadErrors
     public static Error AlunoIdInvalido => Error.Business("lead.aluno_id_invalido", "O aluno resultante da conversão é obrigatório.");
     public static Error JaEmContato => Error.Business("lead.ja_em_contato", "Este lead já está em contato.");
     public static Error EstadoTerminal => Error.Business("lead.estado_terminal", "Este lead já foi finalizado.");
+    public static Error Anonimizado => Error.Business("lead.anonimizado", "Este lead foi anonimizado por política de retenção.");
 }

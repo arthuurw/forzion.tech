@@ -27,4 +27,6 @@ public sealed record ConsentimentoLead
 
         return Result.Success(new ConsentimentoLead(finalidadeNormalizada, concedidoEm, registradoEm));
     }
+
+    internal ConsentimentoLead Anonimizar() => new("[anonimizado]", ConcedidoEm, RegistradoEm);
 }

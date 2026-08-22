@@ -33,4 +33,6 @@ public sealed record ContatoLead
             ? Result.Failure<ContatoLead>(ContatoLeadErrors.TelefoneInvalido)
             : Result.Success(new ContatoLead(tipo, normalizado));
     }
+
+    internal ContatoLead Anonimizar() => new(Tipo, "[anonimizado]");
 }
