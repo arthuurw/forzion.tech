@@ -1,5 +1,6 @@
 using FluentAssertions;
 using forzion.tech.Api.Endpoints.Agents;
+using forzion.tech.Infrastructure.Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Logging;
@@ -60,7 +61,7 @@ public class AgentExceptionFilterTests
     }
 
     [Fact]
-    public async Task ExcecaoNaoTratada_LogaAExcecaoRealComNivelError()
+    public async Task ExcecaoNaoTratada_LogaComNivelErrorSemForwardarAExcecaoOriginal()
     {
         var logger = new LoggerFake();
         var filter = new AgentExceptionFilter(logger);
@@ -69,7 +70,32 @@ public class AgentExceptionFilterTests
 
         await filter.InvokeAsync(CriarContexto(), next);
 
-        logger.Entradas.Should().ContainSingle(e => e.Level == LogLevel.Error && ReferenceEquals(e.Exception, excecao));
+        var entrada = logger.Entradas.Should().ContainSingle(e => e.Level == LogLevel.Error).Subject;
+        entrada.Exception.Should().NotBeNull();
+        entrada.Exception.Should().NotBeSameAs(excecao);
+        entrada.Exception!.Message.Should().Be(nameof(InvalidOperationException));
+    }
+
+    // Reproduz a transformacao real de ErrorLogDbSinkProvider.ErrorLogDbLogger.Log (mensagem +
+    // "| Tipo: Mensagem" do exception, depois MascaraPii.Scrub) — Scrub cobre e-mail/telefone via
+    // regex mas nao nomes proprios, entao o unico jeito de fechar essa via e o filtro nunca
+    // repassar Message de excecao que possa carregar PII de lead.
+    [Fact]
+    public async Task ExcecaoContendoNomeDeLeadNaMensagem_NaoSobreviveNoTextoQuePersisteNoErrorLog()
+    {
+        var logger = new LoggerFake();
+        var filter = new AgentExceptionFilter(logger);
+        const string NomeDoLead = "Joana Ferreira Alcantara";
+        EndpointFilterDelegate next = _ => throw new InvalidOperationException($"lead duplicado para {NomeDoLead}");
+
+        await filter.InvokeAsync(CriarContexto(), next);
+
+        var entrada = logger.Entradas.Should().ContainSingle().Subject;
+        var textoPersistidoNoErrorLog = entrada.Exception is null
+            ? entrada.Message
+            : MascaraPii.Scrub($"{entrada.Message} | {entrada.Exception.GetType().Name}: {entrada.Exception.Message}");
+
+        textoPersistidoNoErrorLog.Should().NotContain(NomeDoLead);
     }
 
     [Fact]
