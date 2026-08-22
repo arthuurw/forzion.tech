@@ -5,7 +5,7 @@ DOC PARA AGENTES. Fonte de verdade da API interna consumida pelo **Forzion Agent
 Atualizar quando mudar: payload canônico ou qualquer campo que entre nele, ordem de verificação, janela de timestamp, formato do header de assinatura, nomes/semântica dos segredos `Agents:Hmac:*`, tabela domínio→`code`, composição da tag `agents-ready`, policy de rate limit do grupo, ou quando uma fatia (1-4) for entregue. Contrato canônico do wire = `.specs/contracts/forzion-internal-api.v1.yaml` (repo `forzion.tech-agents`, decisão D31) — este arquivo descreve a IMPLEMENTAÇÃO deste lado, não substitui o YAML.
 
 ## 1. O QUE EXISTE HOJE
-Fatia 0 (`agents-f0-hmac`), fatia 1 (`agents-f1-perfil-publico`) e a borda de agente da fatia 2 (`agents-f2-leads`) entregues: grupo de rota + verificação de assinatura + envelope de erro + rate limit + `GET /health` + `GET business-info` + `GET services` (§6-A) + `POST leads` (§6-B). Os outros dois caminhos do contrato (`GET availability`, `POST booking-requests`) **não existem** (404 de rota, sem stub, sem 501) — são as fatias 3-4 (§8).
+Fatia 0 (`agents-f0-hmac`), fatia 1 (`agents-f1-perfil-publico`) e fatia 2 (`agents-f2-leads`) entregues POR COMPLETO: grupo de rota + verificação de assinatura + envelope de erro + rate limit + `GET /health` + `GET business-info` + `GET services` (§6-A) + `POST leads` (§6-B, a única escrita da borda de agente). A fatia 2 vai além da borda: esteira autenticada do treinador (`/treinador/leads/*` — lista/filtros/detalhe/histórico/transição de status/interação/métricas), notificação in-app+e-mail de lead novo, conversão lead→aluno por convite tokenizado (`/auth/convite/{token}` público + `POST /auth/register/aluno` com `conviteToken`), expurgo LGPD automático (180d sem toque) e atendimento admin ao titular sem conta (`/admin/leads`). Esse restante não é documentado NESTE arquivo, que cobre só a borda `/internal/agents/v1` — canônico em [specification-lgpd] §LEADS, [specification-db] §Leads e [specification-security]. Os outros dois caminhos do contrato (`GET availability`, `POST booking-requests`) **não existem** (404 de rota, sem stub, sem 501) — são as fatias 3-4 (§8).
 
 | Componente | Local | Papel |
 |---|---|---|
@@ -154,7 +154,7 @@ Ambos vivem no MESMO grupo `/internal/agents/v1`, herdam HMAC + `AgentExceptionF
 |---|---|---|---|---|
 | 0 | `agents-f0-hmac` | HMAC + `Problem`/`code` + rate limit + grupo | `GET /health` | sim (auth) — **FEITA** |
 | 1 | catálogo público | `PerfilPublico` novo + `Pacote` com `Categoria`/`DuracaoMinutos`/`TrialDisponivel`/`IsPublico` (nasce `false`) + UI do treinador | `GET business-info`, `GET services` | não — **FEITA** |
-| 2 | leads | `Lead` + esteira completa (lista, filtros, histórico, conversão→aluno, métricas) + idempotência | `POST leads` | **sim** (PII/LGPD) |
+| 2 | leads | `Lead` + esteira completa (lista, filtros, histórico, conversão→aluno, métricas) + idempotência | `POST leads` | **sim** (PII/LGPD) — **FEITA** |
 | 3 | agenda | `JanelaAtendimento` + `BloqueioAgenda` + UI; slots DERIVADOS no read, `slotId` = hash determinístico de `(TreinadorId, PacoteId, inícioUTC)` | `GET availability` | não |
 | 4 | agendamento | `SolicitacaoAgendamento` + esteira (confirmar→compromisso, recusar) | `POST booking-requests` | **sim** (concorrência) |
 
