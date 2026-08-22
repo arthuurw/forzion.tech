@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import {
   Box, Typography, Card, CardContent, Grid, Button,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Stack, IconButton, Tooltip,
+  TextField, Stack, IconButton, Tooltip, Switch, FormControlLabel, Chip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -28,6 +28,10 @@ export default function PacotesTreinadorPage() {
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [preco, setPreco] = useState("");
+  const [categoria, setCategoria] = useState("");
+  const [duracaoMinutos, setDuracaoMinutos] = useState("");
+  const [trialDisponivel, setTrialDisponivel] = useState(false);
+  const [publico, setPublico] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<PacoteResponse | null>(null);
@@ -37,7 +41,14 @@ export default function PacotesTreinadorPage() {
   const [editNome, setEditNome] = useState("");
   const [editDescricao, setEditDescricao] = useState("");
   const [editPreco, setEditPreco] = useState("");
+  const [editCategoria, setEditCategoria] = useState("");
+  const [editDuracaoMinutos, setEditDuracaoMinutos] = useState("");
+  const [editTrialDisponivel, setEditTrialDisponivel] = useState(false);
+  const [editPublico, setEditPublico] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
+
+  const categoriaObrigatoriaCriar = publico && !categoria.trim();
+  const categoriaObrigatoriaEditar = editPublico && !editCategoria.trim();
 
   const load = async () => {
     setLoading(true);
@@ -53,16 +64,23 @@ export default function PacotesTreinadorPage() {
 
   useEffect(() => { load(); }, []);
 
-  const resetForm = () => { setNome(""); setDescricao(""); setPreco(""); };
+  const resetForm = () => {
+    setNome(""); setDescricao(""); setPreco("");
+    setCategoria(""); setDuracaoMinutos(""); setTrialDisponivel(false); setPublico(false);
+  };
 
   const handleCriar = async () => {
-    if (!nome.trim() || !preco) return;
+    if (!nome.trim() || !preco || categoriaObrigatoriaCriar) return;
     setSaving(true);
     try {
       await treinadorApi.criarPacote({
         nome: nome.trim(),
         preco: Number(preco),
         descricao: descricao.trim() || null,
+        categoria: categoria.trim() || null,
+        duracaoMinutos: duracaoMinutos ? Number(duracaoMinutos) : null,
+        trialDisponivel,
+        isPublico: publico,
       });
       setSuccess(`Pacote "${nome}" criado.`);
       setOpen(false);
@@ -80,6 +98,10 @@ export default function PacotesTreinadorPage() {
     setEditNome(p.nome);
     setEditDescricao(p.descricao ?? "");
     setEditPreco(String(p.preco));
+    setEditCategoria(p.categoria ?? "");
+    setEditDuracaoMinutos(p.duracaoMinutos != null ? String(p.duracaoMinutos) : "");
+    setEditTrialDisponivel(p.trialDisponivel ?? false);
+    setEditPublico(p.isPublico ?? false);
   };
 
   const handleExcluir = async () => {
@@ -98,13 +120,17 @@ export default function PacotesTreinadorPage() {
   };
 
   const handleEditar = async () => {
-    if (!editTarget || !editNome.trim() || !editPreco) return;
+    if (!editTarget || !editNome.trim() || !editPreco || categoriaObrigatoriaEditar) return;
     setEditSaving(true);
     try {
       await treinadorApi.atualizarPacote(editTarget.pacoteId, {
         nome: editNome.trim(),
         preco: Number(editPreco),
         descricao: editDescricao.trim() || null,
+        categoria: editCategoria.trim() || null,
+        duracaoMinutos: editDuracaoMinutos ? Number(editDuracaoMinutos) : null,
+        trialDisponivel: editTrialDisponivel,
+        isPublico: editPublico,
       });
       setSuccess(`Pacote "${editNome}" atualizado.`);
       setEditTarget(null);
@@ -149,7 +175,10 @@ export default function PacotesTreinadorPage() {
               >
                 <CardContent>
                   <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-                    <Typography variant="h6" sx={{ mb: 0.5 }}>{p.nome}</Typography>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 0.5 }}>
+                      <Typography variant="h6">{p.nome}</Typography>
+                      {p.isPublico && <Chip label="Público" size="small" color="primary" variant="outlined" />}
+                    </Stack>
                     <Stack direction="row" spacing={0.5}>
                       <Tooltip title="Editar">
                         <IconButton
@@ -221,13 +250,41 @@ export default function PacotesTreinadorPage() {
               required
               slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
             />
+            <TextField
+              label="Categoria"
+              value={categoria}
+              onChange={(e) => setCategoria(e.target.value)}
+              size="small"
+              fullWidth
+              error={categoriaObrigatoriaCriar}
+              helperText={categoriaObrigatoriaCriar
+                ? "Categoria é obrigatória para tornar o pacote público."
+                : "Ex: Pilates, Funcional"}
+            />
+            <TextField
+              label="Duração (min)"
+              type="number"
+              value={duracaoMinutos}
+              onChange={(e) => setDuracaoMinutos(e.target.value)}
+              size="small"
+              fullWidth
+              slotProps={{ htmlInput: { min: 1, step: 1 } }}
+            />
+            <FormControlLabel
+              control={<Switch checked={trialDisponivel} onChange={(e) => setTrialDisponivel(e.target.checked)} />}
+              label="Aceita aula experimental"
+            />
+            <FormControlLabel
+              control={<Switch checked={publico} onChange={(e) => setPublico(e.target.checked)} />}
+              label="Público (visível no catálogo do agente)"
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => { setOpen(false); resetForm(); }}>Cancelar</Button>
           <Button
             variant="contained"
-            disabled={!nome.trim() || !preco || saving}
+            disabled={!nome.trim() || !preco || categoriaObrigatoriaCriar || saving}
             onClick={handleCriar}
           >
             Criar
@@ -279,13 +336,41 @@ export default function PacotesTreinadorPage() {
               required
               slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
             />
+            <TextField
+              label="Categoria"
+              value={editCategoria}
+              onChange={(e) => setEditCategoria(e.target.value)}
+              size="small"
+              fullWidth
+              error={categoriaObrigatoriaEditar}
+              helperText={categoriaObrigatoriaEditar
+                ? "Categoria é obrigatória para tornar o pacote público."
+                : "Ex: Pilates, Funcional"}
+            />
+            <TextField
+              label="Duração (min)"
+              type="number"
+              value={editDuracaoMinutos}
+              onChange={(e) => setEditDuracaoMinutos(e.target.value)}
+              size="small"
+              fullWidth
+              slotProps={{ htmlInput: { min: 1, step: 1 } }}
+            />
+            <FormControlLabel
+              control={<Switch checked={editTrialDisponivel} onChange={(e) => setEditTrialDisponivel(e.target.checked)} />}
+              label="Aceita aula experimental"
+            />
+            <FormControlLabel
+              control={<Switch checked={editPublico} onChange={(e) => setEditPublico(e.target.checked)} />}
+              label="Público (visível no catálogo do agente)"
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditTarget(null)}>Cancelar</Button>
           <Button
             variant="contained"
-            disabled={!editNome.trim() || !editPreco || editSaving}
+            disabled={!editNome.trim() || !editPreco || categoriaObrigatoriaEditar || editSaving}
             onClick={handleEditar}
           >
             Salvar

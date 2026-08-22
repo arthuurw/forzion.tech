@@ -53,6 +53,10 @@ export interface CriarPacoteData {
   nome: string;
   preco: number;
   descricao?: string | null;
+  categoria?: string | null;
+  duracaoMinutos?: number | null;
+  trialDisponivel?: boolean;
+  isPublico?: boolean;
 }
 
 export const treinadorApi = {
@@ -154,7 +158,15 @@ export const treinadorApi = {
   criarPacote(data: CriarPacoteData) {
     return apiClient.post<PacoteResponse>("/treinador/pacotes", data);
   },
-  atualizarPacote(pacoteId: string, data: { nome?: string; preco?: number; descricao?: string | null }) {
+  atualizarPacote(pacoteId: string, data: {
+    nome?: string;
+    preco?: number;
+    descricao?: string | null;
+    categoria?: string | null;
+    duracaoMinutos?: number | null;
+    trialDisponivel?: boolean;
+    isPublico?: boolean;
+  }) {
     return apiClient.patch<PacoteResponse>(`/treinador/pacotes/${pacoteId}`, data);
   },
   excluirPacote(pacoteId: string) {

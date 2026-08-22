@@ -211,6 +211,10 @@ export interface PacoteResponse {
   preco: number;
   treinadorId: string;
   isAtivo?: boolean;
+  categoria?: string | null;
+  duracaoMinutos?: number | null;
+  trialDisponivel?: boolean;
+  isPublico?: boolean;
   createdAt?: string;
   updatedAt?: string | null;
 }
