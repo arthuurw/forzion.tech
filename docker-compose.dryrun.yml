@@ -33,6 +33,11 @@ services:
       Auth__JwtAudience: ${JWT_AUDIENCE:-homologacao.forzion.tech}
       Mfa__EncryptionKey: ${MFA_ENCRYPTION_KEY}
       DataProtection__EncryptionKey: ${DATA_PROTECTION_KEY}
+      # AddAgentsHmac exige isto em Homolog/Production mesmo pro comando `migrate` (Program.cs
+      # builda a DI inteira antes do short-circuit de MigrationStartup) — sem isto o dry-run
+      # crasha antes de tocar em schema.
+      Agents__Hmac__SecretAtual: ${AGENTS_HMAC_SECRET_ATUAL}
+      Agents__Hmac__SecretAnterior: ${AGENTS_HMAC_SECRET_ANTERIOR:-}
     # ENTRYPOINT da imagem já é `dotnet forzion.tech.Api.dll`; só anexamos o arg do modo CLI.
     command: ["migrate"]
     depends_on:
