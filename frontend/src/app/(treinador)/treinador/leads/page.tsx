@@ -3,21 +3,60 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Box, Select, MenuItem, FormControl, InputLabel, TextField,
   InputAdornment, IconButton, Typography, Chip, ToggleButtonGroup, ToggleButton,
+  Button, Dialog, DialogTitle, DialogContent, DialogActions, Stack,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
+import AddIcon from "@mui/icons-material/Add";
+import { useForm, FormProvider } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useRouter } from "next/navigation";
 import PageHeader from "@/components/ui/PageHeader";
 import AlertBanner from "@/components/ui/AlertBanner";
 import DataList from "@/components/ui/DataList";
+import FormTextField from "@/components/forms/FormTextField";
+import FormSelect from "@/components/forms/FormSelect";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { leadsApi } from "@/lib/api/leads";
 import { usePaginatedList } from "@/hooks/usePaginatedList";
-import type { LeadListItem, LeadStatus, LeadSource, ObterMetricasLeadsResponse } from "@/types";
+import { extractApiError } from "@/lib/api/extractApiError";
+import { emailSchema } from "@/lib/validations/common";
+import type { LeadListItem, LeadStatus, LeadSource, TipoContatoLead, ObterMetricasLeadsResponse } from "@/types";
 import {
   LEAD_STATUS_LABEL, LEAD_STATUS_COLOR, LEAD_SOURCE_LABEL, TIPO_CONTATO_LEAD_LABEL,
 } from "@/lib/constants/labels";
 import { formatarDataHora, periodoParaDatas } from "@/lib/utils/formatting";
 import LeadsMetricasCharts from "./_charts/LeadsMetricasCharts";
+
+const CONTATO_TIPO_OPTIONS: { value: TipoContatoLead; label: string }[] = [
+  { value: "Email", label: "E-mail" },
+  { value: "Telefone", label: "Telefone" },
+  { value: "WhatsApp", label: "WhatsApp" },
+];
+
+const criarLeadManualSchema = z
+  .object({
+    nome: z.string().trim().min(1, "Informe o nome.").max(200, "Nome deve ter no máximo 200 caracteres."),
+    contatoTipo: z.enum(["Email", "Telefone", "WhatsApp"]),
+    contatoValor: z.string().trim().min(1, "Informe o contato."),
+    interesse: z.string().trim().max(1000, "Interesse deve ter no máximo 1000 caracteres.").optional(),
+    consentimentoFinalidade: z
+      .string()
+      .trim()
+      .min(1, "Informe a finalidade do consentimento.")
+      .max(500, "Finalidade deve ter no máximo 500 caracteres."),
+  })
+  .superRefine((data, ctx) => {
+    if (data.contatoTipo === "Email") {
+      if (!emailSchema.safeParse(data.contatoValor).success) {
+        ctx.addIssue({ code: "custom", path: ["contatoValor"], message: "E-mail inválido." });
+      }
+    } else if (!/^\d{10,11}$/.test(data.contatoValor.replace(/\D/g, ""))) {
+      ctx.addIssue({ code: "custom", path: ["contatoValor"], message: "Telefone inválido (somente dígitos, 10 ou 11)." });
+    }
+  });
+
+type CriarLeadManualForm = z.infer<typeof criarLeadManualSchema>;
 
 const COLUMNS: Column[] = [
   { label: "Lead" },
@@ -74,7 +113,7 @@ export default function LeadsTreinadorPage() {
     [status, origem, inicio, fim, termo]
   );
 
-  const { items: leads, total, page, pageSize, loading, error, setPage, setPageSize, setError } =
+  const { items: leads, total, page, pageSize, loading, error, success, setPage, setPageSize, setError, setSuccess, reload } =
     usePaginatedList<LeadListItem>({ fetcher, errorMessage: "Erro ao carregar leads." });
 
   const aplicarBusca = () => {
@@ -82,14 +121,52 @@ export default function LeadsTreinadorPage() {
     setPage(0);
   };
 
+  const [novoLeadOpen, setNovoLeadOpen] = useState(false);
+  const [salvandoNovoLead, setSalvandoNovoLead] = useState(false);
+  const novoLeadForm = useForm<CriarLeadManualForm>({
+    resolver: zodResolver(criarLeadManualSchema),
+    defaultValues: { nome: "", contatoTipo: "Email", contatoValor: "", interesse: "", consentimentoFinalidade: "" },
+  });
+
+  const fecharNovoLead = () => {
+    setNovoLeadOpen(false);
+    novoLeadForm.reset();
+  };
+
+  const handleCriarLeadManual = novoLeadForm.handleSubmit(async (data) => {
+    setSalvandoNovoLead(true);
+    try {
+      await leadsApi.criarManual({
+        nome: data.nome,
+        contatoTipo: data.contatoTipo,
+        contatoValor: data.contatoTipo === "Email" ? data.contatoValor : data.contatoValor.replace(/\D/g, ""),
+        interesse: data.interesse || null,
+        consentimentoFinalidade: data.consentimentoFinalidade,
+      });
+      setSuccess(`Lead "${data.nome}" cadastrado.`);
+      fecharNovoLead();
+      reload();
+    } catch (err) {
+      setError(extractApiError(err, "Erro ao cadastrar lead."));
+    } finally {
+      setSalvandoNovoLead(false);
+    }
+  });
+
   return (
     <Box>
       <PageHeader
         title="Leads"
         subtitle="Interesses capturados pelo agente conversacional e cadastros manuais."
+        action={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setNovoLeadOpen(true)}>
+            Novo lead
+          </Button>
+        }
       />
 
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
+      <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
       <AlertBanner open={!!metricasError} severity="warning" message={metricasError} onClose={() => setMetricasError("")} />
 
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", mb: 1 }}>
@@ -185,6 +262,8 @@ export default function LeadsTreinadorPage() {
         loading={loading}
         items={leads}
         emptyMessage="Nenhum lead ainda. Leads chegam pelo agente conversacional do seu perfil público, ou você pode cadastrar um lead manualmente."
+        emptyActionLabel="Cadastrar lead manualmente"
+        onEmptyAction={() => setNovoLeadOpen(true)}
         columns={COLUMNS}
         rowKey={(l) => l.id}
         onRowClick={(l) => router.push(`/treinador/leads/${l.id}`)}
@@ -203,6 +282,50 @@ export default function LeadsTreinadorPage() {
           return formatarDataHora(l.createdAt);
         }}
       />
+
+      <Dialog
+        open={novoLeadOpen}
+        onClose={fecharNovoLead}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{ paper: { sx: { maxHeight: "calc(100dvh - 32px)" } } }}
+      >
+        <DialogTitle>Novo lead</DialogTitle>
+        <FormProvider {...novoLeadForm}>
+          <Stack component="form" onSubmit={handleCriarLeadManual} noValidate>
+            <DialogContent>
+              <Stack spacing={2} sx={{ pt: 1 }}>
+                <FormTextField name="nome" label="Nome" size="small" fullWidth autoFocus required />
+                <FormSelect name="contatoTipo" label="Tipo de contato" options={CONTATO_TIPO_OPTIONS} required />
+                <FormTextField name="contatoValor" label="Contato" size="small" fullWidth required />
+                <FormTextField
+                  name="interesse"
+                  label="Interesse (opcional)"
+                  size="small"
+                  fullWidth
+                  multiline
+                  rows={2}
+                />
+                <FormTextField
+                  name="consentimentoFinalidade"
+                  label="Finalidade do consentimento"
+                  size="small"
+                  fullWidth
+                  required
+                  multiline
+                  rows={2}
+                />
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={fecharNovoLead}>Cancelar</Button>
+              <Button type="submit" variant="contained" disabled={salvandoNovoLead}>
+                Cadastrar
+              </Button>
+            </DialogActions>
+          </Stack>
+        </FormProvider>
+      </Dialog>
     </Box>
   );
 }
