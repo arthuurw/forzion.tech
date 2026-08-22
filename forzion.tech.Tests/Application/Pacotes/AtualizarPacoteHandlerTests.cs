@@ -75,4 +75,49 @@ public class AtualizarPacoteHandlerTests
 
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
+
+    [Fact]
+    public async Task HandleAsync_IsPublicoTrueComCategoria_TornaPacotePublico()
+    {
+        var treinadorId = Guid.NewGuid();
+        var pacote = CriarPacote(treinadorId);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
+
+        var command = new AtualizarPacoteCommand(treinadorId, pacote.Id, null, null, null, Categoria: "Pilates", IsPublico: true);
+        var result = await _handler.HandleAsync(command);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Categoria.Should().Be("Pilates");
+        result.Value.IsPublico.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task HandleAsync_IsPublicoTrueSemCategoria_Falha()
+    {
+        var treinadorId = Guid.NewGuid();
+        var pacote = CriarPacote(treinadorId);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
+
+        var command = new AtualizarPacoteCommand(treinadorId, pacote.Id, null, null, null, IsPublico: true);
+        var result = await _handler.HandleAsync(command);
+
+        result.IsFailure.Should().BeTrue();
+        pacote.IsPublico.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HandleAsync_IsPublicoFalse_TornaPacotePrivado()
+    {
+        var treinadorId = Guid.NewGuid();
+        var pacote = CriarPacote(treinadorId);
+        pacote.AtualizarCatalogoPublico("Pilates", null, null, DateTime.UtcNow);
+        pacote.TornarPublico(DateTime.UtcNow);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
+
+        var command = new AtualizarPacoteCommand(treinadorId, pacote.Id, null, null, null, IsPublico: false);
+        var result = await _handler.HandleAsync(command);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.IsPublico.Should().BeFalse();
+    }
 }

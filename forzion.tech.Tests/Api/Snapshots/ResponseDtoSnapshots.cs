@@ -65,7 +65,11 @@ public class ResponseDtoSnapshots
         Preco: 149.90m,
         IsAtivo: true,
         CreatedAt: Criado,
-        UpdatedAt: Atualizado));
+        UpdatedAt: Atualizado,
+        Categoria: "Pilates",
+        DuracaoMinutos: 60,
+        TrialDisponivel: true,
+        IsPublico: true));
 
     [Fact]
     public Task AssinaturaAlunoResponse() => Verify(new AssinaturaAlunoResponse(

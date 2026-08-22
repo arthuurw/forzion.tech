@@ -10,10 +10,15 @@ public record PacoteResponse(
     decimal Preco,
     bool IsAtivo,
     DateTime CreatedAt,
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt,
+    string? Categoria,
+    int? DuracaoMinutos,
+    bool TrialDisponivel,
+    bool IsPublico);
 
 public static class PacoteResponseExtensions
 {
     public static PacoteResponse ToResponse(Pacote pacote) => new(
-        pacote.Id, pacote.TreinadorId, pacote.Nome, pacote.Descricao, pacote.Preco, pacote.IsAtivo, pacote.CreatedAt, pacote.UpdatedAt);
+        pacote.Id, pacote.TreinadorId, pacote.Nome, pacote.Descricao, pacote.Preco, pacote.IsAtivo, pacote.CreatedAt, pacote.UpdatedAt,
+        pacote.Categoria, pacote.DuracaoMinutos, pacote.TrialDisponivel, pacote.IsPublico);
 }

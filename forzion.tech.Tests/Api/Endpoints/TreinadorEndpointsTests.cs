@@ -82,7 +82,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         VinculoId, TreinadorId, AlunoId, PacoteId, VinculoStatus.Ativo, "João", null, DateTime.UtcNow, false, false);
 
     private static readonly PacoteResponse RespostaPacote = new(
-        PacoteId, TreinadorId, "Pacote Básico", null, 99m, true, DateTime.UtcNow, null);
+        PacoteId, TreinadorId, "Pacote Básico", null, 99m, true, DateTime.UtcNow, null, null, null, false, false);
 
     private static readonly Guid AssinaturaAlunoId = Guid.NewGuid();
     private static readonly Guid PagamentoId = Guid.NewGuid();

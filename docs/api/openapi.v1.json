@@ -4414,6 +4414,104 @@
         ]
       }
     },
+    "/treinador/perfil-publico": {
+      "get": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Lê o perfil público do treinador autenticado (dados exibidos ao gateway de agentes)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilPublicoResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Salva o perfil público do treinador (opt-in de publicação pro gateway de agentes)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PerfilPublicoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilPublicoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/treinador/cep/{cep}": {
       "get": {
         "tags": [
@@ -8255,6 +8353,33 @@
               "null",
               "string"
             ]
+          },
+          "categoria": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "duracaoMinutos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "trialDisponivel": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "isPublico": {
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         }
       },
@@ -8725,6 +8850,29 @@
               "null",
               "string"
             ]
+          },
+          "categoria": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "duracaoMinutos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "trialDisponivel": {
+            "type": "boolean",
+            "default": false
+          },
+          "isPublico": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
@@ -9018,6 +9166,88 @@
             "type": "string"
           },
           "uf": {
+            "type": "string"
+          },
+          "cep": {
+            "type": "string"
+          }
+        }
+      },
+      "EnderecoPublicoRequest": {
+        "required": [
+          "rua",
+          "numero",
+          "complemento",
+          "bairro",
+          "cidade",
+          "estado",
+          "cep"
+        ],
+        "type": "object",
+        "properties": {
+          "rua": {
+            "type": "string"
+          },
+          "numero": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "complemento": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bairro": {
+            "type": "string"
+          },
+          "cidade": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "cep": {
+            "type": "string"
+          }
+        }
+      },
+      "EnderecoPublicoResponse": {
+        "required": [
+          "rua",
+          "numero",
+          "complemento",
+          "bairro",
+          "cidade",
+          "estado",
+          "cep"
+        ],
+        "type": "object",
+        "properties": {
+          "rua": {
+            "type": "string"
+          },
+          "numero": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "complemento": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bairro": {
+            "type": "string"
+          },
+          "cidade": {
+            "type": "string"
+          },
+          "estado": {
             "type": "string"
           },
           "cep": {
@@ -9437,6 +9667,59 @@
               "null",
               "boolean"
             ]
+          }
+        }
+      },
+      "HorarioFuncionamentoRequest": {
+        "required": [
+          "diaSemana",
+          "abreAs",
+          "fechaAs"
+        ],
+        "type": "object",
+        "properties": {
+          "diaSemana": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "abreAs": {
+            "type": "string"
+          },
+          "fechaAs": {
+            "type": "string"
+          }
+        }
+      },
+      "HorarioFuncionamentoResponse": {
+        "required": [
+          "id",
+          "diaSemana",
+          "abreAs",
+          "fechaAs"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "diaSemana": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "abreAs": {
+            "type": "string"
+          },
+          "fechaAs": {
+            "type": "string"
           }
         }
       },
@@ -10269,7 +10552,11 @@
           "preco",
           "isAtivo",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "categoria",
+          "duracaoMinutos",
+          "trialDisponivel",
+          "isPublico"
         ],
         "type": "object",
         "properties": {
@@ -10311,6 +10598,27 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "categoria": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "duracaoMinutos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "trialDisponivel": {
+            "type": "boolean"
+          },
+          "isPublico": {
+            "type": "boolean"
           }
         }
       },
@@ -10399,6 +10707,98 @@
           "Estornado",
           "EmDisputa"
         ]
+      },
+      "PerfilPublicoRequest": {
+        "required": [
+          "nomeFantasia",
+          "endereco",
+          "politicas",
+          "horarios",
+          "isPublicado"
+        ],
+        "type": "object",
+        "properties": {
+          "nomeFantasia": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "endereco": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EnderecoPublicoRequest"
+              }
+            ]
+          },
+          "politicas": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "horarios": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorarioFuncionamentoRequest"
+            }
+          },
+          "isPublicado": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PerfilPublicoResponse": {
+        "required": [
+          "nomeFantasia",
+          "endereco",
+          "horariosFuncionamento",
+          "politicas",
+          "isPublicado"
+        ],
+        "type": "object",
+        "properties": {
+          "nomeFantasia": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "endereco": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EnderecoPublicoResponse"
+              }
+            ]
+          },
+          "horariosFuncionamento": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HorarioFuncionamentoResponse"
+            }
+          },
+          "politicas": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "isPublicado": {
+            "type": "boolean"
+          }
+        }
       },
       "PerfilResponse": {
         "required": [

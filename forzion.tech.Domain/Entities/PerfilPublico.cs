@@ -65,4 +65,22 @@ public class PerfilPublico
         UpdatedAt = agora;
         return Result.Success();
     }
+
+    public Result SubstituirHorarios(IReadOnlyList<(int DiaSemana, TimeOnly AbreAs, TimeOnly FechaAs)> horarios, DateTime agora)
+    {
+        var novos = new List<HorarioFuncionamento>(horarios.Count);
+        foreach (var (diaSemana, abreAs, fechaAs) in horarios)
+        {
+            var horarioResult = HorarioFuncionamento.Criar(diaSemana, abreAs, fechaAs);
+            if (horarioResult.IsFailure)
+                return Result.Failure(horarioResult.Error!);
+
+            novos.Add(horarioResult.Value);
+        }
+
+        _horariosFuncionamento.Clear();
+        _horariosFuncionamento.AddRange(novos);
+        UpdatedAt = agora;
+        return Result.Success();
+    }
 }

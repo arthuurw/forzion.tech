@@ -62,4 +62,42 @@ public class CriarPacoteHandlerTests
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
+
+    [Fact]
+    public async Task HandleAsync_IsPublicoTrueComCategoria_CriaPacotePublico()
+    {
+        var command = new CriarPacoteCommand(
+            Guid.NewGuid(), "Pilates em grupo", 180m, Categoria: "Pilates", DuracaoMinutos: 50, TrialDisponivel: true, IsPublico: true);
+
+        var result = await _handler.HandleAsync(command);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Categoria.Should().Be("Pilates");
+        result.Value.DuracaoMinutos.Should().Be(50);
+        result.Value.TrialDisponivel.Should().BeTrue();
+        result.Value.IsPublico.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task HandleAsync_IsPublicoTrueSemCategoria_Falha()
+    {
+        var command = new CriarPacoteCommand(Guid.NewGuid(), "Sem categoria", 100m, IsPublico: true);
+
+        var result = await _handler.HandleAsync(command);
+
+        result.IsFailure.Should().BeTrue();
+        _pacoteRepo.Verify(r => r.AdicionarAsync(It.IsAny<Pacote>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SemCamposDeCatalogoPublico_CriaPacotePrivado()
+    {
+        var command = new CriarPacoteCommand(Guid.NewGuid(), "Básico", 100m);
+
+        var result = await _handler.HandleAsync(command);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.IsPublico.Should().BeFalse();
+        result.Value.Categoria.Should().BeNull();
+    }
 }

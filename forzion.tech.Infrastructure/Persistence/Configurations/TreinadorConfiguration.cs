@@ -122,6 +122,11 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
                 h.ToTable("horarios_funcionamento");
                 h.WithOwner().HasForeignKey("treinador_id");
                 h.HasKey(x => x.Id);
+                // Guid é gerado no domínio (HorarioFuncionamento.Criar), nunca pelo banco. Sem isto, EF
+                // assume ValueGeneratedOnAdd por convenção e trata cada item novo descoberto dentro da
+                // coleção owned como Modified (gera UPDATE numa linha que não existe ainda -> 0 rows
+                // affected -> DbUpdateConcurrencyException), em vez de Added (INSERT).
+                h.Property(x => x.Id).ValueGeneratedNever();
                 h.Property(x => x.DiaSemana).IsRequired();
                 h.Property(x => x.AbreAs).IsRequired();
                 h.Property(x => x.FechaAs).IsRequired();

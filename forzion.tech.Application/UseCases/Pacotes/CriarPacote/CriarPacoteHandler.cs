@@ -28,10 +28,26 @@ public class CriarPacoteHandler(
     {
         await validator.ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
 
-        var pacoteResult = Pacote.Criar(command.TreinadorId, command.Nome, command.Preco, timeProvider.GetUtcNow().UtcDateTime, command.Descricao);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+
+        var pacoteResult = Pacote.Criar(command.TreinadorId, command.Nome, command.Preco, agora, command.Descricao);
         if (pacoteResult.IsFailure)
             return Result.Failure<PacoteResponse>(pacoteResult.Error!);
         var pacote = pacoteResult.Value;
+
+        if (command.Categoria is not null || command.DuracaoMinutos is not null || command.TrialDisponivel)
+        {
+            var catalogoResult = pacote.AtualizarCatalogoPublico(command.Categoria, command.DuracaoMinutos, command.TrialDisponivel, agora);
+            if (catalogoResult.IsFailure)
+                return Result.Failure<PacoteResponse>(catalogoResult.Error!);
+        }
+
+        if (command.IsPublico)
+        {
+            var publicarResult = pacote.TornarPublico(agora);
+            if (publicarResult.IsFailure)
+                return Result.Failure<PacoteResponse>(publicarResult.Error!);
+        }
 
         await pacoteRepository.AdicionarAsync(pacote, cancellationToken).ConfigureAwait(false);
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

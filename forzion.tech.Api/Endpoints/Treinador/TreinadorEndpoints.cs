@@ -7,6 +7,7 @@ using forzion.tech.Application.UseCases.Treinadores.ObterPreviewModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTreinador;
 using forzion.tech.Application.UseCases.Treinadores.Dashboard;
 using forzion.tech.Application.UseCases.Treinadores.DadosFiscais;
+using forzion.tech.Application.UseCases.Treinadores.PerfilPublico;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
 using forzion.tech.Application.UseCases.Treinadores.VerificarOnboarding;
 using forzion.tech.Application.UseCases.Alunos;
@@ -501,7 +502,9 @@ public static class TreinadorEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new CriarPacoteCommand(userContext.PerfilId, request.Nome, request.Preco, request.Descricao),
+                new CriarPacoteCommand(
+                    userContext.PerfilId, request.Nome, request.Preco, request.Descricao,
+                    request.Categoria, request.DuracaoMinutos, request.TrialDisponivel, request.IsPublico),
                 cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
@@ -519,7 +522,9 @@ public static class TreinadorEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await handler.HandleAsync(
-                new AtualizarPacoteCommand(userContext.PerfilId, pacoteId, request.Nome, request.Preco, request.Descricao),
+                new AtualizarPacoteCommand(
+                    userContext.PerfilId, pacoteId, request.Nome, request.Preco, request.Descricao,
+                    request.Categoria, request.DuracaoMinutos, request.TrialDisponivel, request.IsPublico),
                 cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
@@ -580,6 +585,56 @@ public static class TreinadorEndpoints
         .Produces<DadosFiscaisResponse>()
         .ProducesProblem(StatusCodes.Status404NotFound);
 
+        group.MapGet("/perfil-publico", async (
+            [FromServices] ObterPerfilPublicoTreinadorHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(userContext.PerfilId, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .RequireRateLimiting("read")
+        .WithSummary("Lê o perfil público do treinador autenticado (dados exibidos ao gateway de agentes)")
+        .Produces<PerfilPublicoResponse>()
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapPut("/perfil-publico", async (
+            [FromBody] PerfilPublicoRequest request,
+            [FromServices] DefinirPerfilPublicoTreinadorHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            EnderecoPublicoInput? endereco = request.Endereco is null
+                ? null
+                : new EnderecoPublicoInput(
+                    request.Endereco.Rua, request.Endereco.Numero, request.Endereco.Complemento,
+                    request.Endereco.Bairro, request.Endereco.Cidade, request.Endereco.Estado, request.Endereco.Cep);
+
+            var horarios = new List<HorarioFuncionamentoInput>(request.Horarios.Count);
+            foreach (var h in request.Horarios)
+            {
+                if (!TimeOnly.TryParse(h.AbreAs, System.Globalization.CultureInfo.InvariantCulture, out var abreAs)
+                    || !TimeOnly.TryParse(h.FechaAs, System.Globalization.CultureInfo.InvariantCulture, out var fechaAs))
+                    return Results.Problem(detail: "Horário inválido — formato esperado HH:mm.", statusCode: 400);
+
+                horarios.Add(new HorarioFuncionamentoInput(h.DiaSemana, abreAs, fechaAs));
+            }
+
+            var result = await handler.HandleAsync(
+                new DefinirPerfilPublicoTreinadorCommand(
+                    userContext.PerfilId, request.NomeFantasia, endereco, request.Politicas, horarios, request.IsPublicado),
+                cancellationToken).ConfigureAwait(false);
+
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithSummary("Salva o perfil público do treinador (opt-in de publicação pro gateway de agentes)")
+        .Produces<PerfilPublicoResponse>()
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
         group.MapGet("/cep/{cep}", async (
             string cep,
             [FromServices] IConsultaCepService consultaCep,
@@ -634,5 +689,38 @@ public record DesvincularAlunoRequest(string? Observacao = null);
 public record DefinirPreservacaoRequest(bool Preservar);
 public record CriarExercicioTreinadorRequest(string Nome, Guid GrupoMuscularId, string? Descricao = null, string? ComoExecutar = null, string? VideoUrl = null);
 public record AtualizarExercicioTreinadorRequest(string? Nome, Guid? GrupoMuscularId, string? Descricao, string? ComoExecutar = null, string? VideoUrl = null);
-public record CriarPacoteRequest(string Nome, decimal Preco, string? Descricao = null);
-public record AtualizarPacoteRequest(string? Nome, decimal? Preco, string? Descricao);
+public record CriarPacoteRequest(
+    string Nome,
+    decimal Preco,
+    string? Descricao = null,
+    string? Categoria = null,
+    int? DuracaoMinutos = null,
+    bool TrialDisponivel = false,
+    bool IsPublico = false);
+
+public record AtualizarPacoteRequest(
+    string? Nome,
+    decimal? Preco,
+    string? Descricao,
+    string? Categoria = null,
+    int? DuracaoMinutos = null,
+    bool? TrialDisponivel = null,
+    bool? IsPublico = null);
+
+public record EnderecoPublicoRequest(
+    string Rua,
+    string? Numero,
+    string? Complemento,
+    string Bairro,
+    string Cidade,
+    string Estado,
+    string Cep);
+
+public record HorarioFuncionamentoRequest(int DiaSemana, string AbreAs, string FechaAs);
+
+public record PerfilPublicoRequest(
+    string? NomeFantasia,
+    EnderecoPublicoRequest? Endereco,
+    Dictionary<string, string>? Politicas,
+    List<HorarioFuncionamentoRequest> Horarios,
+    bool IsPublicado);

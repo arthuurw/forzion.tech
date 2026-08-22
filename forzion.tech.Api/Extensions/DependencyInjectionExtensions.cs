@@ -458,6 +458,8 @@ public static class DependencyInjectionExtensions
         services.AddScoped<GerarCobrancaMensalHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Treinadores.DadosFiscais.DefinirDadosFiscaisTreinadorHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Treinadores.DadosFiscais.ObterDadosFiscaisTreinadorHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Treinadores.PerfilPublico.DefinirPerfilPublicoTreinadorHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Treinadores.PerfilPublico.ObterPerfilPublicoTreinadorHandler>();
         services.AddScoped<ObterStatusPagamentoHandler>();
         services.AddScoped<ListarPagamentosAssinaturaAlunoHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Pagamentos.ListarRecebimentosTreinador.ListarRecebimentosTreinadorHandler>();

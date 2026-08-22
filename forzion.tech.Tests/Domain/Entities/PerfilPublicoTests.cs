@@ -140,4 +140,47 @@ public class PerfilPublicoTests
 
         r.IsFailure.Should().BeTrue();
     }
+
+    // --- SubstituirHorarios ---
+
+    [Fact]
+    public void SubstituirHorarios_ListaValida_TrocaTodosOsHorarios()
+    {
+        var perfil = PerfilPublico.CriarVazio();
+        perfil.AdicionarHorario(1, new TimeOnly(8, 0), new TimeOnly(12, 0), TestData.Agora);
+
+        var r = perfil.SubstituirHorarios(
+            [(2, new TimeOnly(9, 0), new TimeOnly(18, 0)), (2, new TimeOnly(19, 0), new TimeOnly(22, 0))],
+            TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        perfil.HorariosFuncionamento.Should().HaveCount(2);
+        perfil.HorariosFuncionamento.Should().OnlyContain(h => h.DiaSemana == 2);
+    }
+
+    [Fact]
+    public void SubstituirHorarios_ListaVazia_LimpaHorariosExistentes()
+    {
+        var perfil = PerfilPublico.CriarVazio();
+        perfil.AdicionarHorario(1, new TimeOnly(8, 0), new TimeOnly(12, 0), TestData.Agora);
+
+        var r = perfil.SubstituirHorarios([], TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        perfil.HorariosFuncionamento.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SubstituirHorarios_UmItemInvalido_FalhaEPreservaHorariosAntigos()
+    {
+        var perfil = PerfilPublico.CriarVazio();
+        perfil.AdicionarHorario(1, new TimeOnly(8, 0), new TimeOnly(12, 0), TestData.Agora);
+
+        var r = perfil.SubstituirHorarios(
+            [(2, new TimeOnly(9, 0), new TimeOnly(18, 0)), (3, new TimeOnly(20, 0), new TimeOnly(10, 0))],
+            TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        perfil.HorariosFuncionamento.Should().ContainSingle(h => h.DiaSemana == 1);
+    }
 }

@@ -116,7 +116,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
         null, null, TreinadorId, [], DateTime.UtcNow, null);
 
     private static readonly PacoteResponse RespostaPacote = new(
-        Guid.NewGuid(), TreinadorId, "Pacote Básico", null, 99m, true, DateTime.UtcNow, null);
+        Guid.NewGuid(), TreinadorId, "Pacote Básico", null, 99m, true, DateTime.UtcNow, null, null, null, false, false);
 
     private static readonly ExercicioResponse RespostaExercicio = new(
         Guid.NewGuid(), "Supino", Guid.NewGuid(), "Peito", null, null, null, null, true, DateTime.UtcNow, null);

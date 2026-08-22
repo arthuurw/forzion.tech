@@ -32,9 +32,29 @@ public class AtualizarPacoteHandler(
         if (pacote.TreinadorId != command.TreinadorId)
             throw new AcessoNegadoException();
 
-        var atualizarResult = pacote.Atualizar(command.Nome, command.Preco, command.Descricao, timeProvider.GetUtcNow().UtcDateTime);
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+
+        var atualizarResult = pacote.Atualizar(command.Nome, command.Preco, command.Descricao, agora);
         if (atualizarResult.IsFailure)
             return Result.Failure<PacoteResponse>(atualizarResult.Error!);
+
+        if (command.Categoria is not null || command.DuracaoMinutos is not null || command.TrialDisponivel is not null)
+        {
+            var catalogoResult = pacote.AtualizarCatalogoPublico(command.Categoria, command.DuracaoMinutos, command.TrialDisponivel, agora);
+            if (catalogoResult.IsFailure)
+                return Result.Failure<PacoteResponse>(catalogoResult.Error!);
+        }
+
+        if (command.IsPublico is true)
+        {
+            var publicarResult = pacote.TornarPublico(agora);
+            if (publicarResult.IsFailure)
+                return Result.Failure<PacoteResponse>(publicarResult.Error!);
+        }
+        else if (command.IsPublico is false)
+        {
+            pacote.TornarPrivado(agora);
+        }
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
