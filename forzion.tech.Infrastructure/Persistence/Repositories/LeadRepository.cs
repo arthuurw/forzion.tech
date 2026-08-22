@@ -15,9 +15,10 @@ public class LeadRepository(AppDbContext context) : ILeadRepository
             .FirstOrDefaultAsync(l => l.TreinadorId == treinadorId && l.IdempotencyKey == idempotencyKey, cancellationToken)
             .ConfigureAwait(false);
 
+    // Tracked (não AsNoTracking): reusado tanto pela leitura de detalhe quanto pelas mutações da
+    // esteira/conversão/admin — mutar o agregado retornado aqui e chamar CommitAsync persiste.
     public async Task<Lead?> ObterComHistoricoAsync(Guid treinadorId, Guid leadId, CancellationToken cancellationToken = default) =>
         await context.Leads
-            .AsNoTracking()
             .FirstOrDefaultAsync(l => l.TreinadorId == treinadorId && l.Id == leadId, cancellationToken)
             .ConfigureAwait(false);
 

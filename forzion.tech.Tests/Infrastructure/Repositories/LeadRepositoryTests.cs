@@ -91,6 +91,26 @@ public class LeadRepositoryTests(InfrastructureTestFixture fixture)
     }
 
     [Fact]
+    public async Task ObterComHistoricoAsync_EntidadeRetornadaEhTracked_MutacaoPersisteNoCommit()
+    {
+        // ObterComHistoricoAsync alimenta os handlers de mutação da esteira (status, interação,
+        // convite, conversão) — se viesse AsNoTracking, a mutação em memória nunca chegaria ao
+        // banco no SaveChanges seguinte (bug real, sem teste até esta task).
+        await using var ctx = fixture.CreateContext();
+        var treinadorId = await SeedTreinadorAsync(ctx);
+        var lead = await SeedLeadAsync(ctx, NovoLead(treinadorId));
+
+        var carregado = await Repo(ctx).ObterComHistoricoAsync(treinadorId, lead.Id);
+        carregado!.MarcarEmContato(Guid.NewGuid(), "liguei", Agora.AddHours(1));
+        await ctx.SaveChangesAsync();
+
+        await using var verificacao = fixture.CreateContext();
+        var recarregado = await Repo(verificacao).ObterComHistoricoAsync(treinadorId, lead.Id);
+        recarregado!.Status.Should().Be(LeadStatus.EmContato);
+        recarregado.Interacoes.Should().ContainSingle(i => i.Observacao == "liguei");
+    }
+
+    [Fact]
     public async Task ObterComHistoricoAsync_CarregaInteracoesEEscopoPorTreinador()
     {
         await using var ctx = fixture.CreateContext();
