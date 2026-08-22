@@ -1,6 +1,5 @@
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
-using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Domain.ValueObjects;
@@ -25,10 +24,7 @@ public class ObterBusinessInfoHandler(
     {
         var treinador = await treinadorRepository.ObterPorIdAsync(query.TenantId, cancellationToken).ConfigureAwait(false);
 
-        // Not-found, treinador inativo e perfil não-publicado colapsam no MESMO erro: divergir
-        // confirmaria a um chamador não autorizado que o tenant existe (mesma defesa IDOR de
-        // DefinirPreservacaoVinculoHandler).
-        if (treinador is null || treinador.Status != TreinadorStatus.Ativo || !treinador.PerfilPublico.IsPublicado)
+        if (!AgentTenantGuard.EstaPublicado(treinador))
             return Result.Failure<BusinessInfoResponse>(TreinadorErrors.NaoEncontrado);
 
         var pacotesPublicos = await pacoteRepository

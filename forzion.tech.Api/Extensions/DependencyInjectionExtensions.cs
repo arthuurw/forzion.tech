@@ -444,6 +444,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ListarPacotesHandler>();
 
         services.AddScoped<forzion.tech.Application.UseCases.Agents.BusinessInfo.ObterBusinessInfoHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Agents.Services.ListarServicosHandler>();
 
         services.AddScoped<IniciarOnboardingTreinadorHandler>();
         services.AddScoped<VerificarOnboardingTreinadorHandler>();

@@ -57,6 +57,7 @@ public class AuthorizationGuardTests
         "ListarPagamentosAssinaturaAlunoHandler",
         "ListarPlanosPlataformaHandler",
         "ListarRecebimentosTreinadorHandler",
+        "ListarServicosHandler",
         "ListarTreinadoresHandler",
         "ListarTreinadoresPublicosHandler",
         "ListarTreinosDoTreinadorHandler",
