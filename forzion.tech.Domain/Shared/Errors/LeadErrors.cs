@@ -12,4 +12,7 @@ public static class LeadErrors
     public static Error JaEmContato => Error.Business("lead.ja_em_contato", "Este lead já está em contato.");
     public static Error EstadoTerminal => Error.Business("lead.estado_terminal", "Este lead já foi finalizado.");
     public static Error Anonimizado => Error.Business("lead.anonimizado", "Este lead foi anonimizado por política de retenção.");
+    public static Error NaoEncontrado => Error.NotFound("lead.nao_encontrado", "Lead não encontrado.");
+    public static Error TransicaoNaoSuportada => Error.Validation("lead.transicao_nao_suportada", "Esta transição de status não é suportada por esta operação.");
+    public static Error MotivoDescarteObrigatorio => Error.Validation("lead.motivo_descarte_obrigatorio", "O motivo do descarte é obrigatório.");
 }
