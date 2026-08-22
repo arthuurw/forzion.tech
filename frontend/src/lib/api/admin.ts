@@ -21,6 +21,7 @@ import type {
   AtualizarHealthReportConfigRequest,
   HealthSnapshotResponse,
   AdminDashboardResponse,
+  LeadAdminItem,
 } from "@/types";
 
 export interface ListarExerciciosGlobaisResponse {
@@ -210,5 +211,13 @@ export const adminApi = {
    */
   anonimizarConta(contaId: string) {
     return apiClient.delete(`/admin/contas/${contaId}/lgpd`);
+  },
+
+  buscarLeadsPorContato(contato: string) {
+    return apiClient.get<LeadAdminItem[]>("/admin/leads", { params: { contato } });
+  },
+
+  anonimizarLead(id: string) {
+    return apiClient.post(`/admin/leads/${id}/anonimizar`);
   },
 };

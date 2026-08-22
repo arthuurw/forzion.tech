@@ -10,6 +10,8 @@ import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import PaymentsIcon from "@mui/icons-material/Payments";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import StorefrontIcon from "@mui/icons-material/Storefront";
+import ContactMailIcon from "@mui/icons-material/ContactMail";
+import PersonSearchIcon from "@mui/icons-material/PersonSearch";
 import type { ElementType } from "react";
 import type { TipoConta } from "@/types";
 
@@ -27,10 +29,12 @@ const adminNav: NavItem[] = [
   { label: "Exercícios", href: "/admin/exercicios", Icon: FitnessCenterIcon },
   { label: "Grupos Musculares", href: "/admin/grupos-musculares", Icon: ListAltIcon },
   { label: "Saúde", href: "/admin/saude", Icon: MonitorHeartIcon },
+  { label: "Leads", href: "/admin/leads", Icon: PersonSearchIcon, drawerOnly: true },
 ];
 
 const treinadorNav: NavItem[] = [
   { label: "Alunos", href: "/treinador/alunos", Icon: PeopleIcon },
+  { label: "Leads", href: "/treinador/leads", Icon: ContactMailIcon, drawerOnly: true },
   { label: "Fichas", href: "/treinador/treinos", Icon: ListAltIcon },
   { label: "Exercícios", href: "/treinador/exercicios", Icon: FitnessCenterIcon },
   { label: "Pacotes", href: "/treinador/pacotes", Icon: InventoryIcon },

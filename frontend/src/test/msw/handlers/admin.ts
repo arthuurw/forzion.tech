@@ -40,4 +40,6 @@ export const adminHandlers: HttpHandler[] = [
   http.get("*/admin/saude/snapshots", unauthorized),
   http.post("*/admin/saude/executar", unauthorized),
   http.get("*/admin/stats/dashboard", unauthorized),
+  http.get("*/admin/leads", unauthorized),
+  http.post("*/admin/leads/:id/anonimizar", unauthorized),
 ];

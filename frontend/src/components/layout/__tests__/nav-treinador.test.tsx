@@ -52,12 +52,14 @@ beforeEach(() => {
 });
 
 describe("NavConfig — treinador", () => {
-  it("treinadorNav tem 9 itens com Perfil Público, Recebimentos e Plano marcados drawerOnly", () => {
+  it("treinadorNav tem 10 itens com Leads, Perfil Público, Recebimentos e Plano marcados drawerOnly", () => {
     const nav = NAV_BY_TIPO.Treinador;
-    expect(nav).toHaveLength(9);
+    expect(nav).toHaveLength(10);
+    const leads = nav.find((i) => i.href === "/treinador/leads");
     const perfilPublico = nav.find((i) => i.href === "/treinador/perfil-publico");
     const recebimentos = nav.find((i) => i.href === "/treinador/pagamentos");
     const plano = nav.find((i) => i.href === "/treinador/plano");
+    expect(leads?.drawerOnly).toBe(true);
     expect(perfilPublico?.drawerOnly).toBe(true);
     expect(recebimentos?.drawerOnly).toBe(true);
     expect(plano?.drawerOnly).toBe(true);
@@ -72,9 +74,10 @@ describe("NavConfig — treinador", () => {
 });
 
 describe("AppLayout — navegação treinador", () => {
-  it("drawer desktop mostra os 9 itens incluindo Dados fiscais, Perfil Público, Recebimentos e Plano", () => {
+  it("drawer desktop mostra os 10 itens incluindo Dados fiscais, Leads, Perfil Público, Recebimentos e Plano", () => {
     render(<AppLayout>conteudo</AppLayout>);
     expect(screen.getByText("Dados fiscais")).toBeInTheDocument();
+    expect(screen.getByText("Leads")).toBeInTheDocument();
     expect(screen.getByText("Perfil Público")).toBeInTheDocument();
     expect(screen.getByText("Recebimentos")).toBeInTheDocument();
     expect(screen.getByText("Plano")).toBeInTheDocument();
