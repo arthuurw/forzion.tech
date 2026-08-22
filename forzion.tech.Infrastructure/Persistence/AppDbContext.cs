@@ -179,6 +179,13 @@ public class AppDbContext(
         // (ex.: "Search Path=homolog"), não de HasDefaultSchema. Assim as mesmas
         // migrations aplicam em qualquer schema (homolog, develop, public).
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // Treinador.PerfilPublico é navegação obrigatória sem configuração própria ainda
+        // (chega no mapeamento OwnsOne de uma etapa subsequente); sem o Ignore, a convenção
+        // de binding de construtor do EF tenta tratar EnderecoPublico como entidade e quebra
+        // o model build de qualquer teste que materializa o AppDbContext.
+        modelBuilder.Ignore<PerfilPublico>();
+
         base.OnModelCreating(modelBuilder);
     }
 }

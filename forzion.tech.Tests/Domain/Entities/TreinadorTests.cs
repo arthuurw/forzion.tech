@@ -26,6 +26,15 @@ public class TreinadorTests
     }
 
     [Fact]
+    public void Criar_SempreInstanciaPerfilPublicoVazio()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+
+        t.PerfilPublico.Should().NotBeNull();
+        t.PerfilPublico.IsPublicado.Should().BeFalse();
+    }
+
+    [Fact]
     public void Criar_NomeComEspacos_Remove()
     {
         var t = Treinador.Criar(ContaId, "  Carlos  ", TestData.Agora).Value;

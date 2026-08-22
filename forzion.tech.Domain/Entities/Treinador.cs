@@ -27,6 +27,7 @@ public class Treinador : IHasDomainEvents
     public TreinadorStatus Status { get; private set; }
     public string? Telefone { get; private set; }
     public DadosFiscais? DadosFiscais { get; private set; }
+    public PerfilPublico PerfilPublico { get; private set; } = null!;
     public Guid? AprovadoPorId { get; private set; }
     public DateTime? AprovadoEm { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -59,7 +60,8 @@ public class Treinador : IHasDomainEvents
             PlanoPlataformaId = planoPlataformaId,
             ModoPagamentoAluno = modoPagamentoAluno,
             Status = aguardandoPagamento ? TreinadorStatus.AguardandoPagamento : TreinadorStatus.AguardandoAprovacao,
-            CreatedAt = agora
+            CreatedAt = agora,
+            PerfilPublico = PerfilPublico.CriarVazio()
         };
 
         return Result.Success(treinador);
