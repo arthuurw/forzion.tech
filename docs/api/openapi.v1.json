@@ -4577,6 +4577,307 @@
         ]
       }
     },
+    "/treinador/leads": {
+      "get": {
+        "tags": [
+          "Leads"
+        ],
+        "summary": "Lista leads do treinador com filtros e paginação",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListarLeadsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Leads"
+        ],
+        "summary": "Cadastra um lead manualmente",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CriarLeadManualRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CriarLeadManualResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/treinador/leads/{id}": {
+      "get": {
+        "tags": [
+          "Leads"
+        ],
+        "summary": "Obtém o detalhe de um lead do treinador, com histórico",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadDetalheResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/treinador/leads/{id}/status": {
+      "patch": {
+        "tags": [
+          "Leads"
+        ],
+        "summary": "Transiciona o status de um lead (em contato ou descartado)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtualizarStatusLeadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtualizarStatusLeadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/treinador/leads/{id}/interacoes": {
+      "post": {
+        "tags": [
+          "Leads"
+        ],
+        "summary": "Registra uma interação livre no histórico do lead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarInteracaoLeadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrarInteracaoLeadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/treinador/leads/metricas": {
+      "get": {
+        "tags": [
+          "Leads"
+        ],
+        "summary": "Métricas agregadas do canal de leads do treinador no período",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObterMetricasLeadsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/aluno/assinatura": {
       "get": {
         "tags": [
@@ -8445,6 +8746,51 @@
           }
         }
       },
+      "AtualizarStatusLeadRequest": {
+        "required": [
+          "novoStatus",
+          "motivo",
+          "observacao"
+        ],
+        "type": "object",
+        "properties": {
+          "novoStatus": {
+            "$ref": "#/components/schemas/LeadStatus"
+          },
+          "motivo": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MotivoDescarteLead"
+              }
+            ]
+          },
+          "observacao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "AtualizarStatusLeadResponse": {
+        "required": [
+          "leadId",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "leadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LeadStatus"
+          }
+        }
+      },
       "AtualizarTreinoRequest": {
         "required": [
           "nome",
@@ -8824,6 +9170,48 @@
         "properties": {
           "nome": {
             "type": "string"
+          }
+        }
+      },
+      "CriarLeadManualRequest": {
+        "required": [
+          "nome",
+          "contatoTipo",
+          "contatoValor",
+          "interesse",
+          "consentimentoFinalidade"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "contatoTipo": {
+            "$ref": "#/components/schemas/TipoContatoLead"
+          },
+          "contatoValor": {
+            "type": "string"
+          },
+          "interesse": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "consentimentoFinalidade": {
+            "type": "string"
+          }
+        }
+      },
+      "CriarLeadManualResponse": {
+        "required": [
+          "leadId"
+        ],
+        "type": "object",
+        "properties": {
+          "leadId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -9860,6 +10248,230 @@
           }
         }
       },
+      "LeadDetalheResponse": {
+        "required": [
+          "id",
+          "nome",
+          "contatoTipo",
+          "contatoValor",
+          "interesse",
+          "consentimentoFinalidade",
+          "consentimentoConcedidoEm",
+          "consentimentoRegistradoEm",
+          "origemUserAgent",
+          "origemAssistente",
+          "source",
+          "status",
+          "motivoDescarte",
+          "alunoId",
+          "anonimizado",
+          "ultimoToqueEm",
+          "createdAt",
+          "updatedAt",
+          "historico"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "contatoTipo": {
+            "$ref": "#/components/schemas/TipoContatoLead"
+          },
+          "contatoValor": {
+            "type": "string"
+          },
+          "interesse": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "consentimentoFinalidade": {
+            "type": "string"
+          },
+          "consentimentoConcedidoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "consentimentoRegistradoEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "origemUserAgent": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "origemAssistente": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/LeadSource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LeadStatus"
+          },
+          "motivoDescarte": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MotivoDescarteLead"
+              }
+            ]
+          },
+          "alunoId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "anonimizado": {
+            "type": "boolean"
+          },
+          "ultimoToqueEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "historico": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadInteracaoResponse"
+            }
+          }
+        }
+      },
+      "LeadInteracaoResponse": {
+        "required": [
+          "id",
+          "ocorridaEm",
+          "statusAnterior",
+          "statusNovo",
+          "observacao",
+          "realizadoPorId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ocorridaEm": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "statusAnterior": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LeadStatus"
+              }
+            ]
+          },
+          "statusNovo": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LeadStatus"
+              }
+            ]
+          },
+          "observacao": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "realizadoPorId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "LeadListItem": {
+        "required": [
+          "id",
+          "nome",
+          "contatoTipo",
+          "contatoValor",
+          "source",
+          "status",
+          "createdAt",
+          "anonimizado"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "contatoTipo": {
+            "$ref": "#/components/schemas/TipoContatoLead"
+          },
+          "contatoValor": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/LeadSource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LeadStatus"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "anonimizado": {
+            "type": "boolean"
+          }
+        }
+      },
+      "LeadSource": {
+        "enum": [
+          "Agent",
+          "Manual"
+        ]
+      },
+      "LeadStatus": {
+        "enum": [
+          "Novo",
+          "EmContato",
+          "Convertido",
+          "Descartado"
+        ]
+      },
       "ListarAlunosResponse": {
         "required": [
           "items",
@@ -9996,6 +10608,47 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FichaAlunoResponse"
+            }
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pagina": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "tamanhoPagina": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "ListarLeadsResponse": {
+        "required": [
+          "items",
+          "total",
+          "pagina",
+          "tamanhoPagina"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadListItem"
             }
           },
           "total": {
@@ -10366,6 +11019,16 @@
           "Externo"
         ]
       },
+      "MotivoDescarteLead": {
+        "enum": [
+          "SemInteresse",
+          "ForaDoPerfil",
+          "SemResposta",
+          "Duplicado",
+          "Outro",
+          null
+        ]
+      },
       "NivelCondicionamento": {
         "enum": [
           "Sedentario",
@@ -10484,6 +11147,70 @@
           },
           "vinculo": {
             "$ref": "#/components/schemas/VinculoResumo"
+          }
+        }
+      },
+      "ObterMetricasLeadsResponse": {
+        "required": [
+          "total",
+          "porOrigemAgente",
+          "porOrigemManual",
+          "convertidos",
+          "taxaConversao",
+          "porMotivoDescarte"
+        ],
+        "type": "object",
+        "properties": {
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "porOrigemAgente": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "porOrigemManual": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "convertidos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "taxaConversao": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "porMotivoDescarte": {
+            "type": "object",
+            "additionalProperties": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
           }
         }
       },
@@ -11459,6 +12186,29 @@
           }
         }
       },
+      "RegistrarInteracaoLeadRequest": {
+        "required": [
+          "observacao"
+        ],
+        "type": "object",
+        "properties": {
+          "observacao": {
+            "type": "string"
+          }
+        }
+      },
+      "RegistrarInteracaoLeadResponse": {
+        "required": [
+          "leadId"
+        ],
+        "type": "object",
+        "properties": {
+          "leadId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "RegistrarTreinadorRequest": {
         "required": [
           "email",
@@ -11781,6 +12531,13 @@
           "SystemAdmin",
           "Treinador",
           "Aluno"
+        ]
+      },
+      "TipoContatoLead": {
+        "enum": [
+          "Email",
+          "Telefone",
+          "WhatsApp"
         ]
       },
       "TipoDocumentoFiscal": {
@@ -12597,6 +13354,9 @@
     },
     {
       "name": "Treinador"
+    },
+    {
+      "name": "Leads"
     },
     {
       "name": "Aluno"
