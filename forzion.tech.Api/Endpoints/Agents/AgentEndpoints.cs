@@ -1,4 +1,6 @@
 using forzion.tech.Api.Endpoints.Agents.Hmac;
+using forzion.tech.Application.UseCases.Agents.BusinessInfo;
+using forzion.tech.Application.UseCases.Agents.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -31,6 +33,39 @@ public static class AgentEndpoints
                 HealthStatus.Degraded => Results.Ok(new AgentHealth("degraded", relogio.GetUtcNow())),
                 _ => Results.Ok(new AgentHealth("healthy", relogio.GetUtcNow())),
             };
+        });
+
+        grupo.MapGet("/tenants/{tenantId}/business-info", async Task<IResult> (
+            string tenantId,
+            [FromServices] ObterBusinessInfoHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            if (!Guid.TryParse(tenantId, out var tenantGuid))
+                return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+
+            var result = await handler.HandleAsync(new ObterBusinessInfoQuery(tenantGuid), cancellationToken).ConfigureAwait(false);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : AgentProblem.Criar(AgentErrorCode.TenantNotFound, StatusCodes.Status404NotFound);
+        });
+
+        grupo.MapGet("/tenants/{tenantId}/services", async Task<IResult> (
+            string tenantId,
+            string? category,
+            [FromServices] ListarServicosHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            if (!Guid.TryParse(tenantId, out var tenantGuid))
+                return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+            if (category is { Length: > 100 })
+                return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+
+            var result = await handler.HandleAsync(new ListarServicosQuery(tenantGuid, category), cancellationToken).ConfigureAwait(false);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : AgentProblem.Criar(AgentErrorCode.TenantNotFound, StatusCodes.Status404NotFound);
         });
 
         return endpoints;

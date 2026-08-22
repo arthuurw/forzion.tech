@@ -37,6 +37,7 @@ public sealed class RealPipelineFixture : WebApplicationFactory<Program>, IAsync
     public const string AdminEmail = "admin@forzion.tech";
     public const string AdminPassword = "Admin@123456";
     public const string UrlBase = "https://app.forzion.test";
+    public const string AgentsHmacSecret = "e2e-agents-hmac-secret-com-pelo-menos-32-bytes!!";
 
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:17-alpine")
         .WithDatabase("forzion_e2e")
@@ -63,6 +64,7 @@ public sealed class RealPipelineFixture : WebApplicationFactory<Program>, IAsync
         // MigrateAsync exige o mesmo schema no DbContext, senão as relações não batem.
         builder.UseSetting("Database:Schema", "homolog");
         builder.UseSetting("Auth:JwtSecret", "e2e-only-secret-at-least-32-chars-long!!");
+        builder.UseSetting("Agents:Hmac:SecretAtual", AgentsHmacSecret);
 
         // Stripe: ValidateOnStart exige SecretKey/WebhookSecret não-vazios. Valores
         // dummy só passam na validação — o IStripeService real é trocado pelo fake.

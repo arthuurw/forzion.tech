@@ -29,8 +29,6 @@ public class AgentEndpointsGroupTests
 
     public static TheoryData<string, string> CaminhosDoContratoAindaNaoImplementados() => new()
     {
-        { "GET", AgentEndpoints.Prefixo + "/tenants/7f3a1b2c-9d4e-4f5a-8b6c-1d2e3f4a5b6c/business-info" },
-        { "GET", AgentEndpoints.Prefixo + "/tenants/7f3a1b2c-9d4e-4f5a-8b6c-1d2e3f4a5b6c/services" },
         { "GET", AgentEndpoints.Prefixo + "/tenants/7f3a1b2c-9d4e-4f5a-8b6c-1d2e3f4a5b6c/availability" },
         { "POST", AgentEndpoints.Prefixo + "/tenants/7f3a1b2c-9d4e-4f5a-8b6c-1d2e3f4a5b6c/leads" },
         { "POST", AgentEndpoints.Prefixo + "/tenants/7f3a1b2c-9d4e-4f5a-8b6c-1d2e3f4a5b6c/booking-requests" },
