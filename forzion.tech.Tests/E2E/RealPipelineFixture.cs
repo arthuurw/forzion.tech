@@ -48,6 +48,8 @@ public sealed class RealPipelineFixture : WebApplicationFactory<Program>, IAsync
 
     public FakeStripeService Stripe { get; } = new();
 
+    public LeadConviteTokenCaptureSender LeadConviteSenderSpy { get; } = new();
+
     public ConcurrentQueue<string> ErrosCapturados { get; } = new();
 
     // search_path=homolog: a 1ª migration cria tabelas SEM schema explícito (caem no
@@ -86,6 +88,8 @@ public sealed class RealPipelineFixture : WebApplicationFactory<Program>, IAsync
             services.RemoveAll<IDomainEventDispatcher>();
             services.AddScoped<IDomainEventDispatcher, DispatcherBestEffortSincrono>();
             services.AddSingleton<ILoggerProvider>(new CapturaErroLoggerProvider(ErrosCapturados));
+            services.RemoveAll<ILeadConviteSender>();
+            services.AddSingleton<ILeadConviteSender>(LeadConviteSenderSpy);
         });
     }
 
