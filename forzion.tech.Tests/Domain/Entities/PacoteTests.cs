@@ -123,4 +123,84 @@ public class PacoteTests
         p.IsAtivo.Should().BeFalse();
         p.UpdatedAt.Should().NotBeNull();
     }
+
+    // --- TornarPublico ---
+
+    [Fact]
+    public void TornarPublico_SemCategoria_Falha()
+    {
+        var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
+
+        var r = p.TornarPublico(TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        p.IsPublico.Should().BeFalse();
+    }
+
+    [Fact]
+    public void TornarPublico_ComCategoria_Sucesso()
+    {
+        var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
+        p.AtualizarCatalogoPublico("Pilates", null, null, TestData.Agora);
+
+        var r = p.TornarPublico(TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        p.IsPublico.Should().BeTrue();
+    }
+
+    // --- TornarPrivado ---
+
+    [Fact]
+    public void TornarPrivado_NuncaFalha()
+    {
+        var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
+        p.AtualizarCatalogoPublico("Pilates", null, null, TestData.Agora);
+        p.TornarPublico(TestData.Agora);
+
+        p.TornarPrivado(TestData.Agora);
+
+        p.IsPublico.Should().BeFalse();
+    }
+
+    // --- AtualizarCatalogoPublico ---
+
+    [Fact]
+    public void AtualizarCatalogoPublico_DadosValidos_AtualizaCampos()
+    {
+        var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
+
+        var r = p.AtualizarCatalogoPublico("Pilates", 60, true, TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        p.Categoria.Should().Be("Pilates");
+        p.DuracaoMinutos.Should().Be(60);
+        p.TrialDisponivel.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-10)]
+    public void AtualizarCatalogoPublico_DuracaoInvalida_Falha(int duracao)
+    {
+        var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
+
+        var r = p.AtualizarCatalogoPublico(null, duracao, null, TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        p.DuracaoMinutos.Should().BeNull();
+    }
+
+    [Fact]
+    public void AtualizarCatalogoPublico_CamposNulos_NaoAltera()
+    {
+        var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
+        p.AtualizarCatalogoPublico("Pilates", 60, true, TestData.Agora);
+
+        p.AtualizarCatalogoPublico(null, null, null, TestData.Agora);
+
+        p.Categoria.Should().Be("Pilates");
+        p.DuracaoMinutos.Should().Be(60);
+        p.TrialDisponivel.Should().BeTrue();
+    }
 }

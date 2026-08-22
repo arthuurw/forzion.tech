@@ -10,4 +10,7 @@ public static class PacoteErrors
     public static Error DescricaoMuitoLonga => Error.Validation("pacote.descricao_muito_longa", "A descrição deve ter no máximo 500 caracteres.");
     public static Error NaoEncontrado => Error.NotFound("pacote.nao_encontrado", "Pacote não encontrado.");
     public static Error NaoPertenceTreinador => Error.Business("pacote.nao_pertence_treinador", "Pacote não pertence ao treinador informado.");
+    public static Error CategoriaObrigatoriaParaPublico => Error.Validation("pacote.categoria_obrigatoria_para_publico", "A categoria é obrigatória para tornar o pacote público.");
+    public static Error CategoriaMuitoLonga => Error.Validation("pacote.categoria_muito_longa", "A categoria deve ter no máximo 100 caracteres.");
+    public static Error DuracaoMinutosInvalida => Error.Validation("pacote.duracao_minutos_invalida", "A duração em minutos deve ser maior que zero.");
 }

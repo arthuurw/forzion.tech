@@ -11,6 +11,10 @@ public class Pacote
     public string? Descricao { get; private set; }
     public decimal Preco { get; private set; }
     public bool IsAtivo { get; private set; }
+    public string? Categoria { get; private set; }
+    public int? DuracaoMinutos { get; private set; }
+    public bool TrialDisponivel { get; private set; }
+    public bool IsPublico { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
@@ -74,5 +78,39 @@ public class Pacote
     {
         IsAtivo = false;
         UpdatedAt = agora;
+    }
+
+    public Result TornarPublico(DateTime agora)
+    {
+        if (string.IsNullOrWhiteSpace(Categoria))
+            return Result.Failure(PacoteErrors.CategoriaObrigatoriaParaPublico);
+
+        IsPublico = true;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
+    public void TornarPrivado(DateTime agora)
+    {
+        IsPublico = false;
+        UpdatedAt = agora;
+    }
+
+    public Result AtualizarCatalogoPublico(string? categoria, int? duracaoMinutos, bool? trialDisponivel, DateTime agora)
+    {
+        if (categoria is not null && categoria.Trim().Length > 100)
+            return Result.Failure(PacoteErrors.CategoriaMuitoLonga);
+        if (duracaoMinutos is <= 0)
+            return Result.Failure(PacoteErrors.DuracaoMinutosInvalida);
+
+        if (categoria is not null)
+            Categoria = string.IsNullOrWhiteSpace(categoria) ? null : categoria.Trim();
+        if (duracaoMinutos is not null)
+            DuracaoMinutos = duracaoMinutos;
+        if (trialDisponivel is not null)
+            TrialDisponivel = trialDisponivel.Value;
+
+        UpdatedAt = agora;
+        return Result.Success();
     }
 }
