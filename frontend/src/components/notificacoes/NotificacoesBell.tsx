@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   IconButton,
   Badge,
@@ -10,15 +11,23 @@ import {
   Divider,
 } from "@mui/material";
 import NotificationsIcon from "@mui/icons-material/Notifications";
+import PersonAddAlt1Icon from "@mui/icons-material/PersonAddAlt1";
 import EmptyState from "@/components/ui/EmptyState";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import AlertBanner from "@/components/ui/AlertBanner";
 import { notificacoesApi } from "@/lib/api/notificacoes";
 import { extractApiError } from "@/lib/api/extractApiError";
 import { formatarDataHora } from "@/lib/utils/formatting";
-import type { NotificacaoResponse } from "@/types";
+import type { NotificacaoResponse, TipoNotificacao } from "@/types";
+
+// Sem entrada aqui = sem ícone dedicado — degrada para o título/corpo puros
+// em vez de quebrar quando um tipo novo chega antes do rótulo ser adicionado.
+const TIPO_ICON: Partial<Record<TipoNotificacao, typeof PersonAddAlt1Icon>> = {
+  NovoLead: PersonAddAlt1Icon,
+};
 
 export default function NotificacoesBell() {
+  const router = useRouter();
   const [anchor, setAnchor] = useState<null | HTMLElement>(null);
   const [naoLidas, setNaoLidas] = useState(0);
   const [itens, setItens] = useState<NotificacaoResponse[]>([]);
@@ -52,14 +61,19 @@ export default function NotificacoesBell() {
     }
   };
 
-  const marcarLida = async (n: NotificacaoResponse) => {
-    if (n.lida) return;
-    try {
-      await notificacoesApi.marcarLida(n.id);
-      setItens((atual) => atual.map((i) => (i.id === n.id ? { ...i, lida: true } : i)));
-      setNaoLidas((c) => Math.max(0, c - 1));
-    } catch (err) {
-      setError(extractApiError(err, "Erro ao marcar como lida."));
+  const abrirNotificacao = async (n: NotificacaoResponse) => {
+    if (!n.lida) {
+      try {
+        await notificacoesApi.marcarLida(n.id);
+        setItens((atual) => atual.map((i) => (i.id === n.id ? { ...i, lida: true } : i)));
+        setNaoLidas((c) => Math.max(0, c - 1));
+      } catch (err) {
+        setError(extractApiError(err, "Erro ao marcar como lida."));
+      }
+    }
+    if (n.linkRelativo) {
+      setAnchor(null);
+      router.push(n.linkRelativo);
     }
   };
 
@@ -111,16 +125,19 @@ export default function NotificacoesBell() {
         ) : itens.length === 0 && !error ? (
           <EmptyState message="Nenhuma notificação por aqui." />
         ) : (
-          itens.map((n) => (
+          itens.map((n) => {
+            const Icone = TIPO_ICON[n.tipo];
+            return (
             <ListItemButton
               key={n.id}
-              onClick={() => marcarLida(n)}
+              onClick={() => abrirNotificacao(n)}
               sx={{ display: "block", py: 1.5, minHeight: 44, bgcolor: n.lida ? "transparent" : "action.subtleBg" }}
             >
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 {!n.lida && (
                   <Box aria-hidden sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "primary.main", flexShrink: 0 }} />
                 )}
+                {Icone && <Icone aria-hidden fontSize="small" sx={{ color: "text.secondary", flexShrink: 0 }} />}
                 <Typography variant="body2" sx={{ fontWeight: n.lida ? 500 : 700, overflowWrap: "anywhere" }}>
                   {n.titulo}
                 </Typography>
@@ -132,7 +149,8 @@ export default function NotificacoesBell() {
                 {formatarDataHora(n.createdAt)}
               </Typography>
             </ListItemButton>
-          ))
+            );
+          })
         )}
       </Menu>
     </>

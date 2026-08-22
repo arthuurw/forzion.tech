@@ -11,6 +11,11 @@ vi.mock("@/lib/api/notificacoes", () => ({
   },
 }));
 
+const push = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
+}));
+
 import { notificacoesApi } from "@/lib/api/notificacoes";
 import NotificacoesBell from "./NotificacoesBell";
 
@@ -40,6 +45,7 @@ describe("NotificacoesBell", () => {
     contarNaoLidas.mockReturnValue(ok({ total: 0 }));
     listar.mockReturnValue(ok<NotificacaoResponse[]>([]));
     marcarLida.mockResolvedValue({} as never);
+    push.mockClear();
   });
 
   it("exibe o contador de não-lidas do endpoint no badge", async () => {
@@ -88,5 +94,45 @@ describe("NotificacoesBell", () => {
     renderWithProviders(<NotificacoesBell />, { skipAuth: true });
     fireEvent.click(await screen.findByRole("button", { name: /Notificações/ }));
     expect(await screen.findByText("Falha ao listar.")).toBeInTheDocument();
+  });
+
+  it("notificação de NovoLead renderiza com o rótulo e navega ao link do lead", async () => {
+    listar.mockReturnValue(ok([notificacao({
+      id: "lead-n1",
+      tipo: "NovoLead",
+      titulo: "Novo lead",
+      corpo: "Você recebeu um novo lead. Confira os dados e o histórico no detalhe.",
+      linkRelativo: "/treinador/leads/lead-1",
+    })]));
+    renderWithProviders(<NotificacoesBell />, { skipAuth: true });
+    fireEvent.click(await screen.findByRole("button", { name: /Notificações/ }));
+
+    fireEvent.click(await screen.findByText("Novo lead"));
+
+    await waitFor(() => expect(marcarLida).toHaveBeenCalledWith("lead-n1"));
+    expect(push).toHaveBeenCalledWith("/treinador/leads/lead-1");
+  });
+
+  it("tipo de notificação desconhecido degrada sem ícone e sem quebrar", async () => {
+    listar.mockReturnValue(ok([notificacao({
+      // @ts-expect-error tipo hipotético ainda não modelado no union
+      tipo: "TipoFuturoDesconhecido",
+      titulo: "Algo novo",
+    })]));
+    renderWithProviders(<NotificacoesBell />, { skipAuth: true });
+    fireEvent.click(await screen.findByRole("button", { name: /Notificações/ }));
+
+    expect(await screen.findByText("Algo novo")).toBeInTheDocument();
+  });
+
+  it("notificação sem link não navega ao clicar, só marca como lida", async () => {
+    listar.mockReturnValue(ok([notificacao({ id: "sem-link", titulo: "Sem link", linkRelativo: null })]));
+    renderWithProviders(<NotificacoesBell />, { skipAuth: true });
+    fireEvent.click(await screen.findByRole("button", { name: /Notificações/ }));
+
+    fireEvent.click(await screen.findByText("Sem link"));
+
+    await waitFor(() => expect(marcarLida).toHaveBeenCalledWith("sem-link"));
+    expect(push).not.toHaveBeenCalled();
   });
 });
