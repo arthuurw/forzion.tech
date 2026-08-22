@@ -210,6 +210,25 @@ public class LeadRepositoryTests(InfrastructureTestFixture fixture)
     }
 
     [Fact]
+    public async Task AgregarMetricasAsync_LeadAnonimizado_ContinuaContandoNoTotalENaConversao()
+    {
+        await using var ctx = fixture.CreateContext();
+        var treinadorId = await SeedTreinadorAsync(ctx);
+
+        var alunoId = await SeedAlunoAsync(ctx);
+        var convertidoAnonimizado = NovoLead(treinadorId, source: LeadSource.Agent, createdAt: Agora);
+        convertidoAnonimizado.Converter(alunoId, Agora.AddHours(1));
+        convertidoAnonimizado.Anonimizar(Agora.AddDays(180));
+        await SeedLeadAsync(ctx, convertidoAnonimizado);
+
+        var metricas = await Repo(ctx).AgregarMetricasAsync(treinadorId, Agora.AddDays(-1), Agora.AddDays(1));
+
+        metricas.Total.Should().Be(1, "o expurgo de PII não remove o lead da contagem de canal");
+        metricas.PorOrigemAgente.Should().Be(1);
+        metricas.Convertidos.Should().Be(1, "Status sobrevive ao scrub — a métrica de conversão não pode zerar");
+    }
+
+    [Fact]
     public async Task AgregarMetricasAsync_SemLeadsNoPeriodo_RetornaZeros()
     {
         await using var ctx = fixture.CreateContext();
