@@ -133,6 +133,39 @@ export default function PrivacidadePage() {
 
           <Box component="section">
             <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
+              Dados de leads (pessoas sem conta)
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Quando você demonstra interesse em um treinador — pelo agente
+              conversacional do perfil dele ou por um cadastro feito pelo
+              próprio treinador — tratamos seu nome, um contato (e-mail,
+              telefone ou WhatsApp) e, quando informado, o interesse relatado.
+              A finalidade é exclusivamente permitir que aquele treinador entre
+              em contato para tratar do seu interesse; nenhum outro treinador
+              tem acesso a esse dado.
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              A base legal é o consentimento (art. 7º, I da LGPD), registrado
+              no momento da captura. Passados <strong>180 dias sem qualquer
+              interação</strong> sobre o registro, ele é anonimizado
+              automaticamente — nome, contato, interesse e observações são
+              apagados, preservando apenas métricas agregadas do canal
+              (origem, status e datas), que não identificam você.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Como quem demonstra interesse não chega a ter conta na
+              plataforma, os direitos do art. 18 (acesso, correção, exclusão)
+              são exercidos pelo canal do encarregado —{" "}
+              <strong>suporte@forzion.tech</strong> — informando o contato
+              usado no momento do interesse, para que o registro possa ser
+              localizado e tratado.
+            </Typography>
+          </Box>
+
+          <Divider />
+
+          <Box component="section">
+            <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
               Sub-processadores
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
