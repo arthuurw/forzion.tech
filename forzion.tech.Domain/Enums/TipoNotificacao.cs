@@ -11,5 +11,6 @@ public enum TipoNotificacao
     DigestTreinador,
     LimiteAlunosExcedido,
     LimiteAlunosLembrete,
-    LimiteAlunosAplicado
+    LimiteAlunosAplicado,
+    NovoLead
 }

@@ -11800,7 +11800,8 @@
           "DigestTreinador",
           "LimiteAlunosExcedido",
           "LimiteAlunosLembrete",
-          "LimiteAlunosAplicado"
+          "LimiteAlunosAplicado",
+          "NovoLead"
         ]
       },
       "TipoTrocaPlano": {

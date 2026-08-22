@@ -26,5 +26,6 @@ public enum TipoAcaoAprovacao
     InativacaoPlanoPlataforma = 21,
     AlteracaoStatusAluno = 22,
     AlteracaoModoPagamentoTreinador = 23,
-    DefinicaoCortesiaTreinador = 25
+    DefinicaoCortesiaTreinador = 25,
+    AnonimizacaoLead = 26
 }
