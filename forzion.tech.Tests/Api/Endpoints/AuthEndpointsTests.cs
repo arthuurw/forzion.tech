@@ -283,6 +283,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
             Mock.Of<IUnitOfWork>(),
             Mock.Of<ILogAprovacaoRepository>(),
             Mock.Of<IValidator<RegistrarAlunoCommand>>(),
+            new LeadConviteResolver(Mock.Of<ILeadConviteRepository>(), Mock.Of<ILeadRepository>()),
             TimeProvider.System,
             Mock.Of<ILogger<RegistrarAlunoHandler>>());
 

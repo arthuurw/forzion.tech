@@ -21,6 +21,7 @@ public class RegistrarAlunoHandler(
     IUnitOfWork unitOfWork,
     ILogAprovacaoRepository logAprovacaoRepository,
     IValidator<RegistrarAlunoCommand> validator,
+    LeadConviteResolver leadConviteResolver,
     TimeProvider timeProvider,
     ILogger<RegistrarAlunoHandler> logger)
 {
@@ -47,7 +48,15 @@ public class RegistrarAlunoHandler(
         if (emailExistente is not null)
             throw new EmailJaCadastradoException();
 
-        var treinador = await treinadorRepository.ObterPorIdAsync(command.TreinadorId, cancellationToken).ConfigureAwait(false)
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+
+        // Token inválido/expirado/consumido devolve null aqui — cadastro segue normal, sem
+        // revelar que um token foi tentado (AGF2-42). Token válido substitui o treinador do
+        // cliente pelo do convite (AGF2-41) — nunca o contrário.
+        var conviteResolvido = await leadConviteResolver.ResolverAsync(command.ConviteToken, agora, cancellationToken).ConfigureAwait(false);
+        var treinadorIdEfetivo = conviteResolvido?.Convite.TreinadorId ?? command.TreinadorId;
+
+        var treinador = await treinadorRepository.ObterPorIdAsync(treinadorIdEfetivo, cancellationToken).ConfigureAwait(false)
             ?? throw new TreinadorNaoEncontradoException();
 
         if (treinador.Status != TreinadorStatus.Ativo)
@@ -56,10 +65,9 @@ public class RegistrarAlunoHandler(
         var pacote = await pacoteRepository.ObterPorIdAsync(command.PacoteId, cancellationToken).ConfigureAwait(false)
             ?? throw new PacoteNaoEncontradoException();
 
-        if (pacote.TreinadorId != command.TreinadorId)
+        if (pacote.TreinadorId != treinadorIdEfetivo)
             return Result.Failure<AlunoResponse>(Error.Business("pacote.nao_pertence_treinador", "O pacote informado não pertence ao treinador selecionado."));
 
-        var agora = timeProvider.GetUtcNow().UtcDateTime;
         var emailResult = Email.Criar(command.Email);
         if (emailResult.IsFailure)
             return Result.Failure<AlunoResponse>(emailResult.Error!);
@@ -90,7 +98,7 @@ public class RegistrarAlunoHandler(
             return Result.Failure<AlunoResponse>(alunoResult.Error!);
         var aluno = alunoResult.Value;
 
-        var vinculoResult = VinculoTreinadorAluno.Criar(command.TreinadorId, aluno.Id, agora, command.PacoteId);
+        var vinculoResult = VinculoTreinadorAluno.Criar(treinadorIdEfetivo, aluno.Id, agora, command.PacoteId);
         if (vinculoResult.IsFailure)
             return Result.Failure<AlunoResponse>(vinculoResult.Error!);
         var vinculo = vinculoResult.Value;
@@ -98,6 +106,17 @@ public class RegistrarAlunoHandler(
         await contaRepository.AdicionarAsync(conta, cancellationToken).ConfigureAwait(false);
         await alunoRepository.AdicionarAsync(aluno, cancellationToken).ConfigureAwait(false);
         await vinculoRepository.AdicionarAsync(vinculo, cancellationToken).ConfigureAwait(false);
+
+        if (conviteResolvido is not null)
+        {
+            var consumirResult = conviteResolvido.Convite.Consumir(agora);
+            if (consumirResult.IsFailure)
+                return Result.Failure<AlunoResponse>(consumirResult.Error!);
+
+            var converterResult = conviteResolvido.Lead.Converter(aluno.Id, agora);
+            if (converterResult.IsFailure)
+                return Result.Failure<AlunoResponse>(converterResult.Error!);
+        }
 
         if (command.ColetaDadosSaude)
         {
@@ -120,7 +139,7 @@ public class RegistrarAlunoHandler(
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        logger.LogInformation("Aluno {AlunoId} registrado com vínculo pendente ao treinador {TreinadorId}.", aluno.Id, command.TreinadorId);
+        logger.LogInformation("Aluno {AlunoId} registrado com vínculo pendente ao treinador {TreinadorId}.", aluno.Id, treinadorIdEfetivo);
 
         return Result.Success(CadastrarAluno.CadastrarAlunoHandler.ToResponse(aluno));
     }

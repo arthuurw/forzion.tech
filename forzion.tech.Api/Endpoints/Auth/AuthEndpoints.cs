@@ -101,7 +101,7 @@ public static class AuthEndpoints
                     request.Telefone, request.DiasDisponiveis, request.TempoDisponivelMinutos,
                     request.Finalidade, request.FocoTreino, request.NivelCondicionamento,
                     request.LimitacoesFisicas, request.Doencas, request.ObservacoesAdicionais,
-                    request.ConsentimentoDadosSaude, request.ConsentimentoDadosSaudeEm),
+                    request.ConsentimentoDadosSaude, request.ConsentimentoDadosSaudeEm, request.ConviteToken),
                 cancellationToken);
 
             if (result.IsFailure) return result.ToProblemResult();
@@ -271,7 +271,8 @@ public record RegistrarAlunoRequest(
     string? Doencas = null,
     string? ObservacoesAdicionais = null,
     bool ConsentimentoDadosSaude = false,
-    DateTime? ConsentimentoDadosSaudeEm = null);
+    DateTime? ConsentimentoDadosSaudeEm = null,
+    string? ConviteToken = null);
 public record IniciarPagamentoPlanoRequest(MetodoPagamento Metodo);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Token, string NovaSenha, string? CodigoTotp = null);

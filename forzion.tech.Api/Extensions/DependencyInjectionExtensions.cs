@@ -359,6 +359,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ContratarPlanoTreinadorHandler>();
         services.AddScoped<CancelarMinhaAssinaturaTreinadorHandler>();
         services.AddScoped<RegistrarAlunoHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Alunos.RegistrarAluno.LeadConviteResolver>();
         services.AddScoped<ListarTreinadoresPublicosHandler>();
 
         services.AddScoped<ListarAlunosAdminHandler>();

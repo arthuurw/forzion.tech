@@ -97,7 +97,9 @@ public class FluxoCompletoTests
             _contaRepo.Object, _alunoRepo.Object, _vinculoRepo.Object, _treinadorRepo.Object,
             _pacoteRepo.Object, _passwordHasher.Object, _unitOfWork.Object,
             Mock.Of<ILogAprovacaoRepository>(),
-            new RegistrarAlunoCommandValidator(new FakePwnedPasswordsService()), TimeProvider.System,
+            new RegistrarAlunoCommandValidator(new FakePwnedPasswordsService()),
+            new LeadConviteResolver(Mock.Of<ILeadConviteRepository>(), Mock.Of<ILeadRepository>()),
+            TimeProvider.System,
             Mock.Of<ILogger<RegistrarAlunoHandler>>());
 
         var result = await handler.HandleAsync(

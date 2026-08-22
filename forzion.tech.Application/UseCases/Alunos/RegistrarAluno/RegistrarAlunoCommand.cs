@@ -18,7 +18,8 @@ public record RegistrarAlunoCommand(
     string? Doencas = null,
     string? ObservacoesAdicionais = null,
     bool ConsentimentoDadosSaude = false,
-    DateTime? ConsentimentoDadosSaudeEm = null)
+    DateTime? ConsentimentoDadosSaudeEm = null,
+    string? ConviteToken = null)
 {
     public bool ColetaDadosSaude =>
         Finalidade is not null

@@ -25,6 +25,8 @@ public class RegistrarAlunoHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogAprovacaoRepository> _logAprovacaoRepo = new();
     private readonly Mock<ILogger<RegistrarAlunoHandler>> _logger = new();
+    private readonly Mock<ILeadConviteRepository> _leadConviteRepo = new();
+    private readonly Mock<ILeadRepository> _leadRepo = new();
     private readonly RegistrarAlunoHandler _handler;
 
     public RegistrarAlunoHandlerTests()
@@ -40,6 +42,7 @@ public class RegistrarAlunoHandlerTests
             _unitOfWork.Object,
             _logAprovacaoRepo.Object,
             new RegistrarAlunoCommandValidator(new FakePwnedPasswordsService()),
+            new LeadConviteResolver(_leadConviteRepo.Object, _leadRepo.Object),
             TimeProvider.System,
             _logger.Object);
     }
@@ -282,7 +285,8 @@ public class RegistrarAlunoHandlerTests
         var handler = new RegistrarAlunoHandler(
             _contaRepo.Object, _alunoRepo.Object, _vinculoRepo.Object, _treinadorRepo.Object,
             _pacoteRepo.Object, _passwordHasher.Object, _unitOfWork.Object, _logAprovacaoRepo.Object,
-            validatorNoOp.Object, TimeProvider.System, _logger.Object);
+            validatorNoOp.Object, new LeadConviteResolver(Mock.Of<ILeadConviteRepository>(), Mock.Of<ILeadRepository>()),
+            TimeProvider.System, _logger.Object);
 
         var result = await handler.HandleAsync(new RegistrarAlunoCommand(
             "joao@teste.com", "SenhaForte123", "Joao", treinadorId, pacote.Id,
@@ -293,5 +297,121 @@ public class RegistrarAlunoHandlerTests
         result.Error!.Code.Should().Be("aluno.consentimento_saude_obrigatorio");
         _alunoRepo.Verify(r => r.AdicionarAsync(It.IsAny<Aluno>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // --- Conversão de lead via convite (T31) ---
+
+    private static Lead NovoLead(Guid treinadorId) =>
+        Lead.Criar(
+            treinadorId, "Fulano",
+            ContatoLead.Criar(TipoContatoLead.Email, "fulano@lead.com").Value,
+            "quero treinar",
+            ConsentimentoLead.Criar("Contato comercial", DateTime.UtcNow, DateTime.UtcNow).Value,
+            null, LeadSource.Agent, null, null, DateTime.UtcNow).Value;
+
+    private (Lead Lead, LeadConvite Convite) ArrangeConviteValido(Guid treinadorDoConvite)
+    {
+        var lead = NovoLead(treinadorDoConvite);
+        var convite = LeadConvite.Criar(lead.Id, treinadorDoConvite, "hash-do-token", DateTime.UtcNow.AddDays(14), DateTime.UtcNow).Value;
+        _leadConviteRepo.Setup(r => r.ObterPorTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(convite);
+        _leadRepo.Setup(r => r.ObterComHistoricoAsync(treinadorDoConvite, lead.Id, It.IsAny<CancellationToken>())).ReturnsAsync(lead);
+        return (lead, convite);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TokenValido_TreinadorDoConviteSubstituiODoClienteEConverteLead()
+    {
+        var (treinadorDoConvite, pacoteDoConvite) = ArrangeTreinadorAtivoComPacote();
+        var (lead, convite) = ArrangeConviteValido(treinadorDoConvite);
+        var treinadorDoCliente = Guid.NewGuid();
+
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand(
+            "joao@teste.com", "SenhaForte123", "Joao", treinadorDoCliente, pacoteDoConvite.Id,
+            ConviteToken: "token-cru"));
+
+        result.IsSuccess.Should().BeTrue();
+        _vinculoRepo.Verify(r => r.AdicionarAsync(
+            It.Is<VinculoTreinadorAluno>(v => v.TreinadorId == treinadorDoConvite), It.IsAny<CancellationToken>()), Times.Once);
+        convite.UsadoEm.Should().NotBeNull();
+        lead.Status.Should().Be(LeadStatus.Convertido);
+        lead.AlunoId.Should().Be(result.Value.AlunoId);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TokenInvalido_CadastroSeguemNormalSemConversao()
+    {
+        var (treinadorId, pacote) = ArrangeTreinadorAtivoComPacote();
+        _leadConviteRepo.Setup(r => r.ObterPorTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((LeadConvite?)null);
+
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand(
+            "joao@teste.com", "SenhaForte123", "Joao", treinadorId, pacote.Id,
+            ConviteToken: "token-invalido"));
+
+        result.IsSuccess.Should().BeTrue();
+        _vinculoRepo.Verify(r => r.AdicionarAsync(
+            It.Is<VinculoTreinadorAluno>(v => v.TreinadorId == treinadorId), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TokenExpirado_CadastroSeguemNormalSemConversao()
+    {
+        var (treinadorId, pacote) = ArrangeTreinadorAtivoComPacote();
+        var lead = NovoLead(Guid.NewGuid());
+        var expirado = LeadConvite.Criar(lead.Id, Guid.NewGuid(), "hash", DateTime.UtcNow.AddSeconds(1), DateTime.UtcNow.AddSeconds(-10)).Value;
+        _leadConviteRepo.Setup(r => r.ObterPorTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(expirado);
+
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand(
+            "joao2@teste.com", "SenhaForte123", "Joao", treinadorId, pacote.Id,
+            ConviteToken: "token-quase-expirando"));
+
+        result.IsSuccess.Should().BeTrue();
+        expirado.UsadoEm.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_TokenJaConsumido_CadastroSeguemNormalSemConversao()
+    {
+        var (treinadorId, pacote) = ArrangeTreinadorAtivoComPacote();
+        var lead = NovoLead(Guid.NewGuid());
+        var consumido = LeadConvite.Criar(lead.Id, Guid.NewGuid(), "hash", DateTime.UtcNow.AddDays(14), DateTime.UtcNow).Value;
+        consumido.Consumir(DateTime.UtcNow.AddHours(1));
+        _leadConviteRepo.Setup(r => r.ObterPorTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(consumido);
+
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand(
+            "joao3@teste.com", "SenhaForte123", "Joao", treinadorId, pacote.Id,
+            ConviteToken: "token-ja-usado"));
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task HandleAsync_FalhaAntesDaConversao_ConviteContinuaUtilizavel()
+    {
+        var (treinadorDoConvite, pacoteDoConvite) = ArrangeTreinadorAtivoComPacote();
+        var (lead, convite) = ArrangeConviteValido(treinadorDoConvite);
+        _contaRepo.Setup(r => r.ObterPorEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Conta.Criar(Email.Criar("joao@teste.com").Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value);
+
+        var act = async () => await _handler.HandleAsync(new RegistrarAlunoCommand(
+            "joao@teste.com", "SenhaForte123", "Joao", treinadorDoConvite, pacoteDoConvite.Id,
+            ConviteToken: "token-cru"));
+
+        await act.Should().ThrowAsync<EmailJaCadastradoException>();
+        convite.UsadoEm.Should().BeNull();
+        lead.Status.Should().Be(LeadStatus.Novo);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SemConviteToken_ComportamentoIdenticoAoCadastroAtual()
+    {
+        var (treinadorId, pacote) = ArrangeTreinadorAtivoComPacote();
+
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand(
+            "joao4@teste.com", "SenhaForte123", "Joao", treinadorId, pacote.Id));
+
+        result.IsSuccess.Should().BeTrue();
+        _leadConviteRepo.Verify(r => r.ObterPorTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

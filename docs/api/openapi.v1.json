@@ -12178,6 +12178,12 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "conviteToken": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
