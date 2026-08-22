@@ -1,3 +1,4 @@
+using System.Text.Json;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -91,5 +92,41 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
             df.Navigation(d => d.Endereco).IsRequired();
         });
         builder.Navigation(t => t.DadosFiscais).IsRequired(false);
+
+        builder.OwnsOne(t => t.PerfilPublico, pp =>
+        {
+            pp.Property(p => p.NomeFantasia).HasMaxLength(200);
+            pp.Property(p => p.IsPublicado).IsRequired().HasDefaultValue(false);
+            pp.Property(p => p.UpdatedAt);
+
+            pp.Property(p => p.Politicas)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => v == null ? null : JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v => v == null ? null : JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions?)null));
+
+            pp.OwnsOne(p => p.Endereco, e =>
+            {
+                e.Property(x => x.Rua).HasMaxLength(200);
+                e.Property(x => x.Numero).HasMaxLength(20);
+                e.Property(x => x.Complemento).HasMaxLength(100);
+                e.Property(x => x.Bairro).HasMaxLength(100);
+                e.Property(x => x.Cidade).HasMaxLength(100);
+                e.Property(x => x.Estado).HasMaxLength(2);
+                e.Property(x => x.Cep).HasMaxLength(8);
+            });
+            pp.Navigation(p => p.Endereco).IsRequired(false);
+
+            pp.OwnsMany(p => p.HorariosFuncionamento, h =>
+            {
+                h.ToTable("horarios_funcionamento");
+                h.WithOwner().HasForeignKey("treinador_id");
+                h.HasKey(x => x.Id);
+                h.Property(x => x.DiaSemana).IsRequired();
+                h.Property(x => x.AbreAs).IsRequired();
+                h.Property(x => x.FechaAs).IsRequired();
+            });
+        });
+        builder.Navigation(t => t.PerfilPublico).IsRequired();
     }
 }
