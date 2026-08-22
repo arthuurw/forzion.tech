@@ -78,11 +78,11 @@ forzion.tech/
 ├── .env.example                # Variáveis do docker-compose
 ├── global.json                 # SDK .NET pinado (floor 10.0.100)
 ├── forzion.tech.slnx           # Solution (formato .slnx)
-├── specs/                      # 24 docs de referência agent-oriented `specification-*.md` (versionados):
+├── specs/                      # 25 docs de referência agent-oriented `specification-*.md` (versionados):
 │                               # model, backend, db, coding, design-review, concurrency, performance,
 │                               # load-testing, tests, local-ci-repro, git, workflow, security, observability,
 │                               # stripe, fiscal, email, whatsapp, lgpd, dr, infrastructure, frontend,
-│                               # frontend-ui, seo
+│                               # frontend-ui, seo, agents
 └── docs/                       # Documentação (gitignored, exceto docs/api/)
     └── api/openapi.v1.json     # Contrato OpenAPI versionado (baseline do gate openapi-drift)
 ```
@@ -472,6 +472,7 @@ Contrato completo (rotas, request/response, códigos de erro): UI **Scalar** em 
 | Suporte | `/suporte` | JWT | Abertura de ticket de suporte |
 | Webhooks | `/webhooks/*` | público, verificação por assinatura · `webhook`, body ≤64 KB | Stripe (`Stripe-Signature`), Resend (Svix), WhatsApp (handshake Meta + `X-Hub-Signature-256`) |
 | Internal | `/internal/*` | `X-Internal-Key` · `internal` | Jobs de cron: renovações, pré-avisos, engajamento, reconciliação Stripe (503 se truncada), graça/apara de limite de alunos, elegibilidade/purga LGPD |
+| Agentes (gateway) | `/internal/agents/v1` | assinatura HMAC (`X-Forzion-Signature`/`X-Forzion-Timestamp`) · `agents` | Consumida por gateway externo de agentes, não pela borda pública. Só `GET /health` implementado (fatia 0); os demais 5 caminhos do contrato são 404 por desenho — ver `specs/specification-agents.md` |
 | Infra | `/health`, `/health/ready` | — | Liveness / readiness (db + schema + integrações) |
 
 ---
