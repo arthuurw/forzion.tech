@@ -164,6 +164,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IHealthSnapshotRepository, HealthSnapshotRepository>();
         services.AddScoped<IErrorLogRepository, ErrorLogRepository>();
         services.AddScoped<IAdminStatsRepository, AdminStatsRepository>();
+        services.AddScoped<ILeadRepository, LeadRepository>();
         services.AddScoped<IHealthReportCollector, Health.HealthReportCollector>();
         services.AddScoped<IHealthReportSender, Health.HealthReportSender>();
 
