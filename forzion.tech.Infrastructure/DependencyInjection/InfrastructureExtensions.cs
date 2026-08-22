@@ -336,6 +336,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<TreinoDisponibilizadoEvent>, TreinoDisponibilizadoWhatsAppHandler>();
         services.AddScoped<IDomainEventHandler<ExecucaoRegistradaEvent>, ExecucaoRegistradaInAppHandler>();
         services.AddScoped<IDomainEventHandler<LeadCriadoEvent>, LeadCriadoInAppHandler>();
+        services.AddScoped<IDomainEventHandler<LeadCriadoEvent>, LeadCriadoEmailTreinadorHandler>();
         services.AddScoped<IEmailEsfriamentoNotifier, EmailEsfriamentoNotifier>();
         services.AddScoped<IDigestTreinadorEmailNotifier, DigestTreinadorEmailNotifier>();
         services.AddScoped<ILimiteAlunosEmailSender, LimiteAlunosEmailSender>();
