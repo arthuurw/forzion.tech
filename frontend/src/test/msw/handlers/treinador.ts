@@ -42,4 +42,11 @@ export const treinadorHandlers: HttpHandler[] = [
     HttpResponse.json({ onboardingCompleto: true, contaConfigurada: true })),
   http.get("*/treinador/pagamentos", unauthorized),
   http.post("*/treinador/pagamentos/cobrar/:assinaturaId", unauthorized),
+  http.get("*/treinador/leads", unauthorized),
+  http.get("*/treinador/leads/metricas", unauthorized),
+  http.get("*/treinador/leads/:id", unauthorized),
+  http.post("*/treinador/leads", unauthorized),
+  http.patch("*/treinador/leads/:id/status", unauthorized),
+  http.post("*/treinador/leads/:id/interacoes", unauthorized),
+  http.post("*/treinador/leads/:id/convite", unauthorized),
 ];
