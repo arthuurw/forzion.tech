@@ -12,7 +12,8 @@ public class RegistrarLeadAgenteHandler(
     ITreinadorRepository treinadorRepository,
     ILeadRepository leadRepository,
     IUnitOfWork unitOfWork,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IDatabaseErrorInspector databaseErrorInspector)
 {
     public virtual Task<Result<StagedLead>> HandleAsync(RegistrarLeadAgenteCommand command, CancellationToken cancellationToken = default)
     {
@@ -66,16 +67,16 @@ public class RegistrarLeadAgenteHandler(
         var interesseNormalizado = string.IsNullOrWhiteSpace(command.Interest) ? null : command.Interest.Trim();
         var argumentosHash = IdempotenciaLead.Calcular(nomeNormalizado, contato.Tipo, contato.Valor, interesseNormalizado, consentimento.Finalidade);
 
-        if (!string.IsNullOrWhiteSpace(command.IdempotencyKey))
+        var temIdempotencyKey = !string.IsNullOrWhiteSpace(command.IdempotencyKey);
+
+        if (temIdempotencyKey)
         {
             var existente = await leadRepository
-                .ObterPorIdempotencyKeyAsync(command.TenantId, command.IdempotencyKey, cancellationToken)
+                .ObterPorIdempotencyKeyAsync(command.TenantId, command.IdempotencyKey!, cancellationToken)
                 .ConfigureAwait(false);
 
             if (existente is not null)
-                return existente.ArgumentosHash == argumentosHash
-                    ? Result.Success(ProjetarStagedLead(existente))
-                    : Result.Failure<StagedLead>(LeadAgenteErrors.IdempotencyConflito);
+                return ResolverIdempotente(existente, argumentosHash);
         }
 
         var leadResult = Lead.Criar(
@@ -86,10 +87,31 @@ public class RegistrarLeadAgenteHandler(
 
         var lead = leadResult.Value;
         await leadRepository.AdicionarAsync(lead, cancellationToken).ConfigureAwait(false);
-        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        // Corrida: duas requisições com a mesma chave passam o lookup acima e colidem no índice
+        // único parcial — a violação significa que o concorrente já gravou primeiro; relê e
+        // resolve pelo mesmo critério do caminho normal (D9/TD-1).
+        catch (Exception ex) when (temIdempotencyKey && databaseErrorInspector.EhViolacaoDeUnicidade(ex))
+        {
+            var existente = await leadRepository
+                .ObterPorIdempotencyKeyAsync(command.TenantId, command.IdempotencyKey!, cancellationToken)
+                .ConfigureAwait(false);
+            if (existente is null)
+                throw;
+            return ResolverIdempotente(existente, argumentosHash);
+        }
 
         return Result.Success(ProjetarStagedLead(lead));
     }
+
+    private static Result<StagedLead> ResolverIdempotente(Lead existente, string argumentosHash) =>
+        existente.ArgumentosHash == argumentosHash
+            ? Result.Success(ProjetarStagedLead(existente))
+            : Result.Failure<StagedLead>(LeadAgenteErrors.IdempotencyConflito);
 
     private static Result<TipoContatoLead> ParseTipoContato(string contactType) => contactType switch
     {

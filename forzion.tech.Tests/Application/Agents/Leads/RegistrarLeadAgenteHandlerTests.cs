@@ -18,12 +18,13 @@ public class RegistrarLeadAgenteHandlerTests
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<ILeadRepository> _leadRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IDatabaseErrorInspector> _databaseErrorInspector = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 8, 1, 10, 0, 0, TimeSpan.Zero));
     private readonly RegistrarLeadAgenteHandler _handler;
 
     public RegistrarLeadAgenteHandlerTests()
     {
-        _handler = new RegistrarLeadAgenteHandler(_treinadorRepo.Object, _leadRepo.Object, _unitOfWork.Object, _timeProvider);
+        _handler = new RegistrarLeadAgenteHandler(_treinadorRepo.Object, _leadRepo.Object, _unitOfWork.Object, _timeProvider, _databaseErrorInspector.Object);
     }
 
     private static Treinador CriarTreinadorPublicado()
@@ -294,6 +295,94 @@ public class RegistrarLeadAgenteHandlerTests
         await _handler.HandleAsync(ComandoValido(treinador.Id, idempotencyKey: "chave-1"));
 
         _leadRepo.Verify(r => r.ObterPorIdempotencyKeyAsync(treinador.Id, "chave-1", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // --- corrida de idempotência resolvida pelo índice único (23505) ---
+
+    [Fact]
+    public async Task HandleAsync_CommitViolaUnicidadeEVencedorTemMesmoHash_RetornaLeadDoVencedorSemPropagarExcecao()
+    {
+        var treinador = CriarTreinadorPublicado();
+        SetupTreinador(treinador, treinador.Id);
+        var comando = ComandoValido(treinador.Id, idempotencyKey: "chave-corrida");
+        var hash = IdempotenciaLead.Calcular(comando.Name, TipoContatoLead.Email, comando.ContactValue, comando.Interest, comando.ConsentPurpose);
+        var vencedor = Lead.Criar(
+            treinador.Id, comando.Name, ContatoLead.Criar(TipoContatoLead.Email, comando.ContactValue).Value,
+            comando.Interest, ConsentimentoLead.Criar(comando.ConsentPurpose, DateTime.UtcNow, DateTime.UtcNow).Value,
+            null, LeadSource.Agent, comando.IdempotencyKey, hash, DateTime.UtcNow).Value;
+
+        _leadRepo.SetupSequence(r => r.ObterPorIdempotencyKeyAsync(treinador.Id, "chave-corrida", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Lead?)null)
+            .ReturnsAsync(vencedor);
+        var excecaoDeUnicidade = new InvalidOperationException("23505");
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeUnicidade);
+        _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeUnicidade)).Returns(true);
+
+        var result = await _handler.HandleAsync(comando);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.LeadId.Should().Be(vencedor.Id.ToString());
+    }
+
+    [Fact]
+    public async Task HandleAsync_CommitViolaUnicidadeEVencedorTemHashDiferente_RetornaConflito()
+    {
+        var treinador = CriarTreinadorPublicado();
+        SetupTreinador(treinador, treinador.Id);
+        var comando = ComandoValido(treinador.Id, idempotencyKey: "chave-corrida");
+        var vencedor = Lead.Criar(
+            treinador.Id, "Outro Nome", ContatoLead.Criar(TipoContatoLead.Email, "outro@lead.com").Value,
+            null, ConsentimentoLead.Criar("Outra finalidade", DateTime.UtcNow, DateTime.UtcNow).Value,
+            null, LeadSource.Agent, comando.IdempotencyKey, "hash-diferente", DateTime.UtcNow).Value;
+
+        _leadRepo.SetupSequence(r => r.ObterPorIdempotencyKeyAsync(treinador.Id, "chave-corrida", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Lead?)null)
+            .ReturnsAsync(vencedor);
+        var excecaoDeUnicidade = new InvalidOperationException("23505");
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeUnicidade);
+        _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeUnicidade)).Returns(true);
+
+        var result = await _handler.HandleAsync(comando);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(LeadAgenteErrors.IdempotencyConflito);
+    }
+
+    [Fact]
+    public async Task HandleAsync_CommitViolaUnicidadeMasRreconsultaNaoAchaNinguem_PropagaExcecaoOriginal()
+    {
+        var treinador = CriarTreinadorPublicado();
+        SetupTreinador(treinador, treinador.Id);
+        var comando = ComandoValido(treinador.Id, idempotencyKey: "chave-corrida");
+
+        _leadRepo.Setup(r => r.ObterPorIdempotencyKeyAsync(treinador.Id, "chave-corrida", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Lead?)null);
+        var excecaoDeUnicidade = new InvalidOperationException("23505");
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeUnicidade);
+        _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeUnicidade)).Returns(true);
+
+        var act = async () => await _handler.HandleAsync(comando);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_CommitFalhaPorMotivoNaoRelacionadoAUnicidade_PropagaExcecaoSemReconsultar()
+    {
+        var treinador = CriarTreinadorPublicado();
+        SetupTreinador(treinador, treinador.Id);
+        var comando = ComandoValido(treinador.Id, idempotencyKey: "chave-corrida");
+
+        _leadRepo.Setup(r => r.ObterPorIdempotencyKeyAsync(treinador.Id, "chave-corrida", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Lead?)null);
+        var excecaoDeConexao = new InvalidOperationException("timeout de conexao");
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeConexao);
+        _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeConexao)).Returns(false);
+
+        var act = async () => await _handler.HandleAsync(comando);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _leadRepo.Verify(r => r.ObterPorIdempotencyKeyAsync(treinador.Id, "chave-corrida", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

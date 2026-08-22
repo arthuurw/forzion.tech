@@ -75,7 +75,8 @@ public class AgentLeadsEndpointTests
     private static Mock<RegistrarLeadAgenteHandler> CriarMockHandler(Result<StagedLead> resultado)
     {
         var mock = new Mock<RegistrarLeadAgenteHandler>(
-            Mock.Of<ITreinadorRepository>(), Mock.Of<ILeadRepository>(), Mock.Of<IUnitOfWork>(), TimeProvider.System);
+            Mock.Of<ITreinadorRepository>(), Mock.Of<ILeadRepository>(), Mock.Of<IUnitOfWork>(), TimeProvider.System,
+            Mock.Of<IDatabaseErrorInspector>());
         mock.Setup(h => h.HandleAsync(It.IsAny<RegistrarLeadAgenteCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(resultado);
         return mock;
