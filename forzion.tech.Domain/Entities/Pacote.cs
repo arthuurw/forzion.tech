@@ -13,6 +13,7 @@ public class Pacote
     public bool IsAtivo { get; private set; }
     public string? Categoria { get; private set; }
     public int? DuracaoMinutos { get; private set; }
+    public int CapacidadeMaxima { get; private set; } = 1;
     public bool TrialDisponivel { get; private set; }
     public bool IsPublico { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -96,12 +97,14 @@ public class Pacote
         UpdatedAt = agora;
     }
 
-    public Result AtualizarCatalogoPublico(string? categoria, int? duracaoMinutos, bool? trialDisponivel, DateTime agora)
+    public Result AtualizarCatalogoPublico(string? categoria, int? duracaoMinutos, bool? trialDisponivel, DateTime agora, int? capacidadeMaxima = null)
     {
         if (categoria is not null && categoria.Trim().Length > 100)
             return Result.Failure(PacoteErrors.CategoriaMuitoLonga);
         if (duracaoMinutos is <= 0)
             return Result.Failure(PacoteErrors.DuracaoMinutosInvalida);
+        if (capacidadeMaxima is <= 0)
+            return Result.Failure(PacoteErrors.CapacidadeMaximaInvalida);
 
         if (categoria is not null)
             Categoria = string.IsNullOrWhiteSpace(categoria) ? null : categoria.Trim();
@@ -109,6 +112,8 @@ public class Pacote
             DuracaoMinutos = duracaoMinutos;
         if (trialDisponivel is not null)
             TrialDisponivel = trialDisponivel.Value;
+        if (capacidadeMaxima is not null)
+            CapacidadeMaxima = capacidadeMaxima.Value;
 
         UpdatedAt = agora;
         return Result.Success();

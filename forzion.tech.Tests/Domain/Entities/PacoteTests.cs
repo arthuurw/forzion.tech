@@ -203,4 +203,52 @@ public class PacoteTests
         p.DuracaoMinutos.Should().Be(60);
         p.TrialDisponivel.Should().BeTrue();
     }
+
+    // --- CapacidadeMaxima ---
+
+    [Fact]
+    public void Criar_NasceComCapacidadeMaxima1()
+    {
+        var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
+        p.CapacidadeMaxima.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void AtualizarCatalogoPublico_CapacidadeMaximaInvalida_Falha(int capacidade)
+    {
+        var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
+
+        var r = p.AtualizarCatalogoPublico(null, null, null, TestData.Agora, capacidade);
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("pacote.capacidade_maxima_invalida");
+        p.CapacidadeMaxima.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(20)]
+    public void AtualizarCatalogoPublico_CapacidadeMaximaValida_Atualiza(int capacidade)
+    {
+        var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
+
+        var r = p.AtualizarCatalogoPublico(null, null, null, TestData.Agora, capacidade);
+
+        r.IsSuccess.Should().BeTrue();
+        p.CapacidadeMaxima.Should().Be(capacidade);
+    }
+
+    [Fact]
+    public void AtualizarCatalogoPublico_CapacidadeMaximaNula_PreservaValorAnterior()
+    {
+        var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
+        p.AtualizarCatalogoPublico(null, null, null, TestData.Agora, 5);
+
+        var r = p.AtualizarCatalogoPublico(null, null, null, TestData.Agora, null);
+
+        r.IsSuccess.Should().BeTrue();
+        p.CapacidadeMaxima.Should().Be(5);
+    }
 }
