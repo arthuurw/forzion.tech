@@ -18,10 +18,16 @@ public class DerivadorDisponibilidadeTests
     private static readonly DateTime To = new(2026, 5, 28, 0, 0, 0, DateTimeKind.Utc);
 
     private static ParametrosDerivacao Parametros(int duracaoMinutos, IReadOnlyList<HorarioFuncionamento> horarios) =>
-        Parametros(duracaoMinutos, horarios, From, To);
+        Parametros(duracaoMinutos, horarios, From, To, []);
 
     private static ParametrosDerivacao Parametros(int duracaoMinutos, IReadOnlyList<HorarioFuncionamento> horarios, DateTime from, DateTime to) =>
-        new(TreinadorId, PacoteId, duracaoMinutos, from, to, Agora, FusoSaoPaulo, PoliticaAgenda.Padrao(), horarios, []);
+        Parametros(duracaoMinutos, horarios, from, to, []);
+
+    private static ParametrosDerivacao Parametros(int duracaoMinutos, IReadOnlyList<HorarioFuncionamento> horarios, IReadOnlyList<BloqueioAgenda> bloqueios) =>
+        Parametros(duracaoMinutos, horarios, From, To, bloqueios);
+
+    private static ParametrosDerivacao Parametros(int duracaoMinutos, IReadOnlyList<HorarioFuncionamento> horarios, DateTime from, DateTime to, IReadOnlyList<BloqueioAgenda> bloqueios) =>
+        new(TreinadorId, PacoteId, duracaoMinutos, from, to, Agora, FusoSaoPaulo, PoliticaAgenda.Padrao(), horarios, bloqueios);
 
     private static HorarioFuncionamento Horario(int diaSemana, int abreHora, int abreMinuto, int fechaHora, int fechaMinuto) =>
         HorarioFuncionamento.Criar(diaSemana, new TimeOnly(abreHora, abreMinuto), new TimeOnly(fechaHora, fechaMinuto)).Value;
@@ -120,5 +126,67 @@ public class DerivadorDisponibilidadeTests
         slots.Select(s => s.InicioUtc).Should().Equal(
             Utc(2026, 5, 25, 11, 0),
             Utc(2026, 5, 26, 11, 0));
+    }
+
+    // --- Aplicação de bloqueios ---
+    // Turno segunda 08:00-11:00 (local, America/Sao_Paulo, UTC-3) => slots 08,09,10 local = 11,12,13 UTC.
+
+    private static ParametrosDerivacao ParametrosComTurnoENoBloqueios(IReadOnlyList<BloqueioAgenda> bloqueios)
+    {
+        var horario = Horario((int)DayOfWeek.Monday, 8, 0, 11, 0);
+        return Parametros(60, [horario], bloqueios);
+    }
+
+    [Fact]
+    public void Derivar_BloqueioPontualCobreUmSlot_OmiteApenasEsseSlot()
+    {
+        var bloqueio = BloqueioAgenda.CriarPontual(TreinadorId, Utc(2026, 5, 25, 12, 0), Utc(2026, 5, 25, 13, 0), null, Agora).Value;
+        var p = ParametrosComTurnoENoBloqueios([bloqueio]);
+
+        var slots = DerivadorDisponibilidade.Derivar(p);
+
+        slots.Select(s => s.InicioUtc).Should().Equal(
+            Utc(2026, 5, 25, 11, 0),
+            Utc(2026, 5, 25, 13, 0));
+    }
+
+    [Fact]
+    public void Derivar_BloqueioRecorrenteCobreUmSlot_ComparadoNoFusoDoTreinador_OmiteApenasEsseSlot()
+    {
+        var bloqueio = BloqueioAgenda.CriarRecorrente(TreinadorId, (int)DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(10, 0), null, Agora).Value;
+        var p = ParametrosComTurnoENoBloqueios([bloqueio]);
+
+        var slots = DerivadorDisponibilidade.Derivar(p);
+
+        slots.Select(s => s.InicioUtc).Should().Equal(
+            Utc(2026, 5, 25, 11, 0),
+            Utc(2026, 5, 25, 13, 0));
+    }
+
+    [Fact]
+    public void Derivar_BloqueioCobreSlotApenasParcialmente_OmiteOSlotInteiro()
+    {
+        var bloqueio = BloqueioAgenda.CriarPontual(TreinadorId, Utc(2026, 5, 25, 12, 30), Utc(2026, 5, 25, 12, 45), null, Agora).Value;
+        var p = ParametrosComTurnoENoBloqueios([bloqueio]);
+
+        var slots = DerivadorDisponibilidade.Derivar(p);
+
+        slots.Select(s => s.InicioUtc).Should().Equal(
+            Utc(2026, 5, 25, 11, 0),
+            Utc(2026, 5, 25, 13, 0));
+    }
+
+    [Fact]
+    public void Derivar_BloqueioQueNaoIntersectaNenhumSlot_NaoRemoveNada()
+    {
+        var bloqueio = BloqueioAgenda.CriarPontual(TreinadorId, Utc(2026, 5, 25, 23, 0), Utc(2026, 5, 26, 0, 0), null, Agora).Value;
+        var p = ParametrosComTurnoENoBloqueios([bloqueio]);
+
+        var slots = DerivadorDisponibilidade.Derivar(p);
+
+        slots.Select(s => s.InicioUtc).Should().Equal(
+            Utc(2026, 5, 25, 11, 0),
+            Utc(2026, 5, 25, 12, 0),
+            Utc(2026, 5, 25, 13, 0));
     }
 }

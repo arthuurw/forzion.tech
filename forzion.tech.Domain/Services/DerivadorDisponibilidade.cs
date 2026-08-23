@@ -18,6 +18,7 @@ public static class DerivadorDisponibilidade
         }
 
         return candidatos
+            .Where(s => !p.Bloqueios.Any(b => b.Cobre(s.InicioUtc, s.FimUtc, p.Fuso)))
             .DistinctBy(s => s.InicioUtc)
             .OrderBy(s => s.InicioUtc)
             .ToList();
