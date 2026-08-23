@@ -76,6 +76,42 @@ public class AgendaRotasE2ETests(RealPipelineFixture fixture)
         apagar.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
+    // AGF3-16b: a não-persistência de fuso inválido já é provada em nível de handler/domínio
+    // (mock Times.Never); este teste prova o mapeamento Result.Validation→400 na rota HTTP real.
+    [Fact]
+    public async Task AtualizarPerfilPublico_FusoInvalido_Retorna400()
+    {
+        var (_, cliente) = await TreinadorAprovadoComClienteAsync();
+
+        var salvarPerfil = await cliente.PutAsJsonAsync("/treinador/perfil-publico", new
+        {
+            nomeFantasia = "Studio Teste",
+            endereco = (object?)null,
+            politicas = (object?)null,
+            horarios = Array.Empty<object>(),
+            isPublicado = false,
+            fusoHorario = "Nao/Existe_Nesta_Tzdata",
+        });
+
+        salvarPerfil.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // AGF3-28: mesmo caso da política — não-persistência já provada em mock; aqui prova-se o
+    // status HTTP real de fato retornado pela rota.
+    [Fact]
+    public async Task AtualizarPoliticaAgenda_HorizonteDiasNaoPositivo_Retorna400()
+    {
+        var (_, cliente) = await TreinadorAprovadoComClienteAsync();
+
+        var atualizarPolitica = await cliente.PutAsJsonAsync("/treinador/agenda/politica", new
+        {
+            antecedenciaMinimaHoras = 4,
+            horizonteDias = 0,
+        });
+
+        atualizarPolitica.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     // --- Helpers de auth/gestão (mesmo padrão duplicado dos outros E2E — sem base compartilhada no repo) ---
 
     private async Task<(Guid TreinadorId, HttpClient Cliente)> TreinadorAprovadoComClienteAsync()
