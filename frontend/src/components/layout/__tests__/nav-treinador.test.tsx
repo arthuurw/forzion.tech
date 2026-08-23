@@ -52,14 +52,16 @@ beforeEach(() => {
 });
 
 describe("NavConfig — treinador", () => {
-  it("treinadorNav tem 10 itens com Leads, Perfil Público, Recebimentos e Plano marcados drawerOnly", () => {
+  it("treinadorNav tem 11 itens com Leads, Agenda, Perfil Público, Recebimentos e Plano marcados drawerOnly", () => {
     const nav = NAV_BY_TIPO.Treinador;
-    expect(nav).toHaveLength(10);
+    expect(nav).toHaveLength(11);
     const leads = nav.find((i) => i.href === "/treinador/leads");
+    const agenda = nav.find((i) => i.href === "/treinador/agenda");
     const perfilPublico = nav.find((i) => i.href === "/treinador/perfil-publico");
     const recebimentos = nav.find((i) => i.href === "/treinador/pagamentos");
     const plano = nav.find((i) => i.href === "/treinador/plano");
     expect(leads?.drawerOnly).toBe(true);
+    expect(agenda?.drawerOnly).toBe(true);
     expect(perfilPublico?.drawerOnly).toBe(true);
     expect(recebimentos?.drawerOnly).toBe(true);
     expect(plano?.drawerOnly).toBe(true);
@@ -74,10 +76,11 @@ describe("NavConfig — treinador", () => {
 });
 
 describe("AppLayout — navegação treinador", () => {
-  it("drawer desktop mostra os 10 itens incluindo Dados fiscais, Leads, Perfil Público, Recebimentos e Plano", () => {
+  it("drawer desktop mostra os 11 itens incluindo Dados fiscais, Leads, Agenda, Perfil Público, Recebimentos e Plano", () => {
     render(<AppLayout>conteudo</AppLayout>);
     expect(screen.getByText("Dados fiscais")).toBeInTheDocument();
     expect(screen.getByText("Leads")).toBeInTheDocument();
+    expect(screen.getByText("Agenda")).toBeInTheDocument();
     expect(screen.getByText("Perfil Público")).toBeInTheDocument();
     expect(screen.getByText("Recebimentos")).toBeInTheDocument();
     expect(screen.getByText("Plano")).toBeInTheDocument();
@@ -89,12 +92,13 @@ describe("AppLayout — navegação treinador", () => {
     expect(push).toHaveBeenCalledWith("/treinador/pagamentos");
   });
 
-  it("bottom-nav mobile omite Perfil Público, Recebimentos e Plano (6 itens)", () => {
+  it("bottom-nav mobile omite Agenda, Perfil Público, Recebimentos e Plano (6 itens)", () => {
     useMediaQueryMock.mockReturnValue(true);
     render(<AppLayout>conteudo</AppLayout>);
     const labels = screen.getAllByRole("button").map((a) => a.getAttribute("aria-label"));
     expect(labels).toContain("Alunos");
     expect(labels).toContain("Dados fiscais");
+    expect(labels).not.toContain("Agenda");
     expect(labels).not.toContain("Perfil Público");
     expect(labels).not.toContain("Recebimentos");
     expect(labels).not.toContain("Plano");

@@ -12,6 +12,7 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import ContactMailIcon from "@mui/icons-material/ContactMail";
 import PersonSearchIcon from "@mui/icons-material/PersonSearch";
+import EventIcon from "@mui/icons-material/Event";
 import type { ElementType } from "react";
 import type { TipoConta } from "@/types";
 
@@ -35,6 +36,7 @@ const adminNav: NavItem[] = [
 const treinadorNav: NavItem[] = [
   { label: "Alunos", href: "/treinador/alunos", Icon: PeopleIcon },
   { label: "Leads", href: "/treinador/leads", Icon: ContactMailIcon, drawerOnly: true },
+  { label: "Agenda", href: "/treinador/agenda", Icon: EventIcon, drawerOnly: true },
   { label: "Fichas", href: "/treinador/treinos", Icon: ListAltIcon },
   { label: "Exercícios", href: "/treinador/exercicios", Icon: FitnessCenterIcon },
   { label: "Pacotes", href: "/treinador/pacotes", Icon: InventoryIcon },
