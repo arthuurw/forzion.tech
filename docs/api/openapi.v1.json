@@ -11708,6 +11708,10 @@
           },
           "isPublicado": {
             "type": "boolean"
+          },
+          "fusoHorario": {
+            "type": "string",
+            "default": "America/Sao_Paulo"
           }
         }
       },
@@ -11717,7 +11721,8 @@
           "endereco",
           "horariosFuncionamento",
           "politicas",
-          "isPublicado"
+          "isPublicado",
+          "fusoHorario"
         ],
         "type": "object",
         "properties": {
@@ -11754,6 +11759,9 @@
           },
           "isPublicado": {
             "type": "boolean"
+          },
+          "fusoHorario": {
+            "type": "string"
           }
         }
       },

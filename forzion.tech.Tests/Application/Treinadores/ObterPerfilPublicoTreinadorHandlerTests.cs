@@ -30,12 +30,14 @@ public class ObterPerfilPublicoTreinadorHandlerTests
         result.Value.NomeFantasia.Should().BeNull();
         result.Value.IsPublicado.Should().BeFalse();
         result.Value.HorariosFuncionamento.Should().BeEmpty();
+        result.Value.FusoHorario.Should().Be("America/Sao_Paulo");
     }
 
     [Fact]
     public async Task HandleAsync_TreinadorComPerfilConfigurado_RetornaDadosSalvos()
     {
         var treinador = new TreinadorBuilder().Build();
+        treinador.DefinirFusoHorario("America/Manaus", DateTime.UtcNow);
         treinador.PerfilPublico.AtualizarDados("Studio X", null, null, DateTime.UtcNow);
         treinador.PerfilPublico.AdicionarHorario(1, new TimeOnly(8, 0), new TimeOnly(12, 0), DateTime.UtcNow);
         treinador.PerfilPublico.Publicar(DateTime.UtcNow);
@@ -47,6 +49,7 @@ public class ObterPerfilPublicoTreinadorHandlerTests
         result.Value.NomeFantasia.Should().Be("Studio X");
         result.Value.IsPublicado.Should().BeTrue();
         result.Value.HorariosFuncionamento.Should().ContainSingle(h => h.AbreAs == "08:00" && h.FechaAs == "12:00");
+        result.Value.FusoHorario.Should().Be("America/Manaus");
     }
 
     [Fact]

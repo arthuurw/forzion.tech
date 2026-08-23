@@ -21,6 +21,14 @@ public class DefinirPerfilPublicoTreinadorHandler(
         if (treinador is null)
             return Result.Failure<PerfilPublicoResponse>(TreinadorErrors.NaoEncontrado);
 
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+
+        // Fuso validado ANTES de qualquer mutação do perfil: id inválido não pode deixar os
+        // horários da mesma requisição meio-aplicados no agregado em memória (AGF3-33).
+        var fusoResult = treinador.DefinirFusoHorario(command.FusoHorario, agora);
+        if (fusoResult.IsFailure)
+            return Result.Failure<PerfilPublicoResponse>(fusoResult.Error!);
+
         EnderecoPublicoVo? endereco = null;
         if (command.Endereco is not null)
         {
@@ -32,7 +40,6 @@ public class DefinirPerfilPublicoTreinadorHandler(
             endereco = enderecoResult.Value;
         }
 
-        var agora = timeProvider.GetUtcNow().UtcDateTime;
         var perfil = treinador.PerfilPublico;
 
         var atualizarResult = perfil.AtualizarDados(command.NomeFantasia, endereco, command.Politicas, agora);
@@ -57,10 +64,10 @@ public class DefinirPerfilPublicoTreinadorHandler(
 
         await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result.Success(MapResponse(perfil));
+        return Result.Success(MapResponse(perfil, treinador.FusoHorario));
     }
 
-    internal static PerfilPublicoResponse MapResponse(Domain.Entities.PerfilPublico perfil) => new(
+    internal static PerfilPublicoResponse MapResponse(Domain.Entities.PerfilPublico perfil, string fusoHorario) => new(
         perfil.NomeFantasia,
         perfil.Endereco is null ? null : new EnderecoPublicoResponse(
             perfil.Endereco.Rua, perfil.Endereco.Numero, perfil.Endereco.Complemento,
@@ -68,5 +75,6 @@ public class DefinirPerfilPublicoTreinadorHandler(
         [.. perfil.HorariosFuncionamento.Select(h => new HorarioFuncionamentoResponse(
             h.Id, h.DiaSemana, h.AbreAs.ToString("HH:mm"), h.FechaAs.ToString("HH:mm")))],
         perfil.Politicas,
-        perfil.IsPublicado);
+        perfil.IsPublicado,
+        fusoHorario);
 }

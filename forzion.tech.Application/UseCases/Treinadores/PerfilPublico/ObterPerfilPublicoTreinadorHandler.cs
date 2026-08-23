@@ -14,6 +14,6 @@ public class ObterPerfilPublicoTreinadorHandler(ITreinadorRepository treinadorRe
         if (treinador is null)
             return Result.Failure<PerfilPublicoResponse>(TreinadorErrors.NaoEncontrado);
 
-        return Result.Success(DefinirPerfilPublicoTreinadorHandler.MapResponse(treinador.PerfilPublico));
+        return Result.Success(DefinirPerfilPublicoTreinadorHandler.MapResponse(treinador.PerfilPublico, treinador.FusoHorario));
     }
 }

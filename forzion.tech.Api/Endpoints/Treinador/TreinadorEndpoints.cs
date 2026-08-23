@@ -623,7 +623,7 @@ public static class TreinadorEndpoints
 
             var result = await handler.HandleAsync(
                 new DefinirPerfilPublicoTreinadorCommand(
-                    userContext.PerfilId, request.NomeFantasia, endereco, request.Politicas, horarios, request.IsPublicado),
+                    userContext.PerfilId, request.NomeFantasia, endereco, request.Politicas, horarios, request.IsPublicado, request.FusoHorario),
                 cancellationToken).ConfigureAwait(false);
 
             if (result.IsFailure) return result.ToProblemResult();
@@ -723,4 +723,5 @@ public record PerfilPublicoRequest(
     EnderecoPublicoRequest? Endereco,
     Dictionary<string, string>? Politicas,
     List<HorarioFuncionamentoRequest> Horarios,
-    bool IsPublicado);
+    bool IsPublicado,
+    string FusoHorario = "America/Sao_Paulo");

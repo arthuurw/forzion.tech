@@ -24,8 +24,9 @@ public class DefinirPerfilPublicoTreinadorHandlerTests
 
     private static DefinirPerfilPublicoTreinadorCommand BuildCommand(
         Guid treinadorId, string? nomeFantasia = "Studio X", bool isPublicado = true,
-        EnderecoPublicoInput? endereco = null, IReadOnlyList<HorarioFuncionamentoInput>? horarios = null) =>
-        new(treinadorId, nomeFantasia, endereco, null, horarios ?? [], isPublicado);
+        EnderecoPublicoInput? endereco = null, IReadOnlyList<HorarioFuncionamentoInput>? horarios = null,
+        string fusoHorario = "America/Sao_Paulo") =>
+        new(treinadorId, nomeFantasia, endereco, null, horarios ?? [], isPublicado, fusoHorario);
 
     [Fact]
     public async Task HandleAsync_DadosValidosPublicando_PublicaESalva()
@@ -108,5 +109,38 @@ public class DefinirPerfilPublicoTreinadorHandlerTests
     {
         var act = async () => await _handler.HandleAsync(null!);
         await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    // --- AGF3-16 / AGF3-33: fuso no contrato de perfil público ---
+
+    [Fact]
+    public async Task HandleAsync_FusoValido_PersisteEDevolveNaResposta()
+    {
+        var treinador = new TreinadorBuilder().Build();
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+
+        var result = await _handler.HandleAsync(BuildCommand(treinador.Id, isPublicado: false, fusoHorario: "America/Manaus"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.FusoHorario.Should().Be("America/Manaus");
+        treinador.FusoHorario.Should().Be("America/Manaus");
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_FusoInvalido_FalhaSemCommitarENaoPersisteOsHorariosDaMesmaRequisicao()
+    {
+        var treinador = new TreinadorBuilder().Build();
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        var horarios = new List<HorarioFuncionamentoInput> { new(1, new TimeOnly(8, 0), new TimeOnly(18, 0)) };
+
+        var result = await _handler.HandleAsync(BuildCommand(
+            treinador.Id, isPublicado: false, horarios: horarios, fusoHorario: "Nao/Existe"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(TreinadorErrors.FusoHorarioInvalido);
+        treinador.FusoHorario.Should().Be("America/Sao_Paulo");
+        treinador.PerfilPublico.HorariosFuncionamento.Should().BeEmpty();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

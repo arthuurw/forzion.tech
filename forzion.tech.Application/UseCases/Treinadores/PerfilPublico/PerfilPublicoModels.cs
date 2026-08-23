@@ -17,7 +17,8 @@ public record DefinirPerfilPublicoTreinadorCommand(
     EnderecoPublicoInput? Endereco,
     IReadOnlyDictionary<string, string>? Politicas,
     IReadOnlyList<HorarioFuncionamentoInput> Horarios,
-    bool IsPublicado);
+    bool IsPublicado,
+    string FusoHorario);
 
 public record EnderecoPublicoResponse(
     string Rua,
@@ -35,4 +36,5 @@ public record PerfilPublicoResponse(
     EnderecoPublicoResponse? Endereco,
     IReadOnlyList<HorarioFuncionamentoResponse> HorariosFuncionamento,
     IReadOnlyDictionary<string, string>? Politicas,
-    bool IsPublicado);
+    bool IsPublicado,
+    string FusoHorario);
