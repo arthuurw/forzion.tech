@@ -6,6 +6,7 @@ using forzion.tech.Application.UseCases.Treinadores.AlterarModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.ObterPreviewModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTreinador;
 using forzion.tech.Application.UseCases.Treinadores.Dashboard;
+using forzion.tech.Application.UseCases.Treinadores.Agenda;
 using forzion.tech.Application.UseCases.Treinadores.DadosFiscais;
 using forzion.tech.Application.UseCases.Treinadores.PerfilPublico;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
@@ -635,6 +636,83 @@ public static class TreinadorEndpoints
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
+        group.MapGet("/agenda/bloqueios", async (
+            [FromServices] ListarBloqueiosAgendaHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(userContext.PerfilId, cancellationToken).ConfigureAwait(false);
+            return Results.Ok(result);
+        })
+        .WithSummary("Lista bloqueios de agenda do treinador autenticado")
+        .Produces<IReadOnlyList<BloqueioAgendaResponse>>();
+
+        group.MapPost("/agenda/bloqueios", async (
+            [FromBody] CriarBloqueioAgendaRequest request,
+            [FromServices] CriarBloqueioAgendaHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new CriarBloqueioAgendaCommand(
+                    userContext.PerfilId, request.Tipo, request.InicioUtc, request.FimUtc,
+                    request.DiaSemana, request.HoraInicio, request.HoraFim, request.Motivo),
+                cancellationToken).ConfigureAwait(false);
+
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Created($"/treinador/agenda/bloqueios/{result.Value.Id}", result.Value);
+        })
+        .WithSummary("Cria um bloqueio de agenda (pontual ou recorrente) do treinador autenticado")
+        .Produces<BloqueioAgendaResponse>(StatusCodes.Status201Created)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapDelete("/agenda/bloqueios/{id:guid}", async (
+            Guid id,
+            [FromServices] RemoverBloqueioAgendaHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(userContext.PerfilId, id, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.NoContent();
+        })
+        .WithSummary("Apaga um bloqueio de agenda do treinador autenticado")
+        .Produces(StatusCodes.Status204NoContent)
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapGet("/agenda/politica", async (
+            [FromServices] ObterPoliticaAgendaHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(userContext.PerfilId, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .RequireRateLimiting("read")
+        .WithSummary("Lê a política de agenda do treinador autenticado")
+        .Produces<PoliticaAgendaResponse>()
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapPut("/agenda/politica", async (
+            [FromBody] AtualizarPoliticaAgendaRequest request,
+            [FromServices] AtualizarPoliticaAgendaHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new AtualizarPoliticaAgendaCommand(userContext.PerfilId, request.AntecedenciaMinimaHoras, request.HorizonteDias),
+                cancellationToken).ConfigureAwait(false);
+
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok(result.Value);
+        })
+        .WithSummary("Atualiza a política de agenda do treinador autenticado")
+        .Produces<PoliticaAgendaResponse>()
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
         group.MapGet("/cep/{cep}", async (
             string cep,
             [FromServices] IConsultaCepService consultaCep,
@@ -717,6 +795,17 @@ public record EnderecoPublicoRequest(
     string Cep);
 
 public record HorarioFuncionamentoRequest(int DiaSemana, string AbreAs, string FechaAs);
+
+public record CriarBloqueioAgendaRequest(
+    TipoBloqueio Tipo,
+    DateTime? InicioUtc,
+    DateTime? FimUtc,
+    int? DiaSemana,
+    TimeOnly? HoraInicio,
+    TimeOnly? HoraFim,
+    string? Motivo = null);
+
+public record AtualizarPoliticaAgendaRequest(int AntecedenciaMinimaHoras, int HorizonteDias);
 
 public record PerfilPublicoRequest(
     string? NomeFantasia,

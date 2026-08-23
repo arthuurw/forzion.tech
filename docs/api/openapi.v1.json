@@ -4633,6 +4633,214 @@
         ]
       }
     },
+    "/treinador/agenda/bloqueios": {
+      "get": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Lista bloqueios de agenda do treinador autenticado",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BloqueioAgendaResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Cria um bloqueio de agenda (pontual ou recorrente) do treinador autenticado",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CriarBloqueioAgendaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloqueioAgendaResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/treinador/agenda/bloqueios/{id}": {
+      "delete": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Apaga um bloqueio de agenda do treinador autenticado",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/treinador/agenda/politica": {
+      "get": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Lê a política de agenda do treinador autenticado",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoliticaAgendaResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Atualiza a política de agenda do treinador autenticado",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtualizarPoliticaAgendaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoliticaAgendaResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/treinador/cep/{cep}": {
       "get": {
         "tags": [
@@ -8923,6 +9131,31 @@
           }
         }
       },
+      "AtualizarPoliticaAgendaRequest": {
+        "required": [
+          "antecedenciaMinimaHoras",
+          "horizonteDias"
+        ],
+        "type": "object",
+        "properties": {
+          "antecedenciaMinimaHoras": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "horizonteDias": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "AtualizarStatusLeadRequest": {
         "required": [
           "novoStatus",
@@ -9022,6 +9255,76 @@
           "limparDataFim": {
             "type": "boolean",
             "default": false
+          }
+        }
+      },
+      "BloqueioAgendaResponse": {
+        "required": [
+          "id",
+          "tipo",
+          "inicioUtc",
+          "fimUtc",
+          "diaSemana",
+          "horaInicio",
+          "horaFim",
+          "motivo",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoBloqueio"
+          },
+          "inicioUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "fimUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "diaSemana": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "horaInicio": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "time"
+          },
+          "horaFim": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "time"
+          },
+          "motivo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -9228,6 +9531,65 @@
             "format": "date-time"
           },
           "clientSecret": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CriarBloqueioAgendaRequest": {
+        "required": [
+          "tipo",
+          "inicioUtc",
+          "fimUtc",
+          "diaSemana",
+          "horaInicio",
+          "horaFim"
+        ],
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "$ref": "#/components/schemas/TipoBloqueio"
+          },
+          "inicioUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "fimUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "diaSemana": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "horaInicio": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "time"
+          },
+          "horaFim": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "time"
+          },
+          "motivo": {
             "type": [
               "null",
               "string"
@@ -11869,6 +12231,31 @@
           }
         }
       },
+      "PoliticaAgendaResponse": {
+        "required": [
+          "antecedenciaMinimaHoras",
+          "horizonteDias"
+        ],
+        "type": "object",
+        "properties": {
+          "antecedenciaMinimaHoras": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "horizonteDias": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "PontoProgressao": {
         "required": [
           "data",
@@ -12796,6 +13183,12 @@
           "Pro",
           "ProPlus",
           "Elite"
+        ]
+      },
+      "TipoBloqueio": {
+        "enum": [
+          "Pontual",
+          "RecorrenteSemanal"
         ]
       },
       "TipoConta": {
