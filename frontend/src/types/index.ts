@@ -651,3 +651,23 @@ export interface LeadAdminItem {
   anonimizado: boolean;
   createdAt: string;
 }
+
+// Espelha o enum C# Domain/Enums/TipoBloqueio (JsonStringEnumConverter casa por nome).
+export type TipoBloqueio = "Pontual" | "RecorrenteSemanal";
+
+export interface BloqueioAgendaResponse {
+  id: string;
+  tipo: TipoBloqueio;
+  inicioUtc: string | null;
+  fimUtc: string | null;
+  diaSemana: number | null;
+  horaInicio: string | null;
+  horaFim: string | null;
+  motivo: string | null;
+  createdAt: string;
+}
+
+export interface PoliticaAgendaResponse {
+  antecedenciaMinimaHoras: number;
+  horizonteDias: number;
+}
