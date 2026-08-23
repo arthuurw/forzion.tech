@@ -27,6 +27,13 @@ const DIAS_SEMANA = [
 
 const nomeDiaSemana = (dia: number) => DIAS_SEMANA.find((d) => d.value === dia)?.label ?? String(dia);
 
+const FUSOS_BRASILEIROS = [
+  { value: "America/Noronha", label: "Fernando de Noronha (UTC-2)" },
+  { value: "America/Sao_Paulo", label: "Brasília (UTC-3)" },
+  { value: "America/Manaus", label: "Manaus (UTC-4)" },
+  { value: "America/Rio_Branco", label: "Rio Branco (UTC-5)" },
+];
+
 interface PoliticaLinha {
   chave: string;
   valor: string;
@@ -47,6 +54,7 @@ export default function PerfilPublicoTreinadorPage() {
   const [estado, setEstado] = useState("");
   const [cep, setCep] = useState("");
   const [publicado, setPublicado] = useState(false);
+  const [fusoHorario, setFusoHorario] = useState("America/Sao_Paulo");
 
   const [politicas, setPoliticas] = useState<PoliticaLinha[]>([]);
   const [novaPoliticaChave, setNovaPoliticaChave] = useState("");
@@ -68,6 +76,7 @@ export default function PerfilPublicoTreinadorPage() {
         if (!d) return;
         setNomeFantasia(d.nomeFantasia ?? "");
         setPublicado(d.isPublicado);
+        setFusoHorario(d.fusoHorario || "America/Sao_Paulo");
         if (d.endereco) {
           setRua(d.endereco.rua);
           setNumero(d.endereco.numero ?? "");
@@ -138,6 +147,7 @@ export default function PerfilPublicoTreinadorPage() {
           : null,
         horarios,
         isPublicado: publicado,
+        fusoHorario,
       });
       setSuccess("Perfil público salvo.");
     } catch (err) {
@@ -215,6 +225,20 @@ export default function PerfilPublicoTreinadorPage() {
           <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
             Horários de funcionamento
           </Typography>
+
+          <TextField
+            select
+            label="Fuso horário"
+            value={fusoHorario}
+            onChange={(e) => setFusoHorario(e.target.value)}
+            size="small"
+            fullWidth
+            sx={{ mb: 2, maxWidth: { sm: 320 } }}
+          >
+            {FUSOS_BRASILEIROS.map((f) => (
+              <MenuItem key={f.value} value={f.value}>{f.label}</MenuItem>
+            ))}
+          </TextField>
 
           <Stack spacing={1} sx={{ mb: 2 }}>
             {horarios.map((h, index) => (

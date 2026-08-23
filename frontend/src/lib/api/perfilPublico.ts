@@ -29,6 +29,7 @@ export interface PerfilPublicoResponse {
   horariosFuncionamento: HorarioFuncionamentoResponse[];
   politicas: Record<string, string> | null;
   isPublicado: boolean;
+  fusoHorario: string;
 }
 
 export interface PerfilPublicoPayload {
@@ -37,6 +38,7 @@ export interface PerfilPublicoPayload {
   politicas: Record<string, string> | null;
   horarios: HorarioFuncionamentoPayload[];
   isPublicado: boolean;
+  fusoHorario: string;
 }
 
 export const perfilPublicoApi = {

@@ -79,6 +79,65 @@ describe("PerfilPublicoTreinadorPage", () => {
     expect(nomeFantasia).toHaveValue("Studio da Maria");
   });
 
+  it("exibe o fuso horário atual pré-selecionado e o envia junto dos horários ao salvar", async () => {
+    let corpoEnviado: Record<string, unknown> | null = null;
+    server.use(
+      http.get("*/treinador/perfil-publico", () => HttpResponse.json({
+        nomeFantasia: "Studio Teste",
+        endereco: null,
+        horariosFuncionamento: [],
+        politicas: null,
+        isPublicado: false,
+        fusoHorario: "America/Manaus",
+      })),
+      http.put("*/treinador/perfil-publico", async ({ request }) => {
+        corpoEnviado = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          nomeFantasia: "Studio Teste", endereco: null, horariosFuncionamento: [], politicas: null, isPublicado: false, fusoHorario: "America/Manaus",
+        });
+      }),
+    );
+    await renderPage();
+
+    expect(await screen.findByLabelText(/fuso horário/i)).toHaveTextContent(/manaus/i);
+    fireEvent.click(screen.getByRole("button", { name: /^salvar$/i }));
+
+    await waitFor(() => expect(corpoEnviado).not.toBeNull());
+    expect(corpoEnviado).toMatchObject({ fusoHorario: "America/Manaus", isPublicado: false });
+  });
+
+  it("permite trocar o fuso horário e envia o novo valor ao salvar", async () => {
+    let corpoEnviado: Record<string, unknown> | null = null;
+    server.use(
+      http.get("*/treinador/perfil-publico", () => HttpResponse.json({
+        nomeFantasia: "Studio Teste",
+        endereco: null,
+        horariosFuncionamento: [],
+        politicas: null,
+        isPublicado: false,
+        fusoHorario: "America/Sao_Paulo",
+      })),
+      http.put("*/treinador/perfil-publico", async ({ request }) => {
+        corpoEnviado = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          nomeFantasia: "Studio Teste", endereco: null, horariosFuncionamento: [], politicas: null, isPublicado: false, fusoHorario: "America/Manaus",
+        });
+      }),
+    );
+    await renderPage();
+
+    const fuso = await screen.findByLabelText(/fuso horário/i);
+    expect(fuso).toHaveTextContent(/brasília/i);
+    fireEvent.mouseDown(fuso);
+    fireEvent.click(screen.getByRole("option", { name: /manaus/i }));
+    expect(fuso).toHaveTextContent(/manaus/i);
+
+    fireEvent.click(screen.getByRole("button", { name: /^salvar$/i }));
+
+    await waitFor(() => expect(corpoEnviado).not.toBeNull());
+    expect(corpoEnviado).toMatchObject({ fusoHorario: "America/Manaus" });
+  });
+
   it("carrega dados existentes e envia payload ao salvar", async () => {
     let corpoEnviado: Record<string, unknown> | null = null;
     server.use(
