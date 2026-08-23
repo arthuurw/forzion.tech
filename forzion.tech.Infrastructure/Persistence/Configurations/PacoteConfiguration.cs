@@ -38,6 +38,7 @@ public class PacoteConfiguration : IEntityTypeConfiguration<Pacote>
         builder.Property(p => p.DuracaoMinutos);
         builder.Property(p => p.TrialDisponivel).IsRequired().HasDefaultValue(false);
         builder.Property(p => p.IsPublico).IsRequired().HasDefaultValue(false);
+        builder.Property(p => p.CapacidadeMaxima).IsRequired().HasDefaultValue(1);
 
         builder.Property(p => p.CreatedAt).IsRequired();
         builder.Property(p => p.UpdatedAt);

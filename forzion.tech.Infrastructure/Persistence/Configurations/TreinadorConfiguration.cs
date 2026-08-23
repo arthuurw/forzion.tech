@@ -34,6 +34,8 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
 
         builder.Property(t => t.Telefone).HasMaxLength(20);
 
+        builder.Property(t => t.FusoHorario).IsRequired();
+
         builder.Property(t => t.PlanoPlataformaId);
 
         builder.HasOne<PlanoPlataforma>()
@@ -136,8 +138,7 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
 
         // Sem esta configuracao explicita, a descoberta automatica de owned type do EF
         // quebra o build do modelo assim que Treinador ganha uma propriedade record sem
-        // constructor binding resolvivel (PoliticaAgenda). Nomes de coluna adiantam o
-        // prefixo "agenda_" definido no design da fatia 3 (T11 completa o restante).
+        // constructor binding resolvivel (PoliticaAgenda).
         builder.OwnsOne(t => t.PoliticaAgenda, pa =>
         {
             pa.Property(p => p.AntecedenciaMinimaHoras).HasColumnName("agenda_antecedencia_minima_horas").IsRequired();
