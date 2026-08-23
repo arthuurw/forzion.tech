@@ -170,6 +170,15 @@ public class BloqueioAgendaTests
             .Should().BeFalse();
     }
 
+    [Fact]
+    public void Cobre_Pontual_SlotComecaQuandoBloqueioTermina_RetornaFalse()
+    {
+        var b = CriarPontualValido(new DateTime(2026, 5, 24, 9, 0, 0, DateTimeKind.Utc), new DateTime(2026, 5, 24, 10, 0, 0, DateTimeKind.Utc));
+
+        b.Cobre(new DateTime(2026, 5, 24, 10, 0, 0, DateTimeKind.Utc), new DateTime(2026, 5, 24, 11, 0, 0, DateTimeKind.Utc), FusoSaoPaulo)
+            .Should().BeFalse();
+    }
+
     // --- Cobre (recorrente) ---
     // Bloqueio: segunda-feira 09:00-10:00 em America/Sao_Paulo (UTC-3, sem DST) = 12:00-13:00 UTC.
     // 2026-05-25 é segunda; 2026-05-26 é terça.
@@ -210,6 +219,15 @@ public class BloqueioAgendaTests
         var b = CriarRecorrenteSegunda9as10();
 
         b.Cobre(new DateTime(2026, 5, 25, 11, 0, 0, DateTimeKind.Utc), new DateTime(2026, 5, 25, 12, 0, 0, DateTimeKind.Utc), FusoSaoPaulo)
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void Cobre_Recorrente_SlotComecaQuandoBloqueioTermina_RetornaFalse()
+    {
+        var b = CriarRecorrenteSegunda9as10();
+
+        b.Cobre(new DateTime(2026, 5, 25, 13, 0, 0, DateTimeKind.Utc), new DateTime(2026, 5, 25, 14, 0, 0, DateTimeKind.Utc), FusoSaoPaulo)
             .Should().BeFalse();
     }
 
