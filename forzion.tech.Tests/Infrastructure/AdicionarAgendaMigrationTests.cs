@@ -53,6 +53,12 @@ public class AdicionarAgendaMigrationTests(InfrastructureTestFixture fixture)
         var treinadorCols = (string?)await treinadorColsCmd.ExecuteScalarAsync();
         treinadorCols.Should().Be("agenda_antecedencia_minima_horas,agenda_horizonte_dias,fuso_horario");
 
+        await using var fusoNullableCmd = verify.CreateCommand();
+        fusoNullableCmd.CommandText = @"SELECT is_nullable FROM information_schema.columns
+                                        WHERE table_schema='public' AND table_name='treinadores' AND column_name='fuso_horario'";
+        var fusoNullable = (string?)await fusoNullableCmd.ExecuteScalarAsync();
+        fusoNullable.Should().Be("NO", "fuso_horario precisa ser NOT NULL — um regressao para nullable:true passaria despercebida sem esta asserção de constraint");
+
         await using var pacoteColsCmd = verify.CreateCommand();
         pacoteColsCmd.CommandText = @"SELECT column_name FROM information_schema.columns
                                       WHERE table_schema='public' AND table_name='pacotes' AND column_name='capacidade_maxima'";
