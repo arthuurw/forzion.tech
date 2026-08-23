@@ -133,5 +133,16 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
             });
         });
         builder.Navigation(t => t.PerfilPublico).IsRequired();
+
+        // Sem esta configuracao explicita, a descoberta automatica de owned type do EF
+        // quebra o build do modelo assim que Treinador ganha uma propriedade record sem
+        // constructor binding resolvivel (PoliticaAgenda). Nomes de coluna adiantam o
+        // prefixo "agenda_" definido no design da fatia 3 (T11 completa o restante).
+        builder.OwnsOne(t => t.PoliticaAgenda, pa =>
+        {
+            pa.Property(p => p.AntecedenciaMinimaHoras).HasColumnName("agenda_antecedencia_minima_horas").IsRequired();
+            pa.Property(p => p.HorizonteDias).HasColumnName("agenda_horizonte_dias").IsRequired();
+        });
+        builder.Navigation(t => t.PoliticaAgenda).IsRequired();
     }
 }

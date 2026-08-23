@@ -27,6 +27,7 @@ public class Treinador : IHasDomainEvents
     public TreinadorStatus Status { get; private set; }
     public string? Telefone { get; private set; }
     public string FusoHorario { get; private set; } = "America/Sao_Paulo";
+    public PoliticaAgenda PoliticaAgenda { get; private set; } = PoliticaAgenda.Padrao();
     public DadosFiscais? DadosFiscais { get; private set; }
     public PerfilPublico PerfilPublico { get; private set; } = null!;
     public Guid? AprovadoPorId { get; private set; }
@@ -231,6 +232,16 @@ public class Treinador : IHasDomainEvents
         }
 
         FusoHorario = fusoHorario;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
+    public Result DefinirPoliticaAgenda(PoliticaAgenda politicaAgenda, DateTime agora)
+    {
+        if (politicaAgenda is null)
+            return Result.Failure(TreinadorErrors.PoliticaAgendaObrigatoria);
+
+        PoliticaAgenda = politicaAgenda;
         UpdatedAt = agora;
         return Result.Success();
     }

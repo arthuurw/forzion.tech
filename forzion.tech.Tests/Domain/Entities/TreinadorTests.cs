@@ -1,6 +1,7 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Tests.Builders;
 
 namespace forzion.tech.Tests.Domain.Entities;
@@ -532,6 +533,30 @@ public class TreinadorTests
 
         r.IsSuccess.Should().BeTrue();
         t.FusoHorario.Should().Be("America/Manaus");
+        t.UpdatedAt.Should().Be(TestData.Agora);
+    }
+
+    // --- PoliticaAgenda ---
+
+    [Fact]
+    public void Criar_NasceComPoliticaAgendaPadrao()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+
+        t.PoliticaAgenda.AntecedenciaMinimaHoras.Should().Be(2);
+        t.PoliticaAgenda.HorizonteDias.Should().Be(60);
+    }
+
+    [Fact]
+    public void DefinirPoliticaAgenda_PoliticaValida_AtualizaPoliticaEUpdatedAt()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        var politica = PoliticaAgenda.Criar(4, 90).Value;
+
+        var r = t.DefinirPoliticaAgenda(politica, TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        t.PoliticaAgenda.Should().Be(politica);
         t.UpdatedAt.Should().Be(TestData.Agora);
     }
 }
