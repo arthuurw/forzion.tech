@@ -25,4 +25,5 @@ public static class TreinadorErrors
     public static Error NaoEncontrado => Error.NotFound("treinador.nao_encontrado", "Treinador não encontrado.");
     public static Error PlanoCortesiaIdInvalido => Error.Validation("treinador.plano_cortesia_id_invalido", "O identificador do plano de cortesia é inválido.");
     public static Error CortesiaAbaixoDoPago => Error.Business("treinador.cortesia_abaixo_do_pago", "O preço da cortesia não pode ser menor que o valor pago pela assinatura ativa do treinador.");
+    public static Error FusoHorarioInvalido => Error.Validation("treinador.fuso_horario_invalido", "O fuso horário informado é inválido.");
 }

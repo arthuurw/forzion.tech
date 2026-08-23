@@ -500,4 +500,38 @@ public class TreinadorTests
         t.AlunosAcimaDoCapDesde.Should().BeNull();
         t.UpdatedAt.Should().BeNull();
     }
+
+    // --- FusoHorario ---
+
+    [Fact]
+    public void Criar_NasceComFusoHorarioPadraoSaoPaulo()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+        t.FusoHorario.Should().Be("America/Sao_Paulo");
+    }
+
+    [Fact]
+    public void DefinirFusoHorario_IdInvalido_FalhaSemMutar()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+
+        var r = t.DefinirFusoHorario("Nao/Existe", TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("treinador.fuso_horario_invalido");
+        t.FusoHorario.Should().Be("America/Sao_Paulo");
+        t.UpdatedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void DefinirFusoHorario_IdValido_AtualizaFusoEUpdatedAt()
+    {
+        var t = Treinador.Criar(ContaId, "Carlos", TestData.Agora).Value;
+
+        var r = t.DefinirFusoHorario("America/Manaus", TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        t.FusoHorario.Should().Be("America/Manaus");
+        t.UpdatedAt.Should().Be(TestData.Agora);
+    }
 }

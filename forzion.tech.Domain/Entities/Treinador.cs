@@ -26,6 +26,7 @@ public class Treinador : IHasDomainEvents
     public DateTime? ModoPagamentoAlunoAlteradoEm { get; private set; }
     public TreinadorStatus Status { get; private set; }
     public string? Telefone { get; private set; }
+    public string FusoHorario { get; private set; } = "America/Sao_Paulo";
     public DadosFiscais? DadosFiscais { get; private set; }
     public PerfilPublico PerfilPublico { get; private set; } = null!;
     public Guid? AprovadoPorId { get; private set; }
@@ -214,6 +215,22 @@ public class Treinador : IHasDomainEvents
             return Result.Failure(TreinadorErrors.DadosFiscaisAnonimizado);
 
         DadosFiscais = dadosFiscais;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
+    public Result DefinirFusoHorario(string fusoHorario, DateTime agora)
+    {
+        try
+        {
+            TimeZoneInfo.FindSystemTimeZoneById(fusoHorario);
+        }
+        catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
+        {
+            return Result.Failure(TreinadorErrors.FusoHorarioInvalido);
+        }
+
+        FusoHorario = fusoHorario;
         UpdatedAt = agora;
         return Result.Success();
     }
