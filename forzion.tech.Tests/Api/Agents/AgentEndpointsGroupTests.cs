@@ -230,6 +230,19 @@ public class AgentEndpointsGroupTests
         (await LerCodeAsync(resposta)).Should().Be("signature_invalid");
     }
 
+    [Fact]
+    public async Task Availability_SemAssinatura_RespondeQuatrocentosEUm()
+    {
+        await using var servidor = await IniciarAsync();
+
+        using var resposta = await servidor.Cliente.GetAsync(new Uri(
+            CaminhoAvailability(TenantIdValido, $"serviceId={ServiceIdValido}&from=2026-08-24T00:00:00Z&to=2026-08-25T00:00:00Z"),
+            UriKind.Relative));
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await LerCodeAsync(resposta)).Should().Be("signature_invalid");
+    }
+
     [Theory]
     [MemberData(nameof(CasosDeQuatrocentosDeAvailability))]
     public async Task Availability_EntradaInvalida_RespondeQuatrocentosComValidationFailed(string _, string caminho)
