@@ -19,12 +19,15 @@ public class ConventionTests
 
     // LogAprovacao usa a factory "Registrar" (audit log) em vez de "Criar" — excecao explicita,
     // documentada, em vez de afrouxar a regra para todas as entidades.
+    // BloqueioAgenda tem duas factories (Pontual/RecorrenteSemanal) por invariante distinta por tipo.
     private static readonly IReadOnlySet<string> FactoriesAlternativas = new HashSet<string>
     {
         "Registrar",
         "CriarAssinatura",
         "CriarComissao",
         "CriarVazio",
+        "CriarPontual",
+        "CriarRecorrente",
     };
 
     private static IEnumerable<Type> EntidadesDeDominio() =>
