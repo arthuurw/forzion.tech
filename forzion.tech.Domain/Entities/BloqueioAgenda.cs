@@ -68,6 +68,23 @@ public class BloqueioAgenda
         });
     }
 
+    public bool Cobre(DateTime inicioSlotUtc, DateTime fimSlotUtc, TimeZoneInfo fuso)
+    {
+        if (Tipo == TipoBloqueio.Pontual)
+            return inicioSlotUtc < FimUtc!.Value && fimSlotUtc > InicioUtc!.Value;
+
+        var inicioLocal = TimeZoneInfo.ConvertTimeFromUtc(inicioSlotUtc, fuso);
+        var fimLocal = TimeZoneInfo.ConvertTimeFromUtc(fimSlotUtc, fuso);
+
+        if ((int)inicioLocal.DayOfWeek != DiaSemana)
+            return false;
+
+        var inicioHoraLocal = TimeOnly.FromDateTime(inicioLocal);
+        var fimHoraLocal = TimeOnly.FromDateTime(fimLocal);
+
+        return inicioHoraLocal < HoraFim!.Value && fimHoraLocal > HoraInicio!.Value;
+    }
+
     private static Result<string?> NormalizarMotivo(string? motivo)
     {
         if (string.IsNullOrWhiteSpace(motivo))

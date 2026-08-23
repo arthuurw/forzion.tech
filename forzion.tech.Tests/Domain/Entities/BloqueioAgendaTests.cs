@@ -126,4 +126,99 @@ public class BloqueioAgendaTests
         r.IsFailure.Should().BeTrue();
         r.Error!.Code.Should().Be("bloqueio_agenda.treinador_id_invalido");
     }
+
+    // --- Cobre (pontual) ---
+
+    private static readonly TimeZoneInfo FusoSaoPaulo = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+
+    private static BloqueioAgenda CriarPontualValido(DateTime inicio, DateTime fim) =>
+        BloqueioAgenda.CriarPontual(TreinadorId, inicio, fim, null, TestData.Agora).Value;
+
+    [Fact]
+    public void Cobre_Pontual_SlotTotalmenteDentro_RetornaTrue()
+    {
+        var b = CriarPontualValido(new DateTime(2026, 5, 24, 9, 0, 0, DateTimeKind.Utc), new DateTime(2026, 5, 24, 10, 0, 0, DateTimeKind.Utc));
+
+        b.Cobre(new DateTime(2026, 5, 24, 9, 15, 0, DateTimeKind.Utc), new DateTime(2026, 5, 24, 9, 45, 0, DateTimeKind.Utc), FusoSaoPaulo)
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public void Cobre_Pontual_SlotSobrepoeInicioDoBloqueio_RetornaTrue()
+    {
+        var b = CriarPontualValido(new DateTime(2026, 5, 24, 9, 0, 0, DateTimeKind.Utc), new DateTime(2026, 5, 24, 10, 0, 0, DateTimeKind.Utc));
+
+        b.Cobre(new DateTime(2026, 5, 24, 8, 30, 0, DateTimeKind.Utc), new DateTime(2026, 5, 24, 9, 30, 0, DateTimeKind.Utc), FusoSaoPaulo)
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public void Cobre_Pontual_SlotSobrepoeFimDoBloqueio_RetornaTrue()
+    {
+        var b = CriarPontualValido(new DateTime(2026, 5, 24, 9, 0, 0, DateTimeKind.Utc), new DateTime(2026, 5, 24, 10, 0, 0, DateTimeKind.Utc));
+
+        b.Cobre(new DateTime(2026, 5, 24, 9, 30, 0, DateTimeKind.Utc), new DateTime(2026, 5, 24, 10, 30, 0, DateTimeKind.Utc), FusoSaoPaulo)
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public void Cobre_Pontual_SlotEncostaSemSobrepor_RetornaFalse()
+    {
+        var b = CriarPontualValido(new DateTime(2026, 5, 24, 9, 0, 0, DateTimeKind.Utc), new DateTime(2026, 5, 24, 10, 0, 0, DateTimeKind.Utc));
+
+        b.Cobre(new DateTime(2026, 5, 24, 8, 0, 0, DateTimeKind.Utc), new DateTime(2026, 5, 24, 9, 0, 0, DateTimeKind.Utc), FusoSaoPaulo)
+            .Should().BeFalse();
+    }
+
+    // --- Cobre (recorrente) ---
+    // Bloqueio: segunda-feira 09:00-10:00 em America/Sao_Paulo (UTC-3, sem DST) = 12:00-13:00 UTC.
+    // 2026-05-25 é segunda; 2026-05-26 é terça.
+
+    private static BloqueioAgenda CriarRecorrenteSegunda9as10() =>
+        BloqueioAgenda.CriarRecorrente(TreinadorId, (int)DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(10, 0), null, TestData.Agora).Value;
+
+    [Fact]
+    public void Cobre_Recorrente_SlotTotalmenteDentro_RetornaTrue()
+    {
+        var b = CriarRecorrenteSegunda9as10();
+
+        b.Cobre(new DateTime(2026, 5, 25, 12, 15, 0, DateTimeKind.Utc), new DateTime(2026, 5, 25, 12, 45, 0, DateTimeKind.Utc), FusoSaoPaulo)
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public void Cobre_Recorrente_SlotSobrepoeInicioDoBloqueio_RetornaTrue()
+    {
+        var b = CriarRecorrenteSegunda9as10();
+
+        b.Cobre(new DateTime(2026, 5, 25, 11, 30, 0, DateTimeKind.Utc), new DateTime(2026, 5, 25, 12, 30, 0, DateTimeKind.Utc), FusoSaoPaulo)
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public void Cobre_Recorrente_SlotSobrepoeFimDoBloqueio_RetornaTrue()
+    {
+        var b = CriarRecorrenteSegunda9as10();
+
+        b.Cobre(new DateTime(2026, 5, 25, 12, 30, 0, DateTimeKind.Utc), new DateTime(2026, 5, 25, 13, 30, 0, DateTimeKind.Utc), FusoSaoPaulo)
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public void Cobre_Recorrente_SlotEncostaSemSobrepor_RetornaFalse()
+    {
+        var b = CriarRecorrenteSegunda9as10();
+
+        b.Cobre(new DateTime(2026, 5, 25, 11, 0, 0, DateTimeKind.Utc), new DateTime(2026, 5, 25, 12, 0, 0, DateTimeKind.Utc), FusoSaoPaulo)
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void Cobre_Recorrente_MesmoHorarioEmDiaDiferente_RetornaFalse()
+    {
+        var b = CriarRecorrenteSegunda9as10();
+
+        b.Cobre(new DateTime(2026, 5, 26, 12, 15, 0, DateTimeKind.Utc), new DateTime(2026, 5, 26, 12, 45, 0, DateTimeKind.Utc), FusoSaoPaulo)
+            .Should().BeFalse();
+    }
 }
