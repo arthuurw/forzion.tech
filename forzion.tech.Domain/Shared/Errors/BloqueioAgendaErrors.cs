@@ -8,4 +8,5 @@ public static class BloqueioAgendaErrors
     public static Error IntervaloRecorrenteInvalido => Error.Validation("bloqueio_agenda.intervalo_recorrente_invalido", "O horário de início deve ser anterior ao horário de fim.");
     public static Error MotivoMuitoLongo => Error.Validation("bloqueio_agenda.motivo_muito_longo", "O motivo deve ter no máximo 200 caracteres.");
     public static Error NaoEncontrado => Error.NotFound("bloqueio_agenda.nao_encontrado", "Bloqueio de agenda não encontrado.");
+    public static Error TipoInvalido => Error.Validation("bloqueio_agenda.tipo_invalido", "O tipo de bloqueio informado é inválido.");
 }
