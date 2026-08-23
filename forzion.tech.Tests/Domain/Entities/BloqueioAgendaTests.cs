@@ -239,4 +239,20 @@ public class BloqueioAgendaTests
         b.Cobre(new DateTime(2026, 5, 26, 12, 15, 0, DateTimeKind.Utc), new DateTime(2026, 5, 26, 12, 45, 0, DateTimeKind.Utc), FusoSaoPaulo)
             .Should().BeFalse();
     }
+
+    // Mesmo bloqueio (Monday 09:00-10:00 local) e mesmo slot em UTC — só o fuso passado muda.
+    // Em America/Sao_Paulo (UTC-3), 12:15-12:45 UTC cai dentro do bloqueio (09:15-09:45 local).
+    // Em America/Manaus (UTC-4), o mesmo instante UTC cai às 08:15-08:45 local, fora do bloqueio.
+    // Prova que o parâmetro fuso é de fato usado na comparação, não código morto.
+    [Fact]
+    public void Cobre_Recorrente_FusoDiferenteMudaOResultado()
+    {
+        var fusoManaus = TimeZoneInfo.FindSystemTimeZoneById("America/Manaus");
+        var b = CriarRecorrenteSegunda9as10();
+        var inicioSlotUtc = new DateTime(2026, 5, 25, 12, 15, 0, DateTimeKind.Utc);
+        var fimSlotUtc = new DateTime(2026, 5, 25, 12, 45, 0, DateTimeKind.Utc);
+
+        b.Cobre(inicioSlotUtc, fimSlotUtc, FusoSaoPaulo).Should().BeTrue();
+        b.Cobre(inicioSlotUtc, fimSlotUtc, fusoManaus).Should().BeFalse();
+    }
 }
