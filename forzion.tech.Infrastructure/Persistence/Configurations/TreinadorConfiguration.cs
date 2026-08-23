@@ -34,7 +34,7 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
 
         builder.Property(t => t.Telefone).HasMaxLength(20);
 
-        builder.Property(t => t.FusoHorario).IsRequired();
+        builder.Property(t => t.FusoHorario).IsRequired().HasDefaultValue("America/Sao_Paulo");
 
         builder.Property(t => t.PlanoPlataformaId);
 
@@ -141,8 +141,8 @@ public class TreinadorConfiguration : IEntityTypeConfiguration<Treinador>
         // constructor binding resolvivel (PoliticaAgenda).
         builder.OwnsOne(t => t.PoliticaAgenda, pa =>
         {
-            pa.Property(p => p.AntecedenciaMinimaHoras).HasColumnName("agenda_antecedencia_minima_horas").IsRequired();
-            pa.Property(p => p.HorizonteDias).HasColumnName("agenda_horizonte_dias").IsRequired();
+            pa.Property(p => p.AntecedenciaMinimaHoras).HasColumnName("agenda_antecedencia_minima_horas").IsRequired().HasDefaultValue(2);
+            pa.Property(p => p.HorizonteDias).HasColumnName("agenda_horizonte_dias").IsRequired().HasDefaultValue(60);
         });
         builder.Navigation(t => t.PoliticaAgenda).IsRequired();
     }
