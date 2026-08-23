@@ -189,4 +189,63 @@ public class DerivadorDisponibilidadeTests
             Utc(2026, 5, 25, 12, 0),
             Utc(2026, 5, 25, 13, 0));
     }
+
+    // --- Antecedência mínima e horizonte ---
+    // Segunda 2026-05-25, dois turnos de 1h sem slot intermediário: 08:00-09:00 e 10:00-11:00 local
+    // (America/Sao_Paulo, UTC-3) = 11:00-12:00 e 13:00-14:00 UTC.
+
+    private static readonly HorarioFuncionamento TurnoManhaCedo = Horario((int)DayOfWeek.Monday, 8, 0, 9, 0);
+    private static readonly HorarioFuncionamento TurnoManhaTarde = Horario((int)DayOfWeek.Monday, 10, 0, 11, 0);
+
+    private static ParametrosDerivacao ParametrosComPolitica(DateTime agora, DateTime from, DateTime to, PoliticaAgenda politica) =>
+        new(TreinadorId, PacoteId, 60, from, to, agora, FusoSaoPaulo, politica, [TurnoManhaCedo, TurnoManhaTarde], []);
+
+    [Fact]
+    public void Derivar_AntecedenciaMinima_RemoveSlotAntesDoCorteEMantemOSeguinte()
+    {
+        var agora = Utc(2026, 5, 25, 10, 30); // 07:30 local
+        var politica = PoliticaAgenda.Criar(2, 60).Value; // corte: agora + 2h = 12:30 UTC (09:30 local)
+        var p = ParametrosComPolitica(agora, From, To, politica);
+
+        var slots = DerivadorDisponibilidade.Derivar(p);
+
+        slots.Select(s => s.InicioUtc).Should().Equal(Utc(2026, 5, 25, 13, 0));
+    }
+
+    [Fact]
+    public void Derivar_Horizonte_CortaFimMesmoQuandoToAlcancaMaisLonge()
+    {
+        var agora = Utc(2026, 5, 20, 0, 0);
+        var politica = PoliticaAgenda.Criar(0, 1).Value; // horizonte de 1 dia: agora + 1d = 2026-05-21, antes da segunda 25/05
+        var p = ParametrosComPolitica(agora, From, To, politica); // To = 2026-05-28, bem além do horizonte
+
+        var slots = DerivadorDisponibilidade.Derivar(p);
+
+        slots.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Derivar_InicioEfetivoMaiorOuIgualFimEfetivo_RetornaListaVazia()
+    {
+        var agora = Utc(2026, 5, 25, 10, 30);
+        var politica = PoliticaAgenda.Criar(62, 60).Value; // corte: agora + 62h ultrapassa To (2026-05-28T00:00Z)
+        var p = ParametrosComPolitica(agora, From, To, politica);
+
+        var slots = DerivadorDisponibilidade.Derivar(p);
+
+        slots.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Derivar_AntecedenciaContaAPartirDeAgora_MesmoComFromNoPassado()
+    {
+        var agora = Utc(2026, 5, 25, 10, 30); // 07:30 local
+        var fromNoPassado = Utc(2026, 1, 1, 0, 0);
+        var politica = PoliticaAgenda.Criar(2, 60).Value;
+        var p = ParametrosComPolitica(agora, fromNoPassado, To, politica);
+
+        var slots = DerivadorDisponibilidade.Derivar(p);
+
+        slots.Select(s => s.InicioUtc).Should().Equal(Utc(2026, 5, 25, 13, 0));
+    }
 }

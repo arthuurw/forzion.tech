@@ -6,9 +6,15 @@ public static class DerivadorDisponibilidade
 {
     public static IReadOnlyList<SlotDisponivel> Derivar(ParametrosDerivacao p)
     {
+        var inicioEfetivo = Maior(p.From, p.Agora.AddHours(p.Politica.AntecedenciaMinimaHoras));
+        var fimEfetivo = Menor(p.To, p.Agora.AddDays(p.Politica.HorizonteDias));
+
+        if (inicioEfetivo >= fimEfetivo)
+            return [];
+
         var candidatos = new List<SlotDisponivel>();
 
-        foreach (var diaLocal in DiasNoIntervalo(p.From, p.To, p.Fuso))
+        foreach (var diaLocal in DiasNoIntervalo(inicioEfetivo, fimEfetivo, p.Fuso))
         {
             var diaSemana = (int)diaLocal.DayOfWeek;
             var horariosDoDia = p.Horarios.Where(h => h.DiaSemana == diaSemana);
@@ -18,11 +24,16 @@ public static class DerivadorDisponibilidade
         }
 
         return candidatos
+            .Where(s => s.InicioUtc >= inicioEfetivo && s.InicioUtc < fimEfetivo)
             .Where(s => !p.Bloqueios.Any(b => b.Cobre(s.InicioUtc, s.FimUtc, p.Fuso)))
             .DistinctBy(s => s.InicioUtc)
             .OrderBy(s => s.InicioUtc)
             .ToList();
     }
+
+    private static DateTime Maior(DateTime a, DateTime b) => a > b ? a : b;
+
+    private static DateTime Menor(DateTime a, DateTime b) => a < b ? a : b;
 
     private static IEnumerable<SlotDisponivel> BlocosDoTurno(ParametrosDerivacao p, DateTime diaLocal, HorarioFuncionamento horario)
     {
