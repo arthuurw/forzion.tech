@@ -1,10 +1,13 @@
 using forzion.tech.Api.Endpoints.Agents.Hmac;
 using forzion.tech.Application.UseCases.Agents.BusinessInfo;
+using forzion.tech.Application.UseCases.Agents.Disponibilidade;
 using forzion.tech.Application.UseCases.Agents.Leads;
 using forzion.tech.Application.UseCases.Agents.Services;
 using forzion.tech.Domain.Shared;
+using forzion.tech.Domain.Shared.Errors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using System.Globalization;
 using System.Text.Json;
 
 namespace forzion.tech.Api.Endpoints.Agents;
@@ -119,6 +122,40 @@ public static class AgentEndpoints
             {
                 ErrorType.NotFound => AgentProblem.Criar(AgentErrorCode.TenantNotFound, StatusCodes.Status404NotFound),
                 ErrorType.Conflict => AgentProblem.Criar(AgentErrorCode.IdempotencyConflict, StatusCodes.Status409Conflict),
+                _ => AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest),
+            };
+        });
+
+        grupo.MapGet("/tenants/{tenantId}/availability", async Task<IResult> (
+            string tenantId,
+            string? serviceId,
+            string? from,
+            string? to,
+            [FromServices] ConsultarDisponibilidadeAgenteHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            if (!Guid.TryParse(tenantId, out var tenantGuid) || !Guid.TryParse(serviceId, out var serviceGuid))
+                return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+
+            if (!DateTimeOffset.TryParse(from, CultureInfo.InvariantCulture, DateTimeStyles.None, out var fromOffset)
+                || !DateTimeOffset.TryParse(to, CultureInfo.InvariantCulture, DateTimeStyles.None, out var toOffset))
+                return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+
+            if (toOffset <= fromOffset || toOffset - fromOffset > TimeSpan.FromDays(31))
+                return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+
+            var query = new ConsultarDisponibilidadeQuery(tenantGuid, serviceGuid, fromOffset.UtcDateTime, toOffset.UtcDateTime);
+            var result = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
+
+            if (result.IsSuccess)
+                return Results.Ok(result.Value);
+
+            // Switch por instância de erro, não por ErrorType: os dois 404 (tenant/serviço) têm o
+            // mesmo ErrorType.NotFound e precisam permanecer distintos (risco R8 do design).
+            return result.Error switch
+            {
+                { } e when e == TreinadorErrors.NaoEncontrado => AgentProblem.Criar(AgentErrorCode.TenantNotFound, StatusCodes.Status404NotFound),
+                { } e when e == PacoteErrors.NaoEncontrado => AgentProblem.Criar(AgentErrorCode.ServiceNotFound, StatusCodes.Status404NotFound),
                 _ => AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest),
             };
         });
