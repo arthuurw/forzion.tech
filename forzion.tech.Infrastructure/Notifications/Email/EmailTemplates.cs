@@ -559,6 +559,25 @@ internal static class EmailTemplates
             </a>
             """);
 
+    public static string NovaSolicitacaoAgendamento(string nomeTreinador, string nomeServico, DateTime dataHoraLocal) =>
+        Layout(
+            "Nova solicitação de agendamento",
+            $"""
+            <p style="color:#444;line-height:1.6">Olá, <strong>{Enc(nomeTreinador)}</strong>!</p>
+            <p style="color:#444;line-height:1.6">
+              Você recebeu uma <strong>solicitação de agendamento</strong> para
+              <strong>{Enc(nomeServico)}</strong> em
+              <strong>{dataHoraLocal.ToString("dd/MM/yyyy 'às' HH:mm", CultureInfo.GetCultureInfo("pt-BR"))}</strong>.
+            </p>
+            <p style="color:#444;line-height:1.6">
+              Acesse o app para confirmar ou recusar o horário.
+            </p>
+            <a href="https://forzion.tech/treinador/agenda"
+               style="display:inline-block;margin-top:16px;padding:12px 24px;background:#F5C400;color:#1A1A1A;text-decoration:none;border-radius:4px;font-weight:bold">
+              Ver solicitações
+            </a>
+            """);
+
     public static string ConviteLead(string nomeLead, string nomeTreinador, string link) =>
         Layout(
             "Convite para se cadastrar",
