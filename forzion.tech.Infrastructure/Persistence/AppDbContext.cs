@@ -63,6 +63,7 @@ public class AppDbContext(
     public DbSet<Lead> Leads => Set<Lead>();
     public DbSet<LeadConvite> LeadConvites => Set<LeadConvite>();
     public DbSet<BloqueioAgenda> BloqueiosAgenda => Set<BloqueioAgenda>();
+    public DbSet<SolicitacaoAgendamento> SolicitacoesAgendamento => Set<SolicitacaoAgendamento>();
 
     private EfCoreTransactionAdapter? _transacaoAtiva;
     private List<IDomainEvent>? _eventosBestEffortPosCommit;

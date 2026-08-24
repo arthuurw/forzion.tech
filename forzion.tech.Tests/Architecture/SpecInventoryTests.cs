@@ -14,7 +14,7 @@ namespace forzion.tech.Tests.Architecture;
 /// </summary>
 public class SpecInventoryTests
 {
-    private const int DbSetsEsperados = 45;
+    private const int DbSetsEsperados = 46;
     private const int RepositoriosEsperados = 43;
 
     [Fact]
