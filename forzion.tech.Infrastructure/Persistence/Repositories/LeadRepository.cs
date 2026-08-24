@@ -126,4 +126,15 @@ public class LeadRepository(AppDbContext context) : ILeadRepository
         await context.Leads
             .FirstOrDefaultAsync(l => l.Id == leadId, cancellationToken)
             .ConfigureAwait(false);
+
+    // Tracked (não AsNoTracking): caminho de mutação — o lead retornado recebe RegistrarInteracao.
+    public async Task<Lead?> ObterReutilizavelPorContatoAsync(Guid treinadorId, string valorNormalizado, CancellationToken cancellationToken = default) =>
+        await context.Leads
+            .Where(l => l.TreinadorId == treinadorId
+                && l.Contato.Valor == valorNormalizado
+                && !l.Anonimizado
+                && (l.Status == LeadStatus.Novo || l.Status == LeadStatus.EmContato))
+            .OrderByDescending(l => l.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
 }

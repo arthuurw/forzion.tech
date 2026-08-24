@@ -31,4 +31,8 @@ public interface ILeadRepository
     Task<IReadOnlyList<Lead>> BuscarPorContatoCrossTenantAsync(string valorNormalizado, CancellationToken cancellationToken = default);
 
     Task<Lead?> ObterPorIdCrossTenantAsync(Guid leadId, CancellationToken cancellationToken = default);
+
+    // D-I: dedup de lead do agente. Status Novo/EmContato, não anonimizado, mais recente primeiro
+    // (R5 — leads não tem unique por contato, então mais de um pode qualificar).
+    Task<Lead?> ObterReutilizavelPorContatoAsync(Guid treinadorId, string valorNormalizado, CancellationToken cancellationToken = default);
 }
