@@ -153,6 +153,21 @@ public class BookingRequestEndpointTests
     }
 
     [Fact]
+    public async Task SlotIdNaoEString_Retorna400ComValidationFailedSemChamarHandler()
+    {
+        var mockHandler = CriarMockHandler(Result.Success(new StagedBookingRequest(Guid.NewGuid().ToString(), "pending-agent")));
+        await using var servidor = await IniciarAsync(mockHandler);
+        const string corpoSlotIdNumerico =
+            """{"serviceId":"8f3a1b2c-9d4e-4f5a-8b6c-1d2e3f4a5b6d","slotId":123,"name":"Fulano","contact":{"type":"email","value":"fulano@lead.com"},"consent":{"granted":true,"purpose":"Contato comercial"},"idempotencyKey":"chave-1"}""";
+
+        using var resposta = await EnviarAssinadaAsync(servidor.Cliente, CaminhoDeBookingRequests, corpoSlotIdNumerico);
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await LerCodeAsync(resposta)).Should().Be("validation_failed");
+        mockHandler.Verify(h => h.HandleAsync(It.IsAny<RegistrarSolicitacaoAgendamentoCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task ConsentimentoNegado_Retorna400ComValidationFailed()
     {
         var mockHandler = CriarMockHandler(Result.Failure<StagedBookingRequest>(SolicitacaoAgendamentoAgenteErrors.ConsentimentoNaoConcedido));

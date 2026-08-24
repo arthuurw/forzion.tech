@@ -254,6 +254,49 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
         _treinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    // --- AGF4-07: name > 200 ⇒ validation_failed ---
+
+    [Fact]
+    public async Task HandleAsync_NomeMuitoLongo_RetornaValidacao()
+    {
+        var nomeMuitoLongo = new string('a', 201);
+
+        var result = await _handler.HandleAsync(ComandoValido(Guid.NewGuid(), Guid.NewGuid(), name: nomeMuitoLongo));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(LeadErrors.NomeMuitoLongo);
+        _treinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // --- AGF4-07: contact.type fora de phone/email/whatsapp ⇒ validation_failed ---
+
+    [Fact]
+    public async Task HandleAsync_TipoContatoInvalido_RetornaValidacao()
+    {
+        var result = await _handler.HandleAsync(ComandoValido(Guid.NewGuid(), Guid.NewGuid(), contactType: "sms"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(SolicitacaoAgendamentoAgenteErrors.TipoContatoInvalido);
+        _treinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // --- AGF4-07: slotId ausente/vazio/em branco ⇒ validation_failed ---
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task HandleAsync_SlotIdAusenteOuVazio_RetornaValidacao(string? slotIdVazio)
+    {
+        var comando = ComandoValido(Guid.NewGuid(), Guid.NewGuid()) with { SlotId = slotIdVazio! };
+
+        var result = await _handler.HandleAsync(comando);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(SolicitacaoAgendamentoErrors.SlotIdObrigatorio);
+        _treinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     // --- AGF4-10: corrida de idempotência resolvida pela violação de unicidade, nunca 500 ---
 
     [Fact]
