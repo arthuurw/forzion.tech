@@ -4841,6 +4841,208 @@
         ]
       }
     },
+    "/treinador/agenda/solicitacoes": {
+      "get": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Lista solicitações de agendamento do treinador autenticado, com filtro opcional por status",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListarSolicitacoesResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/treinador/agenda/solicitacoes/{id}/confirmar": {
+      "post": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Confirma uma solicitação de agendamento pendente",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/treinador/agenda/solicitacoes/{id}/recusar": {
+      "post": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Recusa uma solicitação de agendamento pendente",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecidirSolicitacaoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/treinador/agenda/solicitacoes/{id}/cancelar": {
+      "post": {
+        "tags": [
+          "Treinador"
+        ],
+        "summary": "Cancela uma solicitação de agendamento confirmada, devolvendo a capacidade",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecidirSolicitacaoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
     "/treinador/cep/{cep}": {
       "get": {
         "tags": [
@@ -9988,6 +10190,17 @@
           }
         }
       },
+      "DecidirSolicitacaoRequest": {
+        "type": "object",
+        "properties": {
+          "motivo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "DefinirCortesiaRequest": {
         "required": [
           "planoId"
@@ -11337,6 +11550,47 @@
               "string"
             ],
             "format": "double"
+          }
+        }
+      },
+      "ListarSolicitacoesResponse": {
+        "required": [
+          "items",
+          "total",
+          "pagina",
+          "tamanhoPagina"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SolicitacaoAgendamentoListItem"
+            }
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pagina": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "tamanhoPagina": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -13141,6 +13395,82 @@
             "format": "int32"
           }
         }
+      },
+      "SolicitacaoAgendamentoListItem": {
+        "required": [
+          "id",
+          "pacoteId",
+          "pacoteNome",
+          "inicioUtc",
+          "fimUtc",
+          "status",
+          "motivo",
+          "createdAt",
+          "leadId",
+          "leadNome",
+          "leadContatoTipo",
+          "leadContatoValor",
+          "leadAnonimizado"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pacoteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pacoteNome": {
+            "type": "string"
+          },
+          "inicioUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fimUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SolicitacaoAgendamentoStatus"
+          },
+          "motivo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "leadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leadNome": {
+            "type": "string"
+          },
+          "leadContatoTipo": {
+            "$ref": "#/components/schemas/TipoContatoLead"
+          },
+          "leadContatoValor": {
+            "type": "string"
+          },
+          "leadAnonimizado": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SolicitacaoAgendamentoStatus": {
+        "enum": [
+          "PendenteAgente",
+          "Confirmada",
+          "Recusada",
+          "Cancelada"
+        ]
       },
       "SolicitarTrocaTreinadorRequest": {
         "required": [

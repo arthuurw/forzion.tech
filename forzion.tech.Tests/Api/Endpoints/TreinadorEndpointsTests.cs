@@ -32,6 +32,7 @@ using forzion.tech.Application.UseCases.Pagamentos;
 using forzion.tech.Application.UseCases.Pagamentos.GerarCobrancaMensal;
 using forzion.tech.Application.UseCases.Treinos.ListarTreinosDoTreinador;
 using forzion.tech.Application.UseCases.Treinos.VincularFichaAoAluno;
+using forzion.tech.Application.UseCases.Treinadores.Agendamentos;
 using forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTreinador;
 using forzion.tech.Application.UseCases.Treinadores.AlterarModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.ObterPreviewModoPagamento;
@@ -1092,6 +1093,126 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
+    // --- GET /treinador/agenda/solicitacoes ---
+
+    [Fact]
+    public async Task Get_Solicitacoes_Treinador_Retorna200()
+    {
+        _factory.ListarSolicitacoesHandlerMock
+            .Setup(h => h.HandleAsync(It.IsAny<ListarSolicitacoesQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ListarSolicitacoesResponse([], 0, 1, 20));
+
+        var response = await CriarClienteTreinador().GetAsync("/treinador/agenda/solicitacoes");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    // --- POST /treinador/agenda/solicitacoes/{id}/confirmar ---
+
+    [Fact]
+    public async Task Post_ConfirmarSolicitacao_Sucesso_Retorna200()
+    {
+        _factory.ConfirmarSolicitacaoHandlerMock
+            .Setup(h => h.HandleAsync(TreinadorId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success());
+
+        var response = await CriarClienteTreinador().PostAsync($"/treinador/agenda/solicitacoes/{Guid.NewGuid()}/confirmar", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Post_ConfirmarSolicitacao_NaoEncontrada_Retorna404()
+    {
+        _factory.ConfirmarSolicitacaoHandlerMock
+            .Setup(h => h.HandleAsync(TreinadorId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure(SolicitacaoAgendamentoErrors.NaoEncontrada));
+
+        var response = await CriarClienteTreinador().PostAsync($"/treinador/agenda/solicitacoes/{Guid.NewGuid()}/confirmar", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Post_ConfirmarSolicitacao_CapacidadeEsgotada_Retorna409()
+    {
+        _factory.ConfirmarSolicitacaoHandlerMock
+            .Setup(h => h.HandleAsync(TreinadorId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure(SolicitacaoAgendamentoErrors.CapacidadeEsgotada));
+
+        var response = await CriarClienteTreinador().PostAsync($"/treinador/agenda/solicitacoes/{Guid.NewGuid()}/confirmar", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task Post_ConfirmarSolicitacao_TransicaoInvalida_Retorna400()
+    {
+        _factory.ConfirmarSolicitacaoHandlerMock
+            .Setup(h => h.HandleAsync(TreinadorId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure(SolicitacaoAgendamentoErrors.TransicaoNaoSuportada));
+
+        var response = await CriarClienteTreinador().PostAsync($"/treinador/agenda/solicitacoes/{Guid.NewGuid()}/confirmar", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // --- POST /treinador/agenda/solicitacoes/{id}/recusar ---
+
+    [Fact]
+    public async Task Post_RecusarSolicitacao_Sucesso_Retorna200()
+    {
+        _factory.RecusarSolicitacaoHandlerMock
+            .Setup(h => h.HandleAsync(TreinadorId, It.IsAny<Guid>(), "Sem vaga", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success());
+
+        var response = await CriarClienteTreinador().PostAsJsonAsync(
+            $"/treinador/agenda/solicitacoes/{Guid.NewGuid()}/recusar", new { Motivo = "Sem vaga" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Post_RecusarSolicitacao_NaoEncontrada_Retorna404()
+    {
+        _factory.RecusarSolicitacaoHandlerMock
+            .Setup(h => h.HandleAsync(TreinadorId, It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure(SolicitacaoAgendamentoErrors.NaoEncontrada));
+
+        var response = await CriarClienteTreinador().PostAsJsonAsync(
+            $"/treinador/agenda/solicitacoes/{Guid.NewGuid()}/recusar", new { });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // --- POST /treinador/agenda/solicitacoes/{id}/cancelar ---
+
+    [Fact]
+    public async Task Post_CancelarSolicitacao_Sucesso_Retorna200()
+    {
+        _factory.CancelarSolicitacaoHandlerMock
+            .Setup(h => h.HandleAsync(TreinadorId, It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success());
+
+        var response = await CriarClienteTreinador().PostAsJsonAsync(
+            $"/treinador/agenda/solicitacoes/{Guid.NewGuid()}/cancelar", new { });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Post_CancelarSolicitacao_TransicaoInvalida_Retorna400()
+    {
+        _factory.CancelarSolicitacaoHandlerMock
+            .Setup(h => h.HandleAsync(TreinadorId, It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure(SolicitacaoAgendamentoErrors.TransicaoNaoSuportada));
+
+        var response = await CriarClienteTreinador().PostAsJsonAsync(
+            $"/treinador/agenda/solicitacoes/{Guid.NewGuid()}/cancelar", new { });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     // --- WebApplicationFactory ---
 
     public class TreinadorWebFactory : WebApplicationFactory<Program>
@@ -1292,6 +1413,26 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         public Mock<ObterDadosFiscaisTreinadorHandler> ObterDadosFiscaisHandlerMock { get; } = new(
             Mock.Of<ITreinadorRepository>());
 
+        public Mock<ListarSolicitacoesHandler> ListarSolicitacoesHandlerMock { get; } = new(
+            Mock.Of<ISolicitacaoAgendamentoRepository>());
+
+        public Mock<ConfirmarSolicitacaoHandler> ConfirmarSolicitacaoHandlerMock { get; } = new(
+            Mock.Of<ISolicitacaoAgendamentoRepository>(),
+            Mock.Of<IPacoteRepository>(),
+            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IDbContextTransactionProvider>(),
+            Mock.Of<IDatabaseErrorInspector>(),
+            TimeProvider.System,
+            Mock.Of<ILogger<ConfirmarSolicitacaoHandler>>());
+
+        public Mock<RecusarSolicitacaoHandler> RecusarSolicitacaoHandlerMock { get; } = new(
+            Mock.Of<ISolicitacaoAgendamentoRepository>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System);
+
+        public Mock<CancelarSolicitacaoHandler> CancelarSolicitacaoHandlerMock { get; } = new(
+            Mock.Of<ISolicitacaoAgendamentoRepository>(),
+            Mock.Of<IUnitOfWork>(), TimeProvider.System);
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Test");
@@ -1329,6 +1470,10 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 services.RemoveAll<ExcluirExercicioHandler>();
                 services.RemoveAll<DefinirDadosFiscaisTreinadorHandler>();
                 services.RemoveAll<ObterDadosFiscaisTreinadorHandler>();
+                services.RemoveAll<ListarSolicitacoesHandler>();
+                services.RemoveAll<ConfirmarSolicitacaoHandler>();
+                services.RemoveAll<RecusarSolicitacaoHandler>();
+                services.RemoveAll<CancelarSolicitacaoHandler>();
                 services.RemoveAll<IUserContext>();
                 services.RemoveAll<IJwtService>();
                 services.RemoveAll<ITokenRevogadoRepository>();
@@ -1364,6 +1509,10 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
                 services.AddScoped(_ => ExcluirExercicioHandlerMock.Object);
                 services.AddScoped(_ => DefinirDadosFiscaisHandlerMock.Object);
                 services.AddScoped(_ => ObterDadosFiscaisHandlerMock.Object);
+                services.AddScoped(_ => ListarSolicitacoesHandlerMock.Object);
+                services.AddScoped(_ => ConfirmarSolicitacaoHandlerMock.Object);
+                services.AddScoped(_ => RecusarSolicitacaoHandlerMock.Object);
+                services.AddScoped(_ => CancelarSolicitacaoHandlerMock.Object);
 
                 var userContextMock = new Mock<IUserContext>();
                 userContextMock.Setup(u => u.ContaId).Returns(ContaId);

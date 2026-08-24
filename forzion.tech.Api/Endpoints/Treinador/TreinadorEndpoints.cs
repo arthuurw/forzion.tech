@@ -7,6 +7,7 @@ using forzion.tech.Application.UseCases.Treinadores.ObterPreviewModoPagamento;
 using forzion.tech.Application.UseCases.Treinadores.CancelarMinhaAssinaturaTreinador;
 using forzion.tech.Application.UseCases.Treinadores.Dashboard;
 using forzion.tech.Application.UseCases.Treinadores.Agenda;
+using forzion.tech.Application.UseCases.Treinadores.Agendamentos;
 using forzion.tech.Application.UseCases.Treinadores.DadosFiscais;
 using forzion.tech.Application.UseCases.Treinadores.PerfilPublico;
 using forzion.tech.Application.UseCases.Treinadores.IniciarOnboarding;
@@ -713,6 +714,77 @@ public static class TreinadorEndpoints
         .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
+        group.MapGet("/agenda/solicitacoes", async (
+            [FromServices] ListarSolicitacoesHandler handler,
+            [FromServices] IUserContext userContext,
+            HttpContext httpContext,
+            CancellationToken cancellationToken) =>
+        {
+            var statusString = httpContext.Request.Query["status"].ToString();
+            SolicitacaoAgendamentoStatus status = default;
+            var statusParsed = !string.IsNullOrEmpty(statusString)
+                && Enum.TryParse(statusString, ignoreCase: true, out status);
+            _ = int.TryParse(httpContext.Request.Query["pagina"], out var pagina);
+            _ = int.TryParse(httpContext.Request.Query["tamanhoPagina"], out var tamanhoPagina);
+            var p = pagina < 1 ? 1 : pagina;
+            var tp = tamanhoPagina < 1 ? 20 : Math.Clamp(tamanhoPagina, 1, 100);
+
+            var query = new ListarSolicitacoesQuery(userContext.PerfilId, statusParsed ? status : null, p, tp);
+            var result = await handler.HandleAsync(query, cancellationToken).ConfigureAwait(false);
+            return Results.Ok(result);
+        })
+        .RequireRateLimiting("read")
+        .WithSummary("Lista solicitações de agendamento do treinador autenticado, com filtro opcional por status")
+        .Produces<ListarSolicitacoesResponse>();
+
+        group.MapPost("/agenda/solicitacoes/{id:guid}/confirmar", async (
+            Guid id,
+            [FromServices] ConfirmarSolicitacaoHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(userContext.PerfilId, id, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok();
+        })
+        .WithSummary("Confirma uma solicitação de agendamento pendente")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status409Conflict)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapPost("/agenda/solicitacoes/{id:guid}/recusar", async (
+            Guid id,
+            [FromBody] DecidirSolicitacaoRequest request,
+            [FromServices] RecusarSolicitacaoHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(userContext.PerfilId, id, request.Motivo, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok();
+        })
+        .WithSummary("Recusa uma solicitação de agendamento pendente")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapPost("/agenda/solicitacoes/{id:guid}/cancelar", async (
+            Guid id,
+            [FromBody] DecidirSolicitacaoRequest request,
+            [FromServices] CancelarSolicitacaoHandler handler,
+            [FromServices] IUserContext userContext,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(userContext.PerfilId, id, request.Motivo, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure) return result.ToProblemResult();
+            return Results.Ok();
+        })
+        .WithSummary("Cancela uma solicitação de agendamento confirmada, devolvendo a capacidade")
+        .Produces(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
         group.MapGet("/cep/{cep}", async (
             string cep,
             [FromServices] IConsultaCepService consultaCep,
@@ -806,6 +878,7 @@ public record CriarBloqueioAgendaRequest(
     string? Motivo = null);
 
 public record AtualizarPoliticaAgendaRequest(int AntecedenciaMinimaHoras, int HorizonteDias);
+public record DecidirSolicitacaoRequest(string? Motivo = null);
 
 public record PerfilPublicoRequest(
     string? NomeFantasia,
