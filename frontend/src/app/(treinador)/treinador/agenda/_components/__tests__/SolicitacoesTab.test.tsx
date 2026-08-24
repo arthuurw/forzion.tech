@@ -29,6 +29,35 @@ describe("SolicitacoesTab", () => {
     expect(screen.getByText("Maria Silva")).toBeInTheDocument();
     expect(screen.getByText(/e-mail: maria@exemplo.com/i)).toBeInTheDocument();
     expect(screen.getByText("Pendente")).toBeInTheDocument();
+
+    const inicio = new Date(SOLICITACAO_BASE.inicioUtc);
+    const fim = new Date(SOLICITACAO_BASE.fimUtc);
+    const intervaloEsperado = `${inicio.toLocaleDateString("pt-BR")} ${inicio.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} — ${fim.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    expect(screen.getByText(intervaloEsperado)).toBeInTheDocument();
+  });
+
+  it("carrega pendentes e confirmadas juntas na primeira busca", async () => {
+    server.use(
+      http.get("*/treinador/agenda/solicitacoes", () =>
+        HttpResponse.json({
+          items: [
+            SOLICITACAO_BASE,
+            {
+              ...SOLICITACAO_BASE, id: "s2", pacoteNome: "Personal",
+              status: "Confirmada" as const, leadId: "l2", leadNome: "João Souza", leadContatoValor: "joao@exemplo.com",
+            },
+          ],
+          total: 2, pagina: 1, tamanhoPagina: 20,
+        })),
+    );
+    renderTab();
+
+    expect(await screen.findByText("Aula experimental")).toBeInTheDocument();
+    expect(screen.getByText("Personal")).toBeInTheDocument();
+    expect(screen.getByText("Maria Silva")).toBeInTheDocument();
+    expect(screen.getByText("João Souza")).toBeInTheDocument();
+    expect(screen.getByText("Pendente")).toBeInTheDocument();
+    expect(screen.getByText("Confirmada")).toBeInTheDocument();
   });
 
   it("exibe estado vazio quando não há solicitações", async () => {
