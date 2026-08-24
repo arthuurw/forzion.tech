@@ -12,5 +12,6 @@ public enum TipoNotificacao
     LimiteAlunosExcedido,
     LimiteAlunosLembrete,
     LimiteAlunosAplicado,
-    NovoLead
+    NovoLead,
+    NovaSolicitacaoAgendamento
 }

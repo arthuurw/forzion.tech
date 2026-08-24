@@ -340,6 +340,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IDomainEventHandler<LeadCriadoEvent>, LeadCriadoInAppHandler>();
         services.AddScoped<IDomainEventHandler<LeadCriadoEvent>, LeadCriadoEmailTreinadorHandler>();
         services.AddScoped<IDomainEventHandler<SolicitacaoAgendamentoCriadaEvent>, SolicitacaoAgendamentoCriadaEmailHandler>();
+        services.AddScoped<IDomainEventHandler<SolicitacaoAgendamentoCriadaEvent>, SolicitacaoAgendamentoCriadaInAppHandler>();
         services.AddScoped<IEmailEsfriamentoNotifier, EmailEsfriamentoNotifier>();
         services.AddScoped<IDigestTreinadorEmailNotifier, DigestTreinadorEmailNotifier>();
         services.AddScoped<ILimiteAlunosEmailSender, LimiteAlunosEmailSender>();

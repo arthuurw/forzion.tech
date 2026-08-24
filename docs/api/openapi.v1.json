@@ -13553,7 +13553,8 @@
           "LimiteAlunosExcedido",
           "LimiteAlunosLembrete",
           "LimiteAlunosAplicado",
-          "NovoLead"
+          "NovoLead",
+          "NovaSolicitacaoAgendamento"
         ]
       },
       "TipoTrocaPlano": {
