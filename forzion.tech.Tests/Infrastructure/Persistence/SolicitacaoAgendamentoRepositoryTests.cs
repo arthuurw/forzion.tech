@@ -133,6 +133,43 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
     }
 
     [Fact]
+    public async Task ListarPorTreinadorAsync_FiltraPorStatus_ExcluiOsQueNaoCorrespondem()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (treinadorId, pacoteId, leadId) = await SeedTenantAsync(ctx);
+        var pendente = CriarSolicitacao(treinadorId, pacoteId, leadId, "chave-pendente");
+        var confirmada = CriarSolicitacao(treinadorId, pacoteId, leadId, "chave-confirmada");
+        confirmada.Confirmar(Guid.NewGuid(), Agora);
+        await Repo(ctx).AdicionarAsync(pendente);
+        await Repo(ctx).AdicionarAsync(confirmada);
+        await ctx.SaveChangesAsync();
+
+        var (items, total) = await Repo(ctx).ListarPorTreinadorAsync(treinadorId, SolicitacaoAgendamentoStatus.Confirmada, 1, 10);
+
+        total.Should().Be(1);
+        items.Should().ContainSingle(s => s.Id == confirmada.Id);
+        items.Should().NotContain(s => s.Id == pendente.Id);
+    }
+
+    [Fact]
+    public async Task ListarPorTreinadorAsync_OrdenaPorInicioUtcAscendente()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (treinadorId, pacoteId, leadId) = await SeedTenantAsync(ctx);
+        var maisTarde = CriarSolicitacao(treinadorId, pacoteId, leadId, "chave-mais-tarde", Agora.AddDays(3), Agora.AddDays(3).AddMinutes(30));
+        var maisCedo = CriarSolicitacao(treinadorId, pacoteId, leadId, "chave-mais-cedo", Agora.AddDays(1), Agora.AddDays(1).AddMinutes(30));
+        var intermediaria = CriarSolicitacao(treinadorId, pacoteId, leadId, "chave-intermediaria", Agora.AddDays(2), Agora.AddDays(2).AddMinutes(30));
+        await Repo(ctx).AdicionarAsync(maisTarde);
+        await Repo(ctx).AdicionarAsync(maisCedo);
+        await Repo(ctx).AdicionarAsync(intermediaria);
+        await ctx.SaveChangesAsync();
+
+        var (items, _) = await Repo(ctx).ListarPorTreinadorAsync(treinadorId, null, 1, 10);
+
+        items.Select(i => i.Id).Should().ContainInOrder(maisCedo.Id, intermediaria.Id, maisTarde.Id);
+    }
+
+    [Fact]
     public async Task ListarPorTreinadorAsync_ProjetaNomeDoServicoEDadosDoLeadSemSegundaConsulta()
     {
         await using var ctx = fixture.CreateContext();
