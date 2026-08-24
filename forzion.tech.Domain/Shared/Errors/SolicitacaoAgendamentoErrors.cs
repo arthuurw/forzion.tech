@@ -12,4 +12,6 @@ public static class SolicitacaoAgendamentoErrors
     public static Error TransicaoNaoSuportada => Error.Validation("solicitacao_agendamento.transicao_nao_suportada", "Esta transição de status não é suportada por esta operação.");
     public static Error SlotJaIniciado => Error.Business("solicitacao_agendamento.slot_ja_iniciado", "Não é possível confirmar uma solicitação cujo horário já começou.");
     public static Error MotivoMuitoLongo => Error.Validation("solicitacao_agendamento.motivo_muito_longo", "O motivo deve ter no máximo 500 caracteres.");
+    public static Error NaoEncontrada => Error.NotFound("solicitacao_agendamento.nao_encontrada", "Solicitação de agendamento não encontrada.");
+    public static Error CapacidadeEsgotada => Error.Conflict("solicitacao_agendamento.capacidade_esgotada", "A capacidade máxima do horário já foi atingida.");
 }

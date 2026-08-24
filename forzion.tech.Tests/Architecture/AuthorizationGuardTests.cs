@@ -28,6 +28,7 @@ public class AuthorizationGuardTests
         "CancelarAssinaturaAlunoHandler",
         "CancelarMinhaAssinaturaAlunoHandler",
         "CancelarMinhaAssinaturaTreinadorHandler",
+        "ConfirmarSolicitacaoHandler",
         "ConsultarDisponibilidadeAgenteHandler",
         "ContratarPlanoTreinadorHandler",
         "CopiarExercicioGlobalHandler",
