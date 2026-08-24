@@ -248,4 +248,55 @@ public class DerivadorDisponibilidadeTests
 
         slots.Select(s => s.InicioUtc).Should().Equal(Utc(2026, 5, 25, 13, 0));
     }
+
+    // --- LocalizarPorId ---
+
+    [Fact]
+    public void LocalizarPorId_IdDeSlotValido_DevolveOSlotComInicioEFimCorretos()
+    {
+        var p = ParametrosComTurnoENoBloqueios([]);
+        var slotId = SlotId.Calcular(TreinadorId, PacoteId, Utc(2026, 5, 25, 12, 0));
+
+        var slot = DerivadorDisponibilidade.LocalizarPorId(p, slotId);
+
+        slot.Should().NotBeNull();
+        slot!.InicioUtc.Should().Be(Utc(2026, 5, 25, 12, 0));
+        slot.FimUtc.Should().Be(Utc(2026, 5, 25, 13, 0));
+    }
+
+    [Fact]
+    public void LocalizarPorId_IdCobertoPorBloqueio_DevolveNull()
+    {
+        var bloqueio = BloqueioAgenda.CriarPontual(TreinadorId, Utc(2026, 5, 25, 12, 0), Utc(2026, 5, 25, 13, 0), null, Agora).Value;
+        var p = ParametrosComTurnoENoBloqueios([bloqueio]);
+        var slotId = SlotId.Calcular(TreinadorId, PacoteId, Utc(2026, 5, 25, 12, 0));
+
+        var slot = DerivadorDisponibilidade.LocalizarPorId(p, slotId);
+
+        slot.Should().BeNull();
+    }
+
+    [Fact]
+    public void LocalizarPorId_IdAlemDoHorizonteDias_DevolveNull()
+    {
+        var agora = Utc(2026, 5, 20, 0, 0);
+        var politica = PoliticaAgenda.Criar(0, 1).Value; // horizonte de 1 dia: exclui a segunda 25/05
+        var p = ParametrosComPolitica(agora, From, To, politica);
+        var slotId = SlotId.Calcular(TreinadorId, PacoteId, Utc(2026, 5, 25, 11, 0));
+
+        var slot = DerivadorDisponibilidade.LocalizarPorId(p, slotId);
+
+        slot.Should().BeNull();
+    }
+
+    [Fact]
+    public void LocalizarPorId_IdArbitrario_DevolveNull()
+    {
+        var horario = Horario((int)DayOfWeek.Monday, 8, 0, 11, 0);
+        var p = Parametros(60, [horario]);
+
+        var slot = DerivadorDisponibilidade.LocalizarPorId(p, "id-que-nunca-existiu");
+
+        slot.Should().BeNull();
+    }
 }

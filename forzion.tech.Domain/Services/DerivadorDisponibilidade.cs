@@ -4,6 +4,9 @@ namespace forzion.tech.Domain.Services;
 
 public static class DerivadorDisponibilidade
 {
+    public static SlotDisponivel? LocalizarPorId(ParametrosDerivacao p, string slotId) =>
+        Derivar(p).FirstOrDefault(s => s.SlotId == slotId);
+
     public static IReadOnlyList<SlotDisponivel> Derivar(ParametrosDerivacao p)
     {
         var inicioEfetivo = Maior(p.From, p.Agora.AddHours(p.Politica.AntecedenciaMinimaHoras));
