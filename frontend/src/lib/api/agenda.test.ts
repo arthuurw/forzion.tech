@@ -100,3 +100,67 @@ describe("agendaApi — atualizarPolitica", () => {
     await expect(agendaApi.atualizarPolitica({ antecedenciaMinimaHoras: -1, horizonteDias: 0 })).rejects.toBeDefined();
   });
 });
+
+describe("agendaApi — listarSolicitacoes", () => {
+  it("GET sem parâmetros usa objeto vazio", () => {
+    agendaApi.listarSolicitacoes();
+    expect(mock.get).toHaveBeenCalledWith("/treinador/agenda/solicitacoes", { params: {} });
+  });
+
+  it("GET com filtro de status e paginação", () => {
+    agendaApi.listarSolicitacoes({ status: "PendenteAgente", pagina: 2, tamanhoPagina: 10 });
+    expect(mock.get).toHaveBeenCalledWith("/treinador/agenda/solicitacoes", {
+      params: { status: "PendenteAgente", pagina: 2, tamanhoPagina: 10 },
+    });
+  });
+
+  it("propaga erro do backend", async () => {
+    mock.get.mockRejectedValueOnce({ response: { status: 500 } });
+    await expect(agendaApi.listarSolicitacoes()).rejects.toBeDefined();
+  });
+});
+
+describe("agendaApi — confirmarSolicitacao", () => {
+  it("POST por id", () => {
+    agendaApi.confirmarSolicitacao("solicitacao-1");
+    expect(mock.post).toHaveBeenCalledWith("/treinador/agenda/solicitacoes/solicitacao-1/confirmar", {});
+  });
+
+  it("propaga conflito de capacidade", async () => {
+    mock.post.mockRejectedValueOnce({ response: { status: 409 } });
+    await expect(agendaApi.confirmarSolicitacao("solicitacao-1")).rejects.toBeDefined();
+  });
+});
+
+describe("agendaApi — recusarSolicitacao", () => {
+  it("POST com motivo", () => {
+    agendaApi.recusarSolicitacao("solicitacao-1", "Fora do horário disponível");
+    expect(mock.post).toHaveBeenCalledWith("/treinador/agenda/solicitacoes/solicitacao-1/recusar", {
+      motivo: "Fora do horário disponível",
+    });
+  });
+
+  it("POST sem motivo envia null", () => {
+    agendaApi.recusarSolicitacao("solicitacao-1");
+    expect(mock.post).toHaveBeenCalledWith("/treinador/agenda/solicitacoes/solicitacao-1/recusar", { motivo: null });
+  });
+
+  it("propaga erro de transição inválida", async () => {
+    mock.post.mockRejectedValueOnce({ response: { status: 422 } });
+    await expect(agendaApi.recusarSolicitacao("solicitacao-1")).rejects.toBeDefined();
+  });
+});
+
+describe("agendaApi — cancelarSolicitacao", () => {
+  it("POST com motivo", () => {
+    agendaApi.cancelarSolicitacao("solicitacao-1", "Aluno desistiu");
+    expect(mock.post).toHaveBeenCalledWith("/treinador/agenda/solicitacoes/solicitacao-1/cancelar", {
+      motivo: "Aluno desistiu",
+    });
+  });
+
+  it("propaga 404 cross-tenant", async () => {
+    mock.post.mockRejectedValueOnce({ response: { status: 404 } });
+    await expect(agendaApi.cancelarSolicitacao("de-outro-treinador")).rejects.toBeDefined();
+  });
+});

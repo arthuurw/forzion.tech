@@ -671,3 +671,29 @@ export interface PoliticaAgendaResponse {
   antecedenciaMinimaHoras: number;
   horizonteDias: number;
 }
+
+// Espelha o enum C# Domain/Enums/SolicitacaoAgendamentoStatus (JsonStringEnumConverter casa por nome).
+export type SolicitacaoAgendamentoStatus = "PendenteAgente" | "Confirmada" | "Recusada" | "Cancelada";
+
+export interface SolicitacaoAgendamentoListItem {
+  id: string;
+  pacoteId: string;
+  pacoteNome: string;
+  inicioUtc: string;
+  fimUtc: string;
+  status: SolicitacaoAgendamentoStatus;
+  motivo: string | null;
+  createdAt: string;
+  leadId: string;
+  leadNome: string;
+  leadContatoTipo: TipoContatoLead;
+  leadContatoValor: string;
+  leadAnonimizado: boolean;
+}
+
+export interface ListarSolicitacoesResponse {
+  items: SolicitacaoAgendamentoListItem[];
+  total: number;
+  pagina: number;
+  tamanhoPagina: number;
+}

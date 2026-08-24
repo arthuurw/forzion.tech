@@ -1,5 +1,10 @@
 import { apiClient } from "./client";
-import type { BloqueioAgendaResponse, PoliticaAgendaResponse } from "@/types";
+import type {
+  BloqueioAgendaResponse,
+  PoliticaAgendaResponse,
+  ListarSolicitacoesResponse,
+  SolicitacaoAgendamentoStatus,
+} from "@/types";
 
 export interface CriarBloqueioPontualPayload {
   tipo: "Pontual";
@@ -23,6 +28,12 @@ export interface AtualizarPoliticaAgendaPayload {
   horizonteDias: number;
 }
 
+export interface ListarSolicitacoesParams {
+  status?: SolicitacaoAgendamentoStatus;
+  pagina?: number;
+  tamanhoPagina?: number;
+}
+
 export const agendaApi = {
   listarBloqueios() {
     return apiClient.get<BloqueioAgendaResponse[]>("/treinador/agenda/bloqueios");
@@ -38,5 +49,17 @@ export const agendaApi = {
   },
   atualizarPolitica(payload: AtualizarPoliticaAgendaPayload) {
     return apiClient.put<PoliticaAgendaResponse>("/treinador/agenda/politica", payload);
+  },
+  listarSolicitacoes(params: ListarSolicitacoesParams = {}) {
+    return apiClient.get<ListarSolicitacoesResponse>("/treinador/agenda/solicitacoes", { params });
+  },
+  confirmarSolicitacao(id: string) {
+    return apiClient.post<void>(`/treinador/agenda/solicitacoes/${id}/confirmar`, {});
+  },
+  recusarSolicitacao(id: string, motivo?: string | null) {
+    return apiClient.post<void>(`/treinador/agenda/solicitacoes/${id}/recusar`, { motivo: motivo ?? null });
+  },
+  cancelarSolicitacao(id: string, motivo?: string | null) {
+    return apiClient.post<void>(`/treinador/agenda/solicitacoes/${id}/cancelar`, { motivo: motivo ?? null });
   },
 };
