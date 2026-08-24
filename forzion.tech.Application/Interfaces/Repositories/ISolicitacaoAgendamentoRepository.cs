@@ -15,7 +15,7 @@ public interface ISolicitacaoAgendamentoRepository
 
     Task<IReadOnlyList<SolicitacaoAgendamento>> ListarConfirmadasNoIntervaloAsync(Guid treinadorId, Guid pacoteId, DateTime deUtc, DateTime ateUtc, CancellationToken cancellationToken = default);
 
-    Task<(IReadOnlyList<SolicitacaoAgendamento> Items, int Total)> ListarPorTreinadorAsync(
+    Task<(IReadOnlyList<SolicitacaoAgendamentoListItem> Items, int Total)> ListarPorTreinadorAsync(
         Guid treinadorId,
         SolicitacaoAgendamentoStatus? status,
         int pagina,

@@ -133,6 +133,50 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
     }
 
     [Fact]
+    public async Task ListarPorTreinadorAsync_ProjetaNomeDoServicoEDadosDoLeadSemSegundaConsulta()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (treinadorId, pacoteId, leadId) = await SeedTenantAsync(ctx);
+        var solicitacao = CriarSolicitacao(treinadorId, pacoteId, leadId, "chave-projecao");
+        await Repo(ctx).AdicionarAsync(solicitacao);
+        await ctx.SaveChangesAsync();
+
+        var pacote = await ctx.Pacotes.AsNoTracking().SingleAsync(p => p.Id == pacoteId);
+        var lead = await ctx.Leads.AsNoTracking().SingleAsync(l => l.Id == leadId);
+
+        var (items, _) = await Repo(ctx).ListarPorTreinadorAsync(treinadorId, null, 1, 10);
+
+        var item = items.Should().ContainSingle().Subject;
+        item.PacoteNome.Should().Be(pacote.Nome);
+        item.LeadId.Should().Be(leadId);
+        item.LeadNome.Should().Be(lead.Nome);
+        item.LeadContatoTipo.Should().Be(lead.Contato.Tipo);
+        item.LeadContatoValor.Should().Be(lead.Contato.Valor);
+        item.LeadAnonimizado.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ListarPorTreinadorAsync_LeadAnonimizado_ItemTrazPlaceholderSemContato()
+    {
+        await using var ctx = fixture.CreateContext();
+        var (treinadorId, pacoteId, leadId) = await SeedTenantAsync(ctx);
+        var solicitacao = CriarSolicitacao(treinadorId, pacoteId, leadId, "chave-anonimizado");
+        await Repo(ctx).AdicionarAsync(solicitacao);
+        await ctx.SaveChangesAsync();
+
+        var lead = await ctx.Leads.SingleAsync(l => l.Id == leadId);
+        lead.Anonimizar(Agora);
+        await ctx.SaveChangesAsync();
+
+        var (items, _) = await Repo(ctx).ListarPorTreinadorAsync(treinadorId, null, 1, 10);
+
+        var item = items.Should().ContainSingle().Subject;
+        item.LeadAnonimizado.Should().BeTrue();
+        item.LeadNome.Should().Be("Lead anonimizado");
+        item.LeadContatoValor.Should().Be("[anonimizado]");
+    }
+
+    [Fact]
     public async Task ContarConfirmadasSobrepostasAsync_SolicitacaoConfirmadaDeOutroTreinador_NaoConta()
     {
         await using var ctx = fixture.CreateContext();

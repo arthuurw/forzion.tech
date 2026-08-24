@@ -42,7 +42,9 @@ public class SolicitacaoAgendamentoRepository(AppDbContext context) : ISolicitac
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<(IReadOnlyList<SolicitacaoAgendamento> Items, int Total)> ListarPorTreinadorAsync(
+    // Projeta serviço (Pacote) e lead na mesma consulta (sem N+1) — a esteira do treinador
+    // precisa dos dois pra exibir a lista sem round-trip extra por item.
+    public async Task<(IReadOnlyList<SolicitacaoAgendamentoListItem> Items, int Total)> ListarPorTreinadorAsync(
         Guid treinadorId,
         SolicitacaoAgendamentoStatus? status,
         int pagina,
@@ -54,10 +56,17 @@ public class SolicitacaoAgendamentoRepository(AppDbContext context) : ISolicitac
         if (status.HasValue)
             query = query.Where(s => s.Status == status.Value);
 
-        query = query.OrderBy(s => s.InicioUtc).ThenBy(s => s.Id);
+        var projetada =
+            from s in query
+            join p in context.Pacotes.AsNoTracking() on s.PacoteId equals p.Id
+            join l in context.Leads.AsNoTracking() on s.LeadId equals l.Id
+            orderby s.InicioUtc, s.Id
+            select new SolicitacaoAgendamentoListItem(
+                s.Id, s.PacoteId, p.Nome, s.InicioUtc, s.FimUtc, s.Status, s.Motivo, s.CreatedAt,
+                l.Id, l.Nome, l.Contato.Tipo, l.Contato.Valor, l.Anonimizado);
 
-        var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
-        var items = await query
+        var total = await projetada.CountAsync(cancellationToken).ConfigureAwait(false);
+        var items = await projetada
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)
             .ToListAsync(cancellationToken)

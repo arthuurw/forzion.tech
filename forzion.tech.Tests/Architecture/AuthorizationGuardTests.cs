@@ -67,6 +67,7 @@ public class AuthorizationGuardTests
         "ListarHealthSnapshotsHandler",
         "ListarLeadsHandler",
         "ListarPacotesHandler",
+        "ListarSolicitacoesHandler",
         "ListarPagamentosAssinaturaAlunoHandler",
         "ListarPlanosPlataformaHandler",
         "ListarRecebimentosTreinadorHandler",
