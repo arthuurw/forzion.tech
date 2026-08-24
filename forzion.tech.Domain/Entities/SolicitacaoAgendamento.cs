@@ -1,11 +1,16 @@
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Events;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
 
 namespace forzion.tech.Domain.Entities;
 
-public class SolicitacaoAgendamento
+public class SolicitacaoAgendamento : IHasDomainEvents
 {
+    private readonly List<IDomainEvent> _domainEvents = [];
+    public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    public void ClearDomainEvents() => _domainEvents.Clear();
+
     public Guid Id { get; private set; }
     public Guid TreinadorId { get; private set; }
     public Guid PacoteId { get; private set; }
@@ -50,7 +55,7 @@ public class SolicitacaoAgendamento
         if (idempotencyKey.Length > 200)
             return Result.Failure<SolicitacaoAgendamento>(SolicitacaoAgendamentoErrors.IdempotencyKeyMuitoLonga);
 
-        return Result.Success(new SolicitacaoAgendamento
+        var solicitacao = new SolicitacaoAgendamento
         {
             Id = Guid.NewGuid(),
             TreinadorId = treinadorId,
@@ -63,7 +68,9 @@ public class SolicitacaoAgendamento
             IdempotencyKey = idempotencyKey,
             ArgumentosHash = argumentosHash,
             CreatedAt = agora
-        });
+        };
+        solicitacao._domainEvents.Add(new SolicitacaoAgendamentoCriadaEvent(solicitacao.Id, treinadorId, pacoteId, inicioUtc, agora));
+        return Result.Success(solicitacao);
     }
 
     public Result Confirmar(Guid realizadoPorId, DateTime agora)

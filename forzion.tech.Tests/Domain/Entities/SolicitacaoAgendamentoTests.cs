@@ -1,6 +1,7 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
+using forzion.tech.Domain.Events;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Tests.Builders;
 
@@ -147,5 +148,21 @@ public class SolicitacaoAgendamentoTests
         var r = Criar(idempotencyKey: new string('a', 200));
 
         r.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Criar_AdicionaSolicitacaoAgendamentoCriadaEventComOsDadosDaSolicitacao()
+    {
+        var inicio = TestData.Agora.AddHours(1);
+
+        var s = Criar(inicioUtc: inicio, fimUtc: inicio.AddHours(1)).Value;
+
+        s.DomainEvents.Should().ContainSingle();
+        var evento = s.DomainEvents.Single().Should().BeOfType<SolicitacaoAgendamentoCriadaEvent>().Subject;
+        evento.SolicitacaoId.Should().Be(s.Id);
+        evento.TreinadorId.Should().Be(TreinadorId);
+        evento.PacoteId.Should().Be(PacoteId);
+        evento.InicioUtc.Should().Be(inicio);
+        evento.OcorridoEm.Should().Be(TestData.Agora);
     }
 }
