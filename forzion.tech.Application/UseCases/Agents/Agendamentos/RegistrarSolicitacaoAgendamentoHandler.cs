@@ -16,7 +16,8 @@ public class RegistrarSolicitacaoAgendamentoHandler(
     ISolicitacaoAgendamentoRepository solicitacaoAgendamentoRepository,
     ResolvedorLeadAgendamento resolvedorLeadAgendamento,
     IUnitOfWork unitOfWork,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IDatabaseErrorInspector databaseErrorInspector)
 {
     public virtual Task<Result<StagedBookingRequest>> HandleAsync(RegistrarSolicitacaoAgendamentoCommand command, CancellationToken cancellationToken = default)
     {
@@ -127,7 +128,22 @@ public class RegistrarSolicitacaoAgendamentoHandler(
         var solicitacao = solicitacaoResult.Value;
         await solicitacaoAgendamentoRepository.AdicionarAsync(solicitacao, cancellationToken).ConfigureAwait(false);
 
-        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        // Corrida: duas requisições com a mesma chave passam o lookup acima e colidem no índice
+        // único — a violação significa que o concorrente já gravou primeiro; relê e resolve pelo
+        // mesmo critério do caminho normal (precedente RegistrarLeadAgenteHandler).
+        catch (Exception ex) when (databaseErrorInspector.EhViolacaoDeUnicidade(ex))
+        {
+            var vencedor = await solicitacaoAgendamentoRepository
+                .ObterPorIdempotencyKeyAsync(command.TenantId, command.IdempotencyKey, cancellationToken)
+                .ConfigureAwait(false);
+            if (vencedor is null)
+                throw;
+            return ResolverIdempotente(vencedor, argumentosHash);
+        }
 
         return Result.Success(ProjetarStagedBookingRequest(solicitacao));
     }

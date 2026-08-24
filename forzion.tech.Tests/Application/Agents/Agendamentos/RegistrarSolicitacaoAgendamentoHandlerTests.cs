@@ -20,6 +20,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
     private readonly Mock<ISolicitacaoAgendamentoRepository> _solicitacaoRepo = new();
     private readonly Mock<ILeadRepository> _leadRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IDatabaseErrorInspector> _databaseErrorInspector = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 8, 23, 0, 0, 0, TimeSpan.Zero));
     private readonly RegistrarSolicitacaoAgendamentoHandler _handler;
 
@@ -32,7 +33,8 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
     {
         var resolvedor = new ResolvedorLeadAgendamento(_leadRepo.Object);
         _handler = new RegistrarSolicitacaoAgendamentoHandler(
-            _treinadorRepo.Object, _pacoteRepo.Object, _bloqueioRepo.Object, _solicitacaoRepo.Object, resolvedor, _unitOfWork.Object, _timeProvider);
+            _treinadorRepo.Object, _pacoteRepo.Object, _bloqueioRepo.Object, _solicitacaoRepo.Object, resolvedor,
+            _unitOfWork.Object, _timeProvider, _databaseErrorInspector.Object);
         _bloqueioRepo.Setup(r => r.ListarVigentesAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<BloqueioAgenda>)[]);
         _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
@@ -214,6 +216,122 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error!.Should().Be(SolicitacaoAgendamentoAgenteErrors.IdempotencyConflito);
         _solicitacaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<SolicitacaoAgendamento>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // --- AGF4-08: mesma chave, mesmos argumentos ⇒ devolve o registro existente sem criar segundo ---
+
+    [Fact]
+    public async Task HandleAsync_MesmaChaveMesmosArgumentos_RetornaRegistroExistenteSemPersistirNovo()
+    {
+        var (treinador, pacote) = SetupTenant();
+        var comando = ComandoValido(treinador.Id, pacote.Id, idempotencyKey: "chave-repetida");
+        var hash = IdempotenciaAgendamento.Calcular(pacote.Id, comando.SlotId, comando.Name, TipoContatoLead.Email, comando.ContactValue, comando.ConsentPurpose);
+        var existente = SolicitacaoAgendamento.Criar(
+            treinador.Id, pacote.Id, Guid.NewGuid(), comando.SlotId, InicioSlotValido, FimSlotValido, "chave-repetida", hash, DateTime.UtcNow).Value;
+        _solicitacaoRepo.Setup(r => r.ObterPorIdempotencyKeyAsync(treinador.Id, "chave-repetida", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existente);
+
+        var result = await _handler.HandleAsync(comando);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.BookingRequestId.Should().Be(existente.Id.ToString());
+        result.Value.Status.Should().Be("pending-agent");
+        _solicitacaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<SolicitacaoAgendamento>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // --- AGF4-07: idempotencyKey ausente/vazia ⇒ validation_failed (campo required no contrato) ---
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task HandleAsync_IdempotencyKeyAusenteOuVazia_RetornaValidacao(string idempotencyKeyVazia)
+    {
+        var result = await _handler.HandleAsync(ComandoValido(Guid.NewGuid(), Guid.NewGuid(), idempotencyKey: idempotencyKeyVazia));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(SolicitacaoAgendamentoErrors.IdempotencyKeyObrigatoria);
+        _treinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // --- AGF4-10: corrida de idempotência resolvida pela violação de unicidade, nunca 500 ---
+
+    [Fact]
+    public async Task HandleAsync_CommitViolaUnicidadeEVencedorTemMesmoHash_RetornaRegistroDoVencedorSemPropagarExcecao()
+    {
+        var (treinador, pacote) = SetupTenant();
+        var comando = ComandoValido(treinador.Id, pacote.Id, idempotencyKey: "chave-corrida");
+        var hash = IdempotenciaAgendamento.Calcular(pacote.Id, comando.SlotId, comando.Name, TipoContatoLead.Email, comando.ContactValue, comando.ConsentPurpose);
+        var vencedor = SolicitacaoAgendamento.Criar(
+            treinador.Id, pacote.Id, Guid.NewGuid(), comando.SlotId, InicioSlotValido, FimSlotValido, "chave-corrida", hash, DateTime.UtcNow).Value;
+
+        _solicitacaoRepo.SetupSequence(r => r.ObterPorIdempotencyKeyAsync(treinador.Id, "chave-corrida", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SolicitacaoAgendamento?)null)
+            .ReturnsAsync(vencedor);
+        var excecaoDeUnicidade = new InvalidOperationException("23505");
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeUnicidade);
+        _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeUnicidade)).Returns(true);
+
+        var result = await _handler.HandleAsync(comando);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.BookingRequestId.Should().Be(vencedor.Id.ToString());
+    }
+
+    [Fact]
+    public async Task HandleAsync_CommitViolaUnicidadeEVencedorTemHashDiferente_RetornaConflito()
+    {
+        var (treinador, pacote) = SetupTenant();
+        var comando = ComandoValido(treinador.Id, pacote.Id, idempotencyKey: "chave-corrida");
+        var vencedor = SolicitacaoAgendamento.Criar(
+            treinador.Id, pacote.Id, Guid.NewGuid(), comando.SlotId, InicioSlotValido, FimSlotValido, "chave-corrida", "hash-diferente", DateTime.UtcNow).Value;
+
+        _solicitacaoRepo.SetupSequence(r => r.ObterPorIdempotencyKeyAsync(treinador.Id, "chave-corrida", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SolicitacaoAgendamento?)null)
+            .ReturnsAsync(vencedor);
+        var excecaoDeUnicidade = new InvalidOperationException("23505");
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeUnicidade);
+        _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeUnicidade)).Returns(true);
+
+        var result = await _handler.HandleAsync(comando);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(SolicitacaoAgendamentoAgenteErrors.IdempotencyConflito);
+    }
+
+    [Fact]
+    public async Task HandleAsync_CommitViolaUnicidadeMasRereleituraNaoAchaNinguem_RelancaExcecaoOriginal()
+    {
+        var (treinador, pacote) = SetupTenant();
+        var comando = ComandoValido(treinador.Id, pacote.Id, idempotencyKey: "chave-corrida");
+
+        _solicitacaoRepo.Setup(r => r.ObterPorIdempotencyKeyAsync(treinador.Id, "chave-corrida", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SolicitacaoAgendamento?)null);
+        var excecaoDeUnicidade = new InvalidOperationException("23505");
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeUnicidade);
+        _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeUnicidade)).Returns(true);
+
+        var act = async () => await _handler.HandleAsync(comando);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_CommitFalhaPorMotivoNaoRelacionadoAUnicidade_PropagaExcecaoSemReconsultar()
+    {
+        var (treinador, pacote) = SetupTenant();
+        var comando = ComandoValido(treinador.Id, pacote.Id, idempotencyKey: "chave-conexao");
+
+        _solicitacaoRepo.Setup(r => r.ObterPorIdempotencyKeyAsync(treinador.Id, "chave-conexao", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SolicitacaoAgendamento?)null);
+        var excecaoDeConexao = new InvalidOperationException("timeout de conexao");
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeConexao);
+        _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeConexao)).Returns(false);
+
+        var act = async () => await _handler.HandleAsync(comando);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _solicitacaoRepo.Verify(r => r.ObterPorIdempotencyKeyAsync(treinador.Id, "chave-conexao", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
