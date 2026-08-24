@@ -16,11 +16,11 @@ public class SolicitacaoAgendamento
     public SolicitacaoAgendamentoStatus Status { get; private set; }
     public string IdempotencyKey { get; private set; } = string.Empty;
     public string ArgumentosHash { get; private set; } = string.Empty;
-    public string? Motivo { get; }
-    public DateTime? DecididaEm { get; }
-    public Guid? DecididaPorId { get; }
+    public string? Motivo { get; private set; }
+    public DateTime? DecididaEm { get; private set; }
+    public Guid? DecididaPorId { get; private set; }
     public DateTime CreatedAt { get; private set; }
-    public DateTime? UpdatedAt { get; }
+    public DateTime? UpdatedAt { get; private set; }
 
     private SolicitacaoAgendamento() { }
 
@@ -64,5 +64,65 @@ public class SolicitacaoAgendamento
             ArgumentosHash = argumentosHash,
             CreatedAt = agora
         });
+    }
+
+    public Result Confirmar(Guid realizadoPorId, DateTime agora)
+    {
+        if (Status != SolicitacaoAgendamentoStatus.PendenteAgente)
+            return Result.Failure(SolicitacaoAgendamentoErrors.TransicaoNaoSuportada);
+        if (InicioUtc <= agora)
+            return Result.Failure(SolicitacaoAgendamentoErrors.SlotJaIniciado);
+
+        Status = SolicitacaoAgendamentoStatus.Confirmada;
+        DecididaEm = agora;
+        DecididaPorId = realizadoPorId;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
+    public Result Recusar(Guid realizadoPorId, string? motivo, DateTime agora)
+    {
+        if (Status != SolicitacaoAgendamentoStatus.PendenteAgente)
+            return Result.Failure(SolicitacaoAgendamentoErrors.TransicaoNaoSuportada);
+
+        var motivoResult = NormalizarMotivo(motivo);
+        if (motivoResult.IsFailure)
+            return Result.Failure(motivoResult.Error!);
+
+        Status = SolicitacaoAgendamentoStatus.Recusada;
+        Motivo = motivoResult.Value;
+        DecididaEm = agora;
+        DecididaPorId = realizadoPorId;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
+    public Result Cancelar(Guid realizadoPorId, string? motivo, DateTime agora)
+    {
+        if (Status != SolicitacaoAgendamentoStatus.Confirmada)
+            return Result.Failure(SolicitacaoAgendamentoErrors.TransicaoNaoSuportada);
+
+        var motivoResult = NormalizarMotivo(motivo);
+        if (motivoResult.IsFailure)
+            return Result.Failure(motivoResult.Error!);
+
+        Status = SolicitacaoAgendamentoStatus.Cancelada;
+        Motivo = motivoResult.Value;
+        DecididaEm = agora;
+        DecididaPorId = realizadoPorId;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
+    private static Result<string?> NormalizarMotivo(string? motivo)
+    {
+        if (string.IsNullOrWhiteSpace(motivo))
+            return Result.Success<string?>(null);
+
+        var normalizado = motivo.Trim();
+        if (normalizado.Length > 500)
+            return Result.Failure<string?>(SolicitacaoAgendamentoErrors.MotivoMuitoLongo);
+
+        return Result.Success<string?>(normalizado);
     }
 }
