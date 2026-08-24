@@ -53,13 +53,15 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
         return treinador;
     }
 
-    private (Treinador Treinador, Pacote Pacote) SetupTenant(int capacidadeMaxima = 3, bool ativo = true)
+    private (Treinador Treinador, Pacote Pacote) SetupTenant(
+        int capacidadeMaxima = 3, bool ativo = true, bool publico = true, int? duracaoMinutos = 60)
     {
         var treinador = CriarTreinadorPublicado();
         _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         var pacote = new PacoteBuilder().ComTreinadorId(treinador.Id).Build();
-        pacote.AtualizarCatalogoPublico("Categoria", 60, false, DateTime.UtcNow, capacidadeMaxima: capacidadeMaxima);
-        pacote.TornarPublico(DateTime.UtcNow);
+        pacote.AtualizarCatalogoPublico("Categoria", duracaoMinutos, false, DateTime.UtcNow, capacidadeMaxima: capacidadeMaxima);
+        if (publico)
+            pacote.TornarPublico(DateTime.UtcNow);
         if (!ativo)
             pacote.Inativar(DateTime.UtcNow);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
@@ -163,6 +165,28 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
     public async Task HandleAsync_PacoteInativo_RetornaServicoNaoEncontrado()
     {
         var (treinador, pacote) = SetupTenant(ativo: false);
+
+        var result = await _handler.HandleAsync(ComandoValido(treinador.Id, pacote.Id));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(PacoteErrors.NaoEncontrado);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PacoteNaoPublico_RetornaServicoNaoEncontrado()
+    {
+        var (treinador, pacote) = SetupTenant(publico: false);
+
+        var result = await _handler.HandleAsync(ComandoValido(treinador.Id, pacote.Id));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(PacoteErrors.NaoEncontrado);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PacoteSemDuracaoMinutos_RetornaServicoNaoEncontrado()
+    {
+        var (treinador, pacote) = SetupTenant(duracaoMinutos: null);
 
         var result = await _handler.HandleAsync(ComandoValido(treinador.Id, pacote.Id));
 
