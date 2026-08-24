@@ -37,6 +37,10 @@ public class ConfirmarSolicitacaoHandler(
             {
                 logger.LogWarning(ex, "Conflito de serialização ao confirmar solicitação {SolicitacaoId}, tentativa {Tentativa}/{Max}. Retentando.",
                     solicitacaoId, tentativa, MaxTentativas);
+                // A tx abortada não reverte o estado já mutado no ChangeTracker (EF não desfaz
+                // property values no rollback) — sem isto, o retry relê a MESMA instância tracked
+                // já em Confirmada pela tentativa que falhou, e Confirmar() rejeita a transição.
+                unitOfWork.DescartarAlteracoesPendentes();
                 await Task.Delay(TimeSpan.FromMilliseconds(50 * tentativa), timeProvider, cancellationToken).ConfigureAwait(false);
             }
         }
