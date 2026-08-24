@@ -96,6 +96,7 @@ public class AuthorizationGuardTests
         "RegistrarInteracaoLeadHandler",
         "ResolverConviteLeadHandler",
         "RegistrarLeadAgenteHandler",
+        "RegistrarSolicitacaoAgendamentoHandler",
         "ConfirmarTrocaEmailHandler",
         "RedefinirSenhaHandler",
         "RegistrarAlunoHandler",

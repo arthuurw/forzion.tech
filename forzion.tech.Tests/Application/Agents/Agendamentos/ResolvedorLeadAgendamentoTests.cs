@@ -109,5 +109,23 @@ public class ResolvedorLeadAgendamentoTests
         result.Value.Source.Should().Be(LeadSource.Agent);
         result.Value.Status.Should().Be(LeadStatus.Novo);
         result.Value.TreinadorId.Should().Be(treinadorId);
+        _leadRepo.Verify(r => r.AdicionarAsync(result.Value, It.IsAny<CancellationToken>()), Times.Once,
+            "lead novo precisa ser staged pelo resolvedor — o handler não chama AdicionarAsync de novo");
+    }
+
+    [Fact]
+    public async Task ResolverAsync_LeadExistente_NaoChamaAdicionarAsync()
+    {
+        var treinadorId = Guid.NewGuid();
+        var contato = ContatoLead.Criar(TipoContatoLead.Email, "fulano@lead.com").Value;
+        var leadExistente = CriarLeadExistente(treinadorId, contato);
+        _leadRepo.Setup(r => r.ObterReutilizavelPorContatoAsync(treinadorId, contato.Valor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(leadExistente);
+        var consentimento = ConsentimentoLead.Criar("Contato comercial", Agora, Agora).Value;
+
+        await _resolvedor.ResolverAsync(treinadorId, "Fulano", contato, consentimento, null, SlotInicioUtc, Agora);
+
+        _leadRepo.Verify(r => r.AdicionarAsync(It.IsAny<Lead>(), It.IsAny<CancellationToken>()), Times.Never,
+            "o lead reusado já está tracked pelo DbContext — chamar AdicionarAsync de novo duplicaria o insert");
     }
 }

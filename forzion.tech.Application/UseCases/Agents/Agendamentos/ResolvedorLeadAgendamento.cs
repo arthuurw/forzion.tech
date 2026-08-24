@@ -26,7 +26,17 @@ public class ResolvedorLeadAgendamento(ILeadRepository leadRepository)
             .ConfigureAwait(false);
 
         if (existente is null)
-            return Lead.Criar(treinadorId, nome, contato, null, consentimento, origem, LeadSource.Agent, null, null, agora);
+        {
+            var novoLeadResult = Lead.Criar(treinadorId, nome, contato, null, consentimento, origem, LeadSource.Agent, null, null, agora);
+            if (novoLeadResult.IsFailure)
+                return novoLeadResult;
+
+            // Staging acontece aqui (não no handler): o lead reusado já vem tracked de
+            // ObterReutilizavelPorContatoAsync — chamar AdicionarAsync nele de novo duplicaria o
+            // insert. O handler só decide entre commitar; quem decide "é novo?" é este método.
+            await leadRepository.AdicionarAsync(novoLeadResult.Value, cancellationToken).ConfigureAwait(false);
+            return novoLeadResult;
+        }
 
         var interacaoResult = existente.RegistrarInteracao(Guid.Empty, ObservacaoInteracao(slotInicioUtc), agora);
         return interacaoResult.IsFailure
