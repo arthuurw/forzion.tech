@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor, fireEvent } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/msw/server";
 import { renderWithProviders } from "@/test/render";
@@ -61,5 +61,94 @@ describe("SolicitacoesTab", () => {
     renderTab();
 
     expect(await screen.findByText(/falha ao listar/i)).toBeInTheDocument();
+  });
+
+  it("confirma uma solicitação pendente e reflete o novo status após a resposta", async () => {
+    let confirmada = false;
+    server.use(
+      http.get("*/treinador/agenda/solicitacoes", () =>
+        HttpResponse.json({
+          items: [{ ...SOLICITACAO_BASE, status: confirmada ? "Confirmada" : "PendenteAgente" }],
+          total: 1, pagina: 1, tamanhoPagina: 20,
+        })),
+      http.post("*/treinador/agenda/solicitacoes/s1/confirmar", () => {
+        confirmada = true;
+        return HttpResponse.json({});
+      }),
+    );
+    renderTab();
+
+    await screen.findByText("Pendente");
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    expect(await screen.findByText("Confirmada")).toBeInTheDocument();
+    expect(screen.queryByText("Pendente")).not.toBeInTheDocument();
+  });
+
+  it("recusa uma solicitação pendente com motivo opcional", async () => {
+    let corpoEnviado: Record<string, unknown> | null = null;
+    server.use(
+      http.get("*/treinador/agenda/solicitacoes", () =>
+        HttpResponse.json({ items: [SOLICITACAO_BASE], total: 1, pagina: 1, tamanhoPagina: 20 })),
+      http.post("*/treinador/agenda/solicitacoes/s1/recusar", async ({ request }) => {
+        corpoEnviado = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({});
+      }),
+    );
+    renderTab();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Recusar" }));
+    await screen.findByRole("dialog");
+    fireEvent.change(screen.getByLabelText(/motivo/i), { target: { value: "Fora do horário disponível" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Recusar" }).at(-1)!);
+
+    await waitFor(() => expect(corpoEnviado).toEqual({ motivo: "Fora do horário disponível" }));
+  });
+
+  it("cancela uma solicitação confirmada e devolve a capacidade", async () => {
+    server.use(
+      http.get("*/treinador/agenda/solicitacoes", () =>
+        HttpResponse.json({
+          items: [{ ...SOLICITACAO_BASE, status: "Confirmada" }],
+          total: 1, pagina: 1, tamanhoPagina: 20,
+        })),
+      http.post("*/treinador/agenda/solicitacoes/s1/cancelar", () => HttpResponse.json({})),
+    );
+    renderTab();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancelar" }));
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getAllByRole("button", { name: /^cancelar agendamento$/i })[0]);
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("erro genérico ao confirmar exibe mensagem e mantém o status exibido", async () => {
+    server.use(
+      http.get("*/treinador/agenda/solicitacoes", () =>
+        HttpResponse.json({ items: [SOLICITACAO_BASE], total: 1, pagina: 1, tamanhoPagina: 20 })),
+      http.post("*/treinador/agenda/solicitacoes/s1/confirmar", () =>
+        HttpResponse.json({ detail: "Solicitação não encontrada." }, { status: 404 })),
+    );
+    renderTab();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Confirmar" }));
+
+    expect(await screen.findByText(/solicitação não encontrada/i)).toBeInTheDocument();
+    expect(screen.getByText("Pendente")).toBeInTheDocument();
+  });
+
+  it("conflito de capacidade (409) ao confirmar mostra mensagem específica", async () => {
+    server.use(
+      http.get("*/treinador/agenda/solicitacoes", () =>
+        HttpResponse.json({ items: [SOLICITACAO_BASE], total: 1, pagina: 1, tamanhoPagina: 20 })),
+      http.post("*/treinador/agenda/solicitacoes/s1/confirmar", () =>
+        HttpResponse.json({ detail: "solicitacao_agendamento.capacidade_esgotada" }, { status: 409 })),
+    );
+    renderTab();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Confirmar" }));
+
+    expect(await screen.findByText(/capacidade máxima deste horário já foi atingida/i)).toBeInTheDocument();
   });
 });
