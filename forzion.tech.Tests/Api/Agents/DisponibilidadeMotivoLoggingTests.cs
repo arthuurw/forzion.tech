@@ -79,6 +79,10 @@ public class DisponibilidadeMotivoLoggingTests
         bloqueioRepo.Setup(r => r.ListarVigentesAsync(treinador.Id, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<BloqueioAgenda>)[bloqueio]);
         builder.Services.AddSingleton(bloqueioRepo.Object);
+        var solicitacaoRepo = new Mock<ISolicitacaoAgendamentoRepository>();
+        solicitacaoRepo.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<SolicitacaoAgendamento>)[]);
+        builder.Services.AddSingleton(solicitacaoRepo.Object);
         builder.Services.AddScoped<ConsultarDisponibilidadeAgenteHandler>();
 
         await using var app = builder.Build();

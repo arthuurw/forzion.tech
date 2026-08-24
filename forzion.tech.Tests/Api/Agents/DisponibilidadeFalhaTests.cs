@@ -57,6 +57,10 @@ public class DisponibilidadeFalhaTests
         builder.Services.AddSingleton(treinadorRepoQueLanca.Object);
         builder.Services.AddSingleton(new Mock<IPacoteRepository>().Object);
         builder.Services.AddSingleton(new Mock<IBloqueioAgendaRepository>().Object);
+        var solicitacaoRepo = new Mock<ISolicitacaoAgendamentoRepository>();
+        solicitacaoRepo.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<SolicitacaoAgendamento>)[]);
+        builder.Services.AddSingleton(solicitacaoRepo.Object);
         builder.Services.AddScoped<ConsultarDisponibilidadeAgenteHandler>();
 
         await using var app = builder.Build();
@@ -125,6 +129,10 @@ public class DisponibilidadeFalhaTests
         pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
         builder.Services.AddSingleton(pacoteRepo.Object);
         builder.Services.AddSingleton(new Mock<IBloqueioAgendaRepository>().Object);
+        var solicitacaoRepo = new Mock<ISolicitacaoAgendamentoRepository>();
+        solicitacaoRepo.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<SolicitacaoAgendamento>)[]);
+        builder.Services.AddSingleton(solicitacaoRepo.Object);
         builder.Services.AddScoped<ConsultarDisponibilidadeAgenteHandler>();
 
         await using var app = builder.Build();

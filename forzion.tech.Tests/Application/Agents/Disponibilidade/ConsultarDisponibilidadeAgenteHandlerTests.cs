@@ -15,13 +15,15 @@ public class ConsultarDisponibilidadeAgenteHandlerTests
     private readonly Mock<ITreinadorRepository> _treinadorRepo = new();
     private readonly Mock<IPacoteRepository> _pacoteRepo = new();
     private readonly Mock<IBloqueioAgendaRepository> _bloqueioRepo = new();
+    private readonly Mock<ISolicitacaoAgendamentoRepository> _solicitacaoRepo = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 8, 23, 0, 0, 0, TimeSpan.Zero));
     private readonly ConsultarDisponibilidadeAgenteHandler _handler;
 
     public ConsultarDisponibilidadeAgenteHandlerTests()
     {
-        _handler = new ConsultarDisponibilidadeAgenteHandler(_treinadorRepo.Object, _pacoteRepo.Object, _bloqueioRepo.Object, _timeProvider);
+        _handler = new ConsultarDisponibilidadeAgenteHandler(_treinadorRepo.Object, _pacoteRepo.Object, _bloqueioRepo.Object, _solicitacaoRepo.Object, _timeProvider);
         SetupSemBloqueios();
+        SetupSemConfirmadas();
     }
 
     private static Treinador CriarTreinadorPublicado()
@@ -42,6 +44,10 @@ public class ConsultarDisponibilidadeAgenteHandlerTests
     private void SetupSemBloqueios() =>
         _bloqueioRepo.Setup(r => r.ListarVigentesAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<BloqueioAgenda>)[]);
+
+    private void SetupSemConfirmadas() =>
+        _solicitacaoRepo.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<SolicitacaoAgendamento>)[]);
 
     private static ConsultarDisponibilidadeQuery Query(Guid tenantId, Guid serviceId, DateTime from, DateTime to) =>
         new(tenantId, serviceId, from, to);

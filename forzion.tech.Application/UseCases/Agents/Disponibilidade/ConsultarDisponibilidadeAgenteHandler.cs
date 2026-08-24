@@ -9,6 +9,7 @@ public class ConsultarDisponibilidadeAgenteHandler(
     ITreinadorRepository treinadorRepository,
     IPacoteRepository pacoteRepository,
     IBloqueioAgendaRepository bloqueioAgendaRepository,
+    ISolicitacaoAgendamentoRepository solicitacaoAgendamentoRepository,
     TimeProvider timeProvider)
 {
     public virtual Task<Result<IReadOnlyList<AvailabilitySlotResponse>>> HandleAsync(
@@ -56,12 +57,26 @@ public class ConsultarDisponibilidadeAgenteHandler(
         var capacidadeMaxima = pacote.CapacidadeMaxima;
         var serviceId = query.ServiceId.ToString();
 
+        // Uma única consulta para o intervalo inteiro (AGF4-28); o abatimento por slot é feito
+        // aqui em memória, por SOBREPOSIÇÃO de intervalo — nunca por igualdade de slotId (R2),
+        // que quebraria em silêncio se o treinador mudasse a duração do pacote.
+        var confirmadas = await solicitacaoAgendamentoRepository
+            .ListarConfirmadasNoIntervaloAsync(query.TenantId, query.ServiceId, query.FromUtc, query.ToUtc, cancellationToken)
+            .ConfigureAwait(false);
+
         return Result.Success<IReadOnlyList<AvailabilitySlotResponse>>(
-            [.. slots.Select(s => new AvailabilitySlotResponse(
-                s.SlotId,
-                serviceId,
-                new DateTimeOffset(s.InicioUtc, TimeSpan.Zero),
-                new DateTimeOffset(s.FimUtc, TimeSpan.Zero),
-                capacidadeMaxima))]);
+            [.. slots
+                .Select(s => new
+                {
+                    Slot = s,
+                    CapacityRemaining = Math.Max(0, capacidadeMaxima - confirmadas.Count(c => c.InicioUtc < s.FimUtc && c.FimUtc > s.InicioUtc))
+                })
+                .Where(x => x.CapacityRemaining > 0)
+                .Select(x => new AvailabilitySlotResponse(
+                    x.Slot.SlotId,
+                    serviceId,
+                    new DateTimeOffset(x.Slot.InicioUtc, TimeSpan.Zero),
+                    new DateTimeOffset(x.Slot.FimUtc, TimeSpan.Zero),
+                    x.CapacityRemaining))]);
     }
 }
