@@ -231,6 +231,8 @@ describe("AgendaTreinadorPage", () => {
       http.get("*/treinador/agenda/politica", () => HttpResponse.json({ antecedenciaMinimaHoras: 6, horizonteDias: 45 })),
     );
     await renderPage();
+    await screen.findByText(/nenhum bloqueio pontual cadastrado/i);
+    fireEvent.click(screen.getByRole("tab", { name: /^política$/i }));
 
     expect(await screen.findByLabelText(/antecedência mínima/i)).toHaveValue(6);
     expect(screen.getByLabelText(/horizonte/i)).toHaveValue(45);
@@ -247,6 +249,8 @@ describe("AgendaTreinadorPage", () => {
       }),
     );
     const { unmount } = await renderPage();
+    await screen.findByText(/nenhum bloqueio pontual cadastrado/i);
+    fireEvent.click(screen.getByRole("tab", { name: /^política$/i }));
     await screen.findByLabelText(/antecedência mínima/i);
 
     fireEvent.change(screen.getByLabelText(/antecedência mínima/i), { target: { value: "4" } });
@@ -257,8 +261,50 @@ describe("AgendaTreinadorPage", () => {
 
     unmount();
     await renderPage();
+    await screen.findByText(/nenhum bloqueio pontual cadastrado/i);
+    fireEvent.click(screen.getByRole("tab", { name: /^política$/i }));
 
     expect(await screen.findByLabelText(/antecedência mínima/i)).toHaveValue(4);
     expect(screen.getByLabelText(/horizonte/i)).toHaveValue(30);
+  });
+
+  it("oferece as três abas Bloqueios, Política e Solicitações", async () => {
+    server.use(
+      http.get("*/treinador/agenda/bloqueios", () => HttpResponse.json([])),
+      http.get("*/treinador/agenda/politica", () => HttpResponse.json(POLITICA_PADRAO)),
+    );
+    await renderPage();
+    await screen.findByText(/nenhum bloqueio pontual cadastrado/i);
+
+    expect(screen.getByRole("tab", { name: /^bloqueios$/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^política$/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^solicitações$/i })).toBeInTheDocument();
+  });
+
+  it("troca para a aba Solicitações e carrega a lista", async () => {
+    server.use(
+      http.get("*/treinador/agenda/bloqueios", () => HttpResponse.json([])),
+      http.get("*/treinador/agenda/politica", () => HttpResponse.json(POLITICA_PADRAO)),
+      http.get("*/treinador/agenda/solicitacoes", () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: "s1", pacoteId: "p1", pacoteNome: "Aula experimental",
+              inicioUtc: "2026-09-01T13:00:00.000Z", fimUtc: "2026-09-01T14:00:00.000Z",
+              status: "PendenteAgente", motivo: null, createdAt: "2026-08-20T00:00:00.000Z",
+              leadId: "l1", leadNome: "Maria Silva", leadContatoTipo: "Email", leadContatoValor: "maria@exemplo.com",
+              leadAnonimizado: false,
+            },
+          ],
+          total: 1, pagina: 1, tamanhoPagina: 20,
+        })),
+    );
+    await renderPage();
+    await screen.findByText(/nenhum bloqueio pontual cadastrado/i);
+
+    fireEvent.click(screen.getByRole("tab", { name: /^solicitações$/i }));
+
+    expect(await screen.findByText("Aula experimental")).toBeInTheDocument();
+    expect(screen.getByText("Maria Silva")).toBeInTheDocument();
   });
 });

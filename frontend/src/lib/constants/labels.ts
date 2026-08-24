@@ -1,6 +1,7 @@
 import type {
   DificuldadeTreino, ObjetivoTreino, PagamentoStatus,
   LeadStatus, LeadSource, TipoContatoLead, MotivoDescarteLead, TipoBloqueio,
+  SolicitacaoAgendamentoStatus,
 } from "@/types";
 
 type MuiChipColor = "default" | "success" | "warning" | "error" | "info";
@@ -136,6 +137,20 @@ export const MOTIVO_DESCARTE_LEAD_LABEL: Record<MotivoDescarteLead, string> = {
 export const TIPO_BLOQUEIO_LABEL: Record<TipoBloqueio, string> = {
   Pontual: "Pontual",
   RecorrenteSemanal: "Recorrente",
+};
+
+export const SOLICITACAO_AGENDAMENTO_STATUS_LABEL: Record<SolicitacaoAgendamentoStatus, string> = {
+  PendenteAgente: "Pendente",
+  Confirmada: "Confirmada",
+  Recusada: "Recusada",
+  Cancelada: "Cancelada",
+};
+
+export const SOLICITACAO_AGENDAMENTO_STATUS_COLOR: Record<SolicitacaoAgendamentoStatus, MuiChipColor> = {
+  PendenteAgente: "warning",
+  Confirmada: "success",
+  Recusada: "default",
+  Cancelada: "default",
 };
 
 export const DIA_SEMANA_LABEL: Record<number, string> = {

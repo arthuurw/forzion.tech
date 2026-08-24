@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Box, Card, CardContent, Button, Grid, TextField, Stack, Typography, IconButton, Chip, MenuItem, Divider,
+  Tabs, Tab,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
@@ -14,6 +15,7 @@ import { extractApiError } from "@/lib/api/extractApiError";
 import { agendaApi } from "@/lib/api/agenda";
 import type { BloqueioAgendaResponse } from "@/types";
 import { TIPO_BLOQUEIO_LABEL, DIA_SEMANA_LABEL } from "@/lib/constants/labels";
+import SolicitacoesTab from "./_components/SolicitacoesTab";
 
 const DATE_FIELD_SLOTS = {
   textField: { size: "small" as const, fullWidth: true },
@@ -23,6 +25,22 @@ const DIAS_SEMANA_OPTIONS = Object.entries(DIA_SEMANA_LABEL).map(([value, label]
   value: Number(value),
   label,
 }));
+
+// Wiring id/aria-controls/aria-labelledby entre Tab e painel: WAI-ARIA Tabs Pattern
+// (verificado via context7/MUI docs — "Each tab must be linked to its corresponding
+// tabpanel using id, aria-controls, and aria-labelledby").
+function a11yProps(index: number) {
+  return { id: `agenda-tab-${index}`, "aria-controls": `agenda-tabpanel-${index}` };
+}
+
+function AgendaTabPanel({ children, value, index }: { children: ReactNode; value: number; index: number }) {
+  if (value !== index) return null;
+  return (
+    <div role="tabpanel" id={`agenda-tabpanel-${index}`} aria-labelledby={`agenda-tab-${index}`} tabIndex={0}>
+      {children}
+    </div>
+  );
+}
 
 function formatarIntervaloPontual(b: BloqueioAgendaResponse): string {
   if (!b.inicioUtc || !b.fimUtc) return "—";
@@ -35,6 +53,7 @@ function formatarIntervaloPontual(b: BloqueioAgendaResponse): string {
 }
 
 export default function AgendaTreinadorPage() {
+  const [tab, setTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -160,6 +179,13 @@ export default function AgendaTreinadorPage() {
       <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
       <AlertBanner open={!!success} severity="success" message={success} onClose={() => setSuccess("")} />
 
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} aria-label="Seções da agenda" sx={{ mb: 2 }}>
+        <Tab label="Bloqueios" {...a11yProps(0)} />
+        <Tab label="Política" {...a11yProps(1)} />
+        <Tab label="Solicitações" {...a11yProps(2)} />
+      </Tabs>
+
+      <AgendaTabPanel value={tab} index={0}>
       <Card sx={{ border: "1px solid", borderColor: "divider", mb: 2 }}>
         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
           <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
@@ -329,7 +355,9 @@ export default function AgendaTreinadorPage() {
           </Grid>
         </CardContent>
       </Card>
+      </AgendaTabPanel>
 
+      <AgendaTabPanel value={tab} index={1}>
       <Card sx={{ border: "1px solid", borderColor: "divider" }}>
         <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
           <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
@@ -370,6 +398,11 @@ export default function AgendaTreinadorPage() {
           </Box>
         </CardContent>
       </Card>
+      </AgendaTabPanel>
+
+      <AgendaTabPanel value={tab} index={2}>
+        <SolicitacoesTab />
+      </AgendaTabPanel>
     </Box>
   );
 }
