@@ -1,4 +1,5 @@
 using forzion.tech.Api.Endpoints.Agents.Hmac;
+using forzion.tech.Application.UseCases.Agents.Agendamentos;
 using forzion.tech.Application.UseCases.Agents.BusinessInfo;
 using forzion.tech.Application.UseCases.Agents.Disponibilidade;
 using forzion.tech.Application.UseCases.Agents.Leads;
@@ -160,6 +161,63 @@ public static class AgentEndpoints
             };
         });
 
+        grupo.MapPost("/tenants/{tenantId}/booking-requests", async Task<IResult> (
+            string tenantId,
+            HttpContext httpContext,
+            [FromServices] RegistrarSolicitacaoAgendamentoHandler handler,
+            CancellationToken cancellationToken) =>
+        {
+            if (!Guid.TryParse(tenantId, out var tenantGuid))
+                return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+
+            // Mesmo motivo do POST leads: leitura manual do corpo aqui, depois que o
+            // HmacSignatureFilter (mais interno) já recolocou o corpo bufferizado.
+            StageBookingRequestRequest? request;
+            try
+            {
+                request = await httpContext.Request.ReadFromJsonAsync<StageBookingRequestRequest>(cancellationToken).ConfigureAwait(false);
+            }
+            catch (JsonException)
+            {
+                return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+            }
+
+            if (request?.Contact is null || request.Consent is null || !Guid.TryParse(request.ServiceId, out var serviceGuid))
+                return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+
+            var command = new RegistrarSolicitacaoAgendamentoCommand(
+                tenantGuid,
+                serviceGuid,
+                request.SlotId,
+                request.Name,
+                request.Contact.Type,
+                request.Contact.Value,
+                request.Consent.Granted,
+                request.Consent.Purpose,
+                request.Consent.GrantedAt,
+                request.IdempotencyKey,
+                request.Origin?.UserAgent,
+                request.Origin?.Assistant);
+
+            var result = await handler.HandleAsync(command, cancellationToken).ConfigureAwait(false);
+
+            if (result.IsSuccess)
+                return Results.Json(result.Value, statusCode: StatusCodes.Status201Created);
+
+            // Switch por instância de erro, não por ErrorType: slot_unavailable e idempotency_conflict
+            // são ambos ErrorType.Conflict, e tenant/service/slot not_found são todos ErrorType.NotFound
+            // — precisam permanecer distintos no wire (mesmo precedente de GET availability).
+            return result.Error switch
+            {
+                { } e when e == TreinadorErrors.NaoEncontrado => AgentProblem.Criar(AgentErrorCode.TenantNotFound, StatusCodes.Status404NotFound),
+                { } e when e == PacoteErrors.NaoEncontrado => AgentProblem.Criar(AgentErrorCode.ServiceNotFound, StatusCodes.Status404NotFound),
+                { } e when e == SolicitacaoAgendamentoAgenteErrors.SlotNaoEncontrado => AgentProblem.Criar(AgentErrorCode.SlotNotFound, StatusCodes.Status404NotFound),
+                { } e when e == SolicitacaoAgendamentoAgenteErrors.SlotIndisponivel => AgentProblem.Criar(AgentErrorCode.SlotUnavailable, StatusCodes.Status409Conflict),
+                { } e when e == SolicitacaoAgendamentoAgenteErrors.IdempotencyConflito => AgentProblem.Criar(AgentErrorCode.IdempotencyConflict, StatusCodes.Status409Conflict),
+                _ => AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest),
+            };
+        });
+
         return endpoints;
     }
 
@@ -189,4 +247,19 @@ public static class AgentEndpoints
         StageLeadConsentRequest Consent,
         string? IdempotencyKey,
         StageLeadOriginRequest? Origin);
+
+    internal sealed record StageBookingRequestContactRequest(string Type, string Value);
+
+    internal sealed record StageBookingRequestConsentRequest(bool Granted, string Purpose, DateTime? GrantedAt);
+
+    internal sealed record StageBookingRequestOriginRequest(string? UserAgent, string? Assistant);
+
+    internal sealed record StageBookingRequestRequest(
+        string ServiceId,
+        string SlotId,
+        string Name,
+        StageBookingRequestContactRequest Contact,
+        StageBookingRequestConsentRequest Consent,
+        string IdempotencyKey,
+        StageBookingRequestOriginRequest? Origin);
 }

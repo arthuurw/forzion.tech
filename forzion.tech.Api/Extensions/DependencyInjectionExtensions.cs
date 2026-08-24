@@ -448,6 +448,8 @@ public static class DependencyInjectionExtensions
         services.AddScoped<forzion.tech.Application.UseCases.Agents.Services.ListarServicosHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Agents.Leads.RegistrarLeadAgenteHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Agents.Disponibilidade.ConsultarDisponibilidadeAgenteHandler>();
+        services.AddScoped<forzion.tech.Application.UseCases.Agents.Agendamentos.ResolvedorLeadAgendamento>();
+        services.AddScoped<forzion.tech.Application.UseCases.Agents.Agendamentos.RegistrarSolicitacaoAgendamentoHandler>();
 
         services.AddScoped<forzion.tech.Application.UseCases.Treinadores.Agenda.ListarBloqueiosAgendaHandler>();
         services.AddScoped<forzion.tech.Application.UseCases.Treinadores.Agenda.CriarBloqueioAgendaHandler>();

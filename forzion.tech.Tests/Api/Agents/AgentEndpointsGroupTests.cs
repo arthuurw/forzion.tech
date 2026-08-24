@@ -32,11 +32,6 @@ public class AgentEndpointsGroupTests
     private const string CaminhoQueLancaExcecao = AgentEndpoints.Prefixo + "/lanca-excecao";
     private const string CaminhoForaDoGrupo = "/fora-do-grupo";
 
-    public static TheoryData<string, string> CaminhosDoContratoAindaNaoImplementados() => new()
-    {
-        { "POST", AgentEndpoints.Prefixo + "/tenants/7f3a1b2c-9d4e-4f5a-8b6c-1d2e3f4a5b6c/booking-requests" },
-    };
-
     private const string TenantIdValido = "7f3a1b2c-9d4e-4f5a-8b6c-1d2e3f4a5b6c";
     private const string ServiceIdValido = "8f3a1b2c-9d4e-4f5a-8b6c-1d2e3f4a5b6d";
 
@@ -186,17 +181,6 @@ public class AgentEndpointsGroupTests
         using var resposta = await servidor.Cliente.GetAsync(new Uri(CaminhoForaDoGrupo, UriKind.Relative));
 
         resposta.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    [Theory]
-    [MemberData(nameof(CaminhosDoContratoAindaNaoImplementados))]
-    public async Task CaminhoDoContratoAindaNaoImplementado_MesmoAssinado_RespondeQuatrocentosEQuatro(string metodo, string caminho)
-    {
-        await using var servidor = await IniciarAsync();
-
-        using var resposta = await EnviarAssinadaAsync(servidor.Cliente, new HttpMethod(metodo), caminho);
-
-        resposta.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
