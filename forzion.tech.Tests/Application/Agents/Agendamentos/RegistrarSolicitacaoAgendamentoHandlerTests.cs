@@ -143,6 +143,32 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
         result.Error!.Should().Be(TreinadorErrors.NaoEncontrado);
     }
 
+    [Fact]
+    public async Task HandleAsync_TenantInativo_RetornaMesmoErroDoInexistente()
+    {
+        var treinador = CriarTreinadorPublicado();
+        treinador.Inativar(DateTime.UtcNow);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+
+        var result = await _handler.HandleAsync(ComandoValido(treinador.Id, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(TreinadorErrors.NaoEncontrado);
+    }
+
+    [Fact]
+    public async Task HandleAsync_TenantNaoPublicado_RetornaMesmoErroDoInexistente()
+    {
+        var treinador = new TreinadorBuilder().Build();
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+
+        var result = await _handler.HandleAsync(ComandoValido(treinador.Id, Guid.NewGuid()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(TreinadorErrors.NaoEncontrado);
+    }
+
     // --- AGF4-04: serviço não existe / não público / sem duração ⇒ service_not_found ---
 
     [Fact]
