@@ -3,7 +3,7 @@
 Guia macro para agentes. Formato agent-oriented (denso, sem prosa decorativa). Para o contexto MACRO do projeto, carregar APENAS este arquivo.
 
 ## FRESCOR
-Validado: 2026-08-08 (auditoria de segurança pós-go-live + revalidação de specs). STACK abaixo é snapshot — se divergir do repo, REPO VENCE: re-detectar e atualizar nesta tarefa. Versões reais: `*.csproj`, `frontend/package.json`, `global.json`.
+Validado: 2026-08-26 (revalidação de `.specs`/board; base: auditoria de segurança pós-go-live 2026-08-08). STACK abaixo é snapshot — se divergir do repo, REPO VENCE: re-detectar e atualizar nesta tarefa. Versões reais: `*.csproj`, `frontend/package.json`, `global.json`.
 **PRODUÇÃO ATIVA desde 2026-08-06** (`forzion.tech`/`www`/`app.forzion.tech`). Prod e homolog co-locados na mesma VM, borda nginx única, **projetos Supabase SEPARADOS** (prod `forzion_p` us-east-1 schema `public`; homolog `forzion` sa-east-1 schema `homolog`). Stripe LIVE em prod. Qualquer spec que afirme "produção é ALVO / não deployada" está DESATUALIZADA — corrigir na tarefa que a tocar.
 
 ## PROJETO
@@ -89,7 +89,7 @@ Carregar SOB DEMANDA quando a tarefa toca a área (regra 2; TRIGGER acima roteia
 - `specification-seo.md` / `specification-dr.md` — misturam implementado e aspiracional, mas AGORA COM RÓTULO por item (`[EXISTE]`/`[GAP]`/`[ALVO]` no dr, `[ATUAL]`/`[REC]`/`[GAP]` no seo). Ler o rótulo antes de assumir capacidade; o `dr` abre com resumo do que é real hoje.
 - `specification-local-ci-repro.md` — reproduzir gates do CI local + gotchas Windows/Docker (CRLF, MSYS path, coverlet merge, node22/dotnet10, postgres fsync, .slnx, E2E email-block).
 - `specification-workflow.md` — fluxo de entrega: pipeline de cards (GitHub Projects v2, `.specs` local = fonte de verdade, board = espelho mantido pelo agente via `gh`), Fluxo A (card novo forward) + Fluxo B (backfill histórico→Done). Board montado no Project nº1; IDs de campo pinados em `§9`. Card = issue real com conteúdo embutido (durabilidade: `.specs` é gitignored). ⚠️ Repo PÚBLICO ⇒ card leva só título/severidade/área/ponteiro; repro de vuln viva NUNCA vai pra issue.
-- `specification-agents.md` — API interna `/internal/agents/v1` consumida pelo gateway de agentes (repo externo). O wire canônico é `.specs/contracts/forzion-internal-api.v1.yaml` (gitignored, veio de outro repo) — esta spec descreve a IMPLEMENTAÇÃO deste lado. Só a fatia 0 (HMAC + `/health`) existe; os outros 5 caminhos são 404 de rota por desenho, não bug.
+- `specification-agents.md` — API interna `/internal/agents/v1` consumida pelo gateway de agentes (repo externo). O wire canônico é `.specs/contracts/forzion-internal-api.v1.yaml` (gitignored, veio de outro repo) — esta spec descreve a IMPLEMENTAÇÃO deste lado. Fatias 0-4 ENTREGUES (todos os 6 caminhos do contrato existem: `/health`, `business-info`, `services`, `leads`, `availability`, `booking-requests`); as esteiras autenticadas de lead/agenda/solicitação que vieram junto são canônicas em `db`/`lgpd`/`concurrency`/`security`, não aqui. Fatias 1-4 estão em `homolog`, NÃO em `main`.
 - `specification-fiscal.md` — ARQUIVADA. Emissão de NFS-e REMOVIDA (agora é software fiscal terceiro); documenta só a coleta RETIDA de dados fiscais do treinador (`DadosFiscais` VO owned, `PUT/GET /treinador/dados-fiscais`, autofill CEP, banner `dadosFiscaisPendentes`). Cross-refs: db, lgpd, frontend.
 - Sem caveat especial (rotear por TRIGGER): `model`, `backend`, `db`, `email`, `whatsapp`, `frontend`, `git`, `lgpd`, `tests`, `stripe`, `security`, `observability`.
 
