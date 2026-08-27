@@ -180,6 +180,7 @@ public static class AdminEndpoints
             return Results.NoContent();
         })
         .WithSummary("Exclui permanentemente um treinador inativo e todas as suas dependências. LogAprovacao é preservado.")
+        .AddEndpointFilter<RequerStepUpFilter>()
         .Produces(StatusCodes.Status204NoContent)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
@@ -583,6 +584,7 @@ public static class AdminEndpoints
             return Results.Ok(result.Value);
         })
         .WithSummary("Exporta dados pessoais de qualquer conta (portabilidade LGPD - admin)")
+        .AddEndpointFilter<RequerStepUpFilter>()
         .Produces<DadosPessoaisExport>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status200OK, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound);
@@ -603,6 +605,7 @@ public static class AdminEndpoints
             return Results.NoContent();
         })
         .WithSummary("Anonimiza permanentemente uma conta (LGPD - admin). Sem confirmação de senha.")
+        .AddEndpointFilter<RequerStepUpFilter>()
         .Produces(StatusCodes.Status204NoContent)
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
         .Produces<ProblemDetails>(StatusCodes.Status422UnprocessableEntity);
@@ -621,6 +624,7 @@ public static class AdminEndpoints
         })
         .RequireRateLimiting("read")
         .WithSummary("Busca leads por contato (cross-tenant) para atendimento ao titular sem conta (LGPD art. 18)")
+        .AddEndpointFilter<RequerStepUpFilter>()
         .Produces<IReadOnlyList<LeadAdminItem>>();
 
         group.MapPost("/leads/{id:guid}/anonimizar", async (
@@ -634,6 +638,7 @@ public static class AdminEndpoints
             return Results.NoContent();
         })
         .WithSummary("Anonimiza um lead a pedido do titular sem conta (LGPD art. 18)")
+        .AddEndpointFilter<RequerStepUpFilter>()
         .Produces(StatusCodes.Status204NoContent)
         .ProducesProblem(StatusCodes.Status404NotFound);
 

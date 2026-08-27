@@ -306,7 +306,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .Setup(h => h.HandleAsync(It.IsAny<ExcluirTreinadorCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
 
-        var response = await CriarClienteAdmin()
+        var response = await CriarClienteAdminComStepUp()
             .DeleteAsync($"/admin/treinadores/{TreinadorId}");
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -319,10 +319,21 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .Setup(h => h.HandleAsync(It.IsAny<ExcluirTreinadorCommand>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new TreinadorNaoEncontradoException());
 
-        var response = await CriarClienteAdmin()
+        var response = await CriarClienteAdminComStepUp()
             .DeleteAsync($"/admin/treinadores/{Guid.NewGuid()}");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Delete_Treinador_SemStepUp_Retorna403()
+    {
+        var response = await CriarClienteAdmin()
+            .DeleteAsync($"/admin/treinadores/{TreinadorId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("code").GetString().Should().Be("step_up_requerido");
     }
 
     // --- GET /admin/planos ---
@@ -1268,7 +1279,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .Setup(r => r.Render(It.IsAny<DadosPessoaisExport>()))
             .Returns(fakeBytes);
 
-        var response = await CriarClienteAdmin().GetAsync($"/admin/contas/{AlunoId}/lgpd/exportar?formato=xlsx");
+        var response = await CriarClienteAdminComStepUp().GetAsync($"/admin/contas/{AlunoId}/lgpd/exportar?formato=xlsx");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         response.Content.Headers.ContentType!.MediaType
@@ -1284,10 +1295,32 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
             .Setup(h => h.HandleAsync(It.IsAny<ExportarDadosPessoaisCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success(export));
 
-        var response = await CriarClienteAdmin().GetAsync($"/admin/contas/{AlunoId}/lgpd/exportar");
+        var response = await CriarClienteAdminComStepUp().GetAsync($"/admin/contas/{AlunoId}/lgpd/exportar");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/json");
+    }
+
+    [Fact]
+    public async Task Get_ExportarLgpdAdmin_SemStepUp_Retorna403()
+    {
+        var response = await CriarClienteAdmin().GetAsync($"/admin/contas/{AlunoId}/lgpd/exportar");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("code").GetString().Should().Be("step_up_requerido");
+    }
+
+    // --- DELETE /admin/contas/{id}/lgpd ---
+
+    [Fact]
+    public async Task Delete_ContaLgpdAdmin_SemStepUp_Retorna403()
+    {
+        var response = await CriarClienteAdmin().DeleteAsync($"/admin/contas/{AlunoId}/lgpd");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("code").GetString().Should().Be("step_up_requerido");
     }
 
     [Fact]
@@ -1493,6 +1526,33 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
 
         public Mock<IDadosPessoaisExcelRenderer> ExcelRendererMock { get; } = new();
 
+        public Mock<AnonimizarContaHandler> AnonimizarContaHandlerMock { get; } = new(
+            Mock.Of<IContaRepository>(),
+            Mock.Of<IAlunoRepository>(),
+            Mock.Of<ITreinadorRepository>(),
+            Mock.Of<IVinculoTreinadorAlunoRepository>(),
+            Mock.Of<ILeadRepository>(),
+            Mock.Of<IExecucaoTreinoRepository>(),
+            Mock.Of<IAssinanteRepository>(),
+            Mock.Of<IEmailDeliveryLogRepository>(),
+            Mock.Of<IWhatsAppDeliveryLogRepository>(),
+            Mock.Of<IMensagemSuporteRepository>(),
+            Mock.Of<ILogAprovacaoRepository>(),
+            Mock.Of<IPasswordHasher>(),
+            Mock.Of<IUnitOfWork>(),
+            Mock.Of<IDbContextTransactionProvider>(),
+            TimeProvider.System,
+            Mock.Of<IUserContext>(),
+            Mock.Of<ITokenRevogadoRepository>(),
+            Mock.Of<IDatabaseErrorInspector>(),
+            Mock.Of<IRefreshTokenFamilyRepository>(),
+            Mock.Of<IContaMfaRepository>(),
+            Mock.Of<IMfaRecoveryCodeRepository>(),
+            Mock.Of<IMfaChallengeRepository>(),
+            Mock.Of<ITrustedDeviceRepository>(),
+            Mock.Of<IPasswordResetTokenRepository>(),
+            Mock.Of<ITrocaEmailTokenRepository>());
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Test");
@@ -1534,6 +1594,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
                 services.RemoveAll<ExcluirExercicioHandler>();
                 services.RemoveAll<ExportarDadosPessoaisHandler>();
                 services.RemoveAll<IDadosPessoaisExcelRenderer>();
+                services.RemoveAll<AnonimizarContaHandler>();
                 services.RemoveAll<IUserContext>();
                 services.RemoveAll<IJwtService>();
                 services.RemoveAll<ITokenRevogadoRepository>();
@@ -1571,6 +1632,7 @@ public class AdminEndpointsTests : IClassFixture<AdminEndpointsTests.AdminWebFac
                 services.AddScoped(_ => ExcluirExercicioHandlerMock.Object);
                 services.AddScoped(_ => ExportarHandlerMock.Object);
                 services.AddScoped<IDadosPessoaisExcelRenderer>(_ => ExcelRendererMock.Object);
+                services.AddScoped(_ => AnonimizarContaHandlerMock.Object);
 
                 var userContextMock = new Mock<IUserContext>();
                 userContextMock.Setup(u => u.ContaId).Returns(AdminId);
