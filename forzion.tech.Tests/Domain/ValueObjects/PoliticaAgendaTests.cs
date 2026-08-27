@@ -32,6 +32,29 @@ public class PoliticaAgendaTests
     }
 
     [Fact]
+    public void Criar_AntecedenciaAcimaDoLimite_Falha()
+    {
+        var r = PoliticaAgenda.Criar(8761, 30);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("politica_agenda.antecedencia_minima_invalida");
+    }
+
+    [Fact]
+    public void Criar_AntecedenciaIntMaxValue_Falha()
+    {
+        var r = PoliticaAgenda.Criar(int.MaxValue, 30);
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("politica_agenda.antecedencia_minima_invalida");
+    }
+
+    [Fact]
+    public void Criar_AntecedenciaNoLimite_Aceita()
+    {
+        var r = PoliticaAgenda.Criar(8760, 30);
+        r.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
     public void Criar_HorizonteZero_Falha()
     {
         var r = PoliticaAgenda.Criar(2, 0);
