@@ -101,17 +101,26 @@ public class Pacote
 
     public Result AtualizarCatalogoPublico(string? categoria, int? duracaoMinutos, bool? trialDisponivel, DateTime agora, int? capacidadeMaxima = null)
     {
+        // Sentinelas explícitas de "limpar": "" para categoria e 0 para duração, distintas de
+        // null (campo ausente = não mexer) — null sobrecarregado não distingue os dois casos.
+        var limparCategoria = categoria is not null && string.IsNullOrWhiteSpace(categoria);
+        var limparDuracao = duracaoMinutos == 0;
+
         if (categoria is not null && categoria.Trim().Length > 100)
             return Result.Failure(PacoteErrors.CategoriaMuitoLonga);
-        if (duracaoMinutos is <= 0 or > 480)
+        if (duracaoMinutos is < 0 or > 480)
             return Result.Failure(PacoteErrors.DuracaoMinutosInvalida);
         if (capacidadeMaxima is <= 0)
             return Result.Failure(PacoteErrors.CapacidadeMaximaInvalida);
+        if (IsPublico && limparCategoria)
+            return Result.Failure(PacoteErrors.CategoriaObrigatoriaParaPublico);
+        if (IsPublico && limparDuracao)
+            return Result.Failure(PacoteErrors.DuracaoObrigatoriaParaPublico);
 
         if (categoria is not null)
-            Categoria = string.IsNullOrWhiteSpace(categoria) ? null : categoria.Trim();
+            Categoria = limparCategoria ? null : categoria.Trim();
         if (duracaoMinutos is not null)
-            DuracaoMinutos = duracaoMinutos;
+            DuracaoMinutos = limparDuracao ? null : duracaoMinutos;
         if (trialDisponivel is not null)
             TrialDisponivel = trialDisponivel.Value;
         if (capacidadeMaxima is not null)

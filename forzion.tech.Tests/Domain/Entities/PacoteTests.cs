@@ -192,7 +192,6 @@ public class PacoteTests
     }
 
     [Theory]
-    [InlineData(0)]
     [InlineData(-10)]
     [InlineData(481)]
     public void AtualizarCatalogoPublico_DuracaoInvalida_Falha(int duracao)
@@ -228,6 +227,47 @@ public class PacoteTests
         p.Categoria.Should().Be("Pilates");
         p.DuracaoMinutos.Should().Be(60);
         p.TrialDisponivel.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AtualizarCatalogoPublico_PacotePrivadoCategoriaVaziaEDuracaoZero_LimpaOsCampos()
+    {
+        var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
+        p.AtualizarCatalogoPublico("Pilates", 60, null, TestData.Agora);
+
+        var r = p.AtualizarCatalogoPublico("", 0, null, TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        p.Categoria.Should().BeNull();
+        p.DuracaoMinutos.Should().BeNull();
+    }
+
+    [Fact]
+    public void AtualizarCatalogoPublico_PacotePublicoLimpaCategoria_Falha()
+    {
+        var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
+        p.AtualizarCatalogoPublico("Pilates", 60, null, TestData.Agora);
+        p.TornarPublico(TestData.Agora);
+
+        var r = p.AtualizarCatalogoPublico("", null, null, TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("pacote.categoria_obrigatoria_para_publico");
+        p.Categoria.Should().Be("Pilates");
+    }
+
+    [Fact]
+    public void AtualizarCatalogoPublico_PacotePublicoLimpaDuracao_Falha()
+    {
+        var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
+        p.AtualizarCatalogoPublico("Pilates", 60, null, TestData.Agora);
+        p.TornarPublico(TestData.Agora);
+
+        var r = p.AtualizarCatalogoPublico(null, 0, null, TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("pacote.duracao_obrigatoria_para_publico");
+        p.DuracaoMinutos.Should().Be(60);
     }
 
     // --- CapacidadeMaxima ---
