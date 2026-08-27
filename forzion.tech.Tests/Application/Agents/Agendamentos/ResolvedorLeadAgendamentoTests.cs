@@ -1,4 +1,5 @@
 using FluentAssertions;
+using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Agents.Agendamentos;
 using forzion.tech.Domain.Entities;
@@ -11,13 +12,15 @@ namespace forzion.tech.Tests.Application.Agents.Agendamentos;
 public class ResolvedorLeadAgendamentoTests
 {
     private readonly Mock<ILeadRepository> _leadRepo = new();
+    private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IDatabaseErrorInspector> _databaseErrorInspector = new();
     private readonly ResolvedorLeadAgendamento _resolvedor;
     private static readonly DateTime Agora = new(2026, 8, 24, 10, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime SlotInicioUtc = new(2026, 8, 25, 11, 0, 0, DateTimeKind.Utc);
 
     public ResolvedorLeadAgendamentoTests()
     {
-        _resolvedor = new ResolvedorLeadAgendamento(_leadRepo.Object);
+        _resolvedor = new ResolvedorLeadAgendamento(_leadRepo.Object, _unitOfWork.Object, _databaseErrorInspector.Object);
     }
 
     private static Lead CriarLeadExistente(Guid treinadorId, ContatoLead contato, LeadStatus status = LeadStatus.Novo, bool anonimizado = false)
@@ -127,5 +130,64 @@ public class ResolvedorLeadAgendamentoTests
 
         _leadRepo.Verify(r => r.AdicionarAsync(It.IsAny<Lead>(), It.IsAny<CancellationToken>()), Times.Never,
             "o lead reusado já está tracked pelo DbContext — chamar AdicionarAsync de novo duplicaria o insert");
+    }
+
+    // --- AUD-35: UNIQUE parcial de leads(treinador_id, contato_valor) colide sob corrida ---
+
+    [Fact]
+    public async Task ResolverAsync_NovoLeadColideNaUnicidade_ReusaOVencedorDaRequery()
+    {
+        var treinadorId = Guid.NewGuid();
+        var contato = ContatoLead.Criar(TipoContatoLead.Email, "novo@lead.com").Value;
+        var vencedor = CriarLeadExistente(treinadorId, contato);
+        var excecaoDeUnicidade = new InvalidOperationException("23505");
+        _leadRepo.SetupSequence(r => r.ObterReutilizavelPorContatoAsync(treinadorId, contato.Valor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Lead?)null)
+            .ReturnsAsync(vencedor);
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeUnicidade);
+        _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeUnicidade)).Returns(true);
+        var consentimento = ConsentimentoLead.Criar("Contato comercial", Agora, Agora).Value;
+
+        var result = await _resolvedor.ResolverAsync(treinadorId, "Fulano", contato, consentimento, null, SlotInicioUtc, Agora);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Id.Should().Be(vencedor.Id);
+        result.Value.Interacoes.Should().ContainSingle();
+        _unitOfWork.Verify(u => u.DescartarAlteracoesPendentes(), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResolverAsync_NovoLeadColideNaUnicidadeERequeryNaoEncontraNinguem_RelancaExcecaoOriginal()
+    {
+        var treinadorId = Guid.NewGuid();
+        var contato = ContatoLead.Criar(TipoContatoLead.Email, "novo@lead.com").Value;
+        var excecaoDeUnicidade = new InvalidOperationException("23505");
+        _leadRepo.Setup(r => r.ObterReutilizavelPorContatoAsync(treinadorId, contato.Valor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Lead?)null);
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeUnicidade);
+        _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeUnicidade)).Returns(true);
+        var consentimento = ConsentimentoLead.Criar("Contato comercial", Agora, Agora).Value;
+
+        var act = async () => await _resolvedor.ResolverAsync(treinadorId, "Fulano", contato, consentimento, null, SlotInicioUtc, Agora);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task ResolverAsync_CommitFalhaPorMotivoNaoRelacionadoAUnicidade_PropagaSemReconsultar()
+    {
+        var treinadorId = Guid.NewGuid();
+        var contato = ContatoLead.Criar(TipoContatoLead.Email, "novo@lead.com").Value;
+        var excecaoDeConexao = new InvalidOperationException("timeout de conexao");
+        _leadRepo.Setup(r => r.ObterReutilizavelPorContatoAsync(treinadorId, contato.Valor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Lead?)null);
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeConexao);
+        _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeConexao)).Returns(false);
+        var consentimento = ConsentimentoLead.Criar("Contato comercial", Agora, Agora).Value;
+
+        var act = async () => await _resolvedor.ResolverAsync(treinadorId, "Fulano", contato, consentimento, null, SlotInicioUtc, Agora);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _leadRepo.Verify(r => r.ObterReutilizavelPorContatoAsync(treinadorId, contato.Valor, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

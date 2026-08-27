@@ -31,7 +31,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
 
     public RegistrarSolicitacaoAgendamentoHandlerTests()
     {
-        var resolvedor = new ResolvedorLeadAgendamento(_leadRepo.Object);
+        var resolvedor = new ResolvedorLeadAgendamento(_leadRepo.Object, _unitOfWork.Object, _databaseErrorInspector.Object);
         _handler = new RegistrarSolicitacaoAgendamentoHandler(
             _treinadorRepo.Object, _pacoteRepo.Object, _bloqueioRepo.Object, _solicitacaoRepo.Object, resolvedor,
             _unitOfWork.Object, _timeProvider, _databaseErrorInspector.Object);
@@ -104,7 +104,8 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
         capturada.PacoteId.Should().Be(pacote.Id);
         capturada.InicioUtc.Should().Be(InicioSlotValido, "InicioUtc vem do slot derivado, nunca do command");
         capturada.FimUtc.Should().Be(FimSlotValido);
-        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2),
+            "resolvedor comita o lead novo (AUD-35) antes do commit da solicitacao");
     }
 
     [Fact]
@@ -380,7 +381,10 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
             .ReturnsAsync((SolicitacaoAgendamento?)null)
             .ReturnsAsync(vencedor);
         var excecaoDeUnicidade = new InvalidOperationException("23505");
-        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeUnicidade);
+        // 1º commit = o lead novo do resolvedor (AUD-35, sem colisão aqui); só o 2º (solicitação) viola.
+        _unitOfWork.SetupSequence(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask)
+            .ThrowsAsync(excecaoDeUnicidade);
         _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeUnicidade)).Returns(true);
 
         var result = await _handler.HandleAsync(comando);
@@ -401,7 +405,9 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
             .ReturnsAsync((SolicitacaoAgendamento?)null)
             .ReturnsAsync(vencedor);
         var excecaoDeUnicidade = new InvalidOperationException("23505");
-        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeUnicidade);
+        _unitOfWork.SetupSequence(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask)
+            .ThrowsAsync(excecaoDeUnicidade);
         _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeUnicidade)).Returns(true);
 
         var result = await _handler.HandleAsync(comando);
@@ -419,7 +425,9 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
         _solicitacaoRepo.Setup(r => r.ObterPorIdempotencyKeyAsync(treinador.Id, "chave-corrida", It.IsAny<CancellationToken>()))
             .ReturnsAsync((SolicitacaoAgendamento?)null);
         var excecaoDeUnicidade = new InvalidOperationException("23505");
-        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeUnicidade);
+        _unitOfWork.SetupSequence(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask)
+            .ThrowsAsync(excecaoDeUnicidade);
         _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeUnicidade)).Returns(true);
 
         var act = async () => await _handler.HandleAsync(comando);

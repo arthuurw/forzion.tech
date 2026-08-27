@@ -73,7 +73,8 @@ public class BookingRequestEndpointTests
     {
         var mock = new Mock<RegistrarSolicitacaoAgendamentoHandler>(
             Mock.Of<ITreinadorRepository>(), Mock.Of<IPacoteRepository>(), Mock.Of<IBloqueioAgendaRepository>(),
-            Mock.Of<ISolicitacaoAgendamentoRepository>(), new ResolvedorLeadAgendamento(Mock.Of<ILeadRepository>()),
+            Mock.Of<ISolicitacaoAgendamentoRepository>(),
+            new ResolvedorLeadAgendamento(Mock.Of<ILeadRepository>(), Mock.Of<IUnitOfWork>(), Mock.Of<IDatabaseErrorInspector>()),
             Mock.Of<IUnitOfWork>(), TimeProvider.System, Mock.Of<IDatabaseErrorInspector>());
         mock.Setup(h => h.HandleAsync(It.IsAny<RegistrarSolicitacaoAgendamentoCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(resultado);
