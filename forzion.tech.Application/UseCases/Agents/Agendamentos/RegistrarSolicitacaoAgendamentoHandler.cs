@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.UseCases.Agents;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Services;
@@ -47,7 +48,8 @@ public class RegistrarSolicitacaoAgendamentoHandler(
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 
-        var consentimentoResult = ConsentimentoLead.Criar(command.ConsentPurpose, command.ConsentGrantedAt ?? agora, agora);
+        var grantedAtNormalizado = AgentDateTimeNormalizer.ParaUtcClampado(command.ConsentGrantedAt, agora);
+        var consentimentoResult = ConsentimentoLead.Criar(command.ConsentPurpose, grantedAtNormalizado, agora);
         if (consentimentoResult.IsFailure)
             return Result.Failure<StagedBookingRequest>(consentimentoResult.Error!);
 
