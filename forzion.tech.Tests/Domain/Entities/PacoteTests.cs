@@ -138,15 +138,28 @@ public class PacoteTests
     }
 
     [Fact]
-    public void TornarPublico_ComCategoria_Sucesso()
+    public void TornarPublico_ComCategoriaEDuracao_Sucesso()
+    {
+        var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
+        p.AtualizarCatalogoPublico("Pilates", 60, null, TestData.Agora);
+
+        var r = p.TornarPublico(TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        p.IsPublico.Should().BeTrue();
+    }
+
+    [Fact]
+    public void TornarPublico_ComCategoriaSemDuracao_Falha()
     {
         var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
         p.AtualizarCatalogoPublico("Pilates", null, null, TestData.Agora);
 
         var r = p.TornarPublico(TestData.Agora);
 
-        r.IsSuccess.Should().BeTrue();
-        p.IsPublico.Should().BeTrue();
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("pacote.duracao_obrigatoria_para_publico");
+        p.IsPublico.Should().BeFalse();
     }
 
     // --- TornarPrivado ---
@@ -155,7 +168,7 @@ public class PacoteTests
     public void TornarPrivado_NuncaFalha()
     {
         var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
-        p.AtualizarCatalogoPublico("Pilates", null, null, TestData.Agora);
+        p.AtualizarCatalogoPublico("Pilates", 60, null, TestData.Agora);
         p.TornarPublico(TestData.Agora);
 
         p.TornarPrivado(TestData.Agora);
@@ -181,6 +194,7 @@ public class PacoteTests
     [Theory]
     [InlineData(0)]
     [InlineData(-10)]
+    [InlineData(481)]
     public void AtualizarCatalogoPublico_DuracaoInvalida_Falha(int duracao)
     {
         var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
@@ -188,7 +202,19 @@ public class PacoteTests
         var r = p.AtualizarCatalogoPublico(null, duracao, null, TestData.Agora);
 
         r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("pacote.duracao_minutos_invalida");
         p.DuracaoMinutos.Should().BeNull();
+    }
+
+    [Fact]
+    public void AtualizarCatalogoPublico_DuracaoNoLimiteMaximo_Atualiza()
+    {
+        var p = Pacote.Criar(TreinadorId, "A", 0, TestData.Agora).Value;
+
+        var r = p.AtualizarCatalogoPublico(null, 480, null, TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        p.DuracaoMinutos.Should().Be(480);
     }
 
     [Fact]

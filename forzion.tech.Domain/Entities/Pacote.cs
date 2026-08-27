@@ -85,6 +85,8 @@ public class Pacote
     {
         if (string.IsNullOrWhiteSpace(Categoria))
             return Result.Failure(PacoteErrors.CategoriaObrigatoriaParaPublico);
+        if (DuracaoMinutos is null)
+            return Result.Failure(PacoteErrors.DuracaoObrigatoriaParaPublico);
 
         IsPublico = true;
         UpdatedAt = agora;
@@ -101,7 +103,7 @@ public class Pacote
     {
         if (categoria is not null && categoria.Trim().Length > 100)
             return Result.Failure(PacoteErrors.CategoriaMuitoLonga);
-        if (duracaoMinutos is <= 0)
+        if (duracaoMinutos is <= 0 or > 480)
             return Result.Failure(PacoteErrors.DuracaoMinutosInvalida);
         if (capacidadeMaxima is <= 0)
             return Result.Failure(PacoteErrors.CapacidadeMaximaInvalida);

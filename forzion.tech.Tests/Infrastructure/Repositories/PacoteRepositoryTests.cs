@@ -101,7 +101,7 @@ public class PacoteRepositoryTests(InfrastructureTestFixture fixture)
         await using var ctx = fixture.CreateContext();
         var treinadorId = await SeedTreinadorAsync(ctx);
         var publico = await SeedPacoteAsync(ctx, treinadorId, $"Publico-{Guid.NewGuid():N}");
-        publico.AtualizarCatalogoPublico("Pilates", null, null, DateTime.UtcNow);
+        publico.AtualizarCatalogoPublico("Pilates", 60, null, DateTime.UtcNow);
         publico.TornarPublico(DateTime.UtcNow);
         await SeedPacoteAsync(ctx, treinadorId, $"Privado-{Guid.NewGuid():N}");
         await ctx.SaveChangesAsync();
