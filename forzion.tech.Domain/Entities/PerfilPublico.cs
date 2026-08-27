@@ -1,3 +1,4 @@
+using forzion.tech.Domain.Services;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Domain.ValueObjects;
@@ -68,6 +69,9 @@ public class PerfilPublico
 
     public Result SubstituirHorarios(IReadOnlyList<(int DiaSemana, TimeOnly AbreAs, TimeOnly FechaAs)> horarios, DateTime agora)
     {
+        if (horarios.Count > ParametrosDerivacao.MaxHorariosFuncionamento)
+            return Result.Failure(PerfilPublicoErrors.HorariosExcedemLimite);
+
         var novos = new List<HorarioFuncionamento>(horarios.Count);
         foreach (var (diaSemana, abreAs, fechaAs) in horarios)
         {

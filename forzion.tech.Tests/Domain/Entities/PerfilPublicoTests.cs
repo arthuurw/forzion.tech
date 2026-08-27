@@ -1,5 +1,6 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Services;
 using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Tests.Builders;
 
@@ -182,5 +183,31 @@ public class PerfilPublicoTests
 
         r.IsFailure.Should().BeTrue();
         perfil.HorariosFuncionamento.Should().ContainSingle(h => h.DiaSemana == 1);
+    }
+
+    [Fact]
+    public void SubstituirHorarios_ListaAcimaDoLimite_FalhaEPreservaHorariosAntigos()
+    {
+        var perfil = PerfilPublico.CriarVazio();
+        perfil.AdicionarHorario(1, new TimeOnly(8, 0), new TimeOnly(12, 0), TestData.Agora);
+        var acimaDoLimite = Enumerable.Repeat((2, new TimeOnly(9, 0), new TimeOnly(10, 0)), ParametrosDerivacao.MaxHorariosFuncionamento + 1).ToList();
+
+        var r = perfil.SubstituirHorarios(acimaDoLimite, TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("perfil_publico.horarios_excedem_limite");
+        perfil.HorariosFuncionamento.Should().ContainSingle(h => h.DiaSemana == 1);
+    }
+
+    [Fact]
+    public void SubstituirHorarios_ListaNoLimiteExato_Sucesso()
+    {
+        var perfil = PerfilPublico.CriarVazio();
+        var noLimite = Enumerable.Repeat((2, new TimeOnly(9, 0), new TimeOnly(10, 0)), ParametrosDerivacao.MaxHorariosFuncionamento).ToList();
+
+        var r = perfil.SubstituirHorarios(noLimite, TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        perfil.HorariosFuncionamento.Should().HaveCount(ParametrosDerivacao.MaxHorariosFuncionamento);
     }
 }

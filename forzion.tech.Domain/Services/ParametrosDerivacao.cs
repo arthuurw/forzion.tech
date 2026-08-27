@@ -16,4 +16,5 @@ public sealed record ParametrosDerivacao(
     IReadOnlyList<BloqueioAgenda> Bloqueios)
 {
     public const int MaxSlotsMaterializados = 10_000;
+    public const int MaxHorariosFuncionamento = 21;
 }
