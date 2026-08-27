@@ -180,6 +180,8 @@ public class Lead : IHasDomainEvents
         Contato = Contato.Anonimizar();
         Interesse = null;
         Consentimento = Consentimento.Anonimizar();
+        ArgumentosHash = null;
+        IdempotencyKey = null;
         foreach (var interacao in _interacoes)
             interacao.Anonimizar();
 
