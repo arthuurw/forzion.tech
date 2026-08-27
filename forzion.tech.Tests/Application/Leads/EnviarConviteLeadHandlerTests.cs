@@ -124,6 +124,26 @@ public class EnviarConviteLeadHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_LeadForaDoCutoffDeExpurgo_EmissaoTiraDoAlcanceDoGcDe180Dias()
+    {
+        var agoraEmissao = _timeProvider.GetUtcNow().UtcDateTime;
+        var lead = Lead.Criar(
+            TreinadorId, "Fulano",
+            ContatoLead.Criar(TipoContatoLead.Email, "fulano@lead.com").Value,
+            "quero treinar",
+            ConsentimentoLead.Criar("Contato comercial", agoraEmissao.AddDays(-200), agoraEmissao.AddDays(-200)).Value,
+            null, LeadSource.Agent, null, null, agoraEmissao.AddDays(-200)).Value;
+        SetupLead(lead);
+        var cutoff180Dias = agoraEmissao.AddDays(-180);
+        (lead.UltimoToqueEm < cutoff180Dias).Should().BeTrue("lead sem toque há 200d estaria no alcance do GC antes da emissão");
+
+        var result = await _handler.HandleAsync(new EnviarConviteLeadCommand(TreinadorId, lead.Id));
+
+        result.IsSuccess.Should().BeTrue();
+        (lead.UltimoToqueEm < cutoff180Dias).Should().BeFalse("a emissao do convite deve tirar o lead do alcance do GC de 180 dias");
+    }
+
+    [Fact]
     public async Task HandleAsync_LeadDeOutroTreinador_RetornaNotFound()
     {
         var lead = NovoLead();

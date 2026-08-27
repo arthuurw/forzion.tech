@@ -161,6 +161,16 @@ public class Lead : IHasDomainEvents
         return Result.Success();
     }
 
+    public Result RegistrarToque(DateTime agora)
+    {
+        if (Anonimizado)
+            return Result.Failure(LeadErrors.Anonimizado);
+
+        UltimoToqueEm = agora;
+        UpdatedAt = agora;
+        return Result.Success();
+    }
+
     public Result Anonimizar(DateTime agora)
     {
         if (Anonimizado)

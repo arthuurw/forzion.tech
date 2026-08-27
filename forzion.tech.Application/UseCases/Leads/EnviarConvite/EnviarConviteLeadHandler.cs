@@ -52,6 +52,10 @@ public class EnviarConviteLeadHandler(
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 
+        var toqueResult = lead.RegistrarToque(agora);
+        if (toqueResult.IsFailure)
+            return Result.Failure<EnviarConviteLeadResponse>(toqueResult.Error!);
+
         var conviteAtivo = await leadConviteRepository
             .ObterAtivoPorLeadAsync(command.TreinadorId, command.LeadId, cancellationToken)
             .ConfigureAwait(false);
