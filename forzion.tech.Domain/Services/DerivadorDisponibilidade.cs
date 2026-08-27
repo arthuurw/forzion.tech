@@ -4,38 +4,57 @@ namespace forzion.tech.Domain.Services;
 
 public static class DerivadorDisponibilidade
 {
-    public static SlotDisponivel? LocalizarPorId(ParametrosDerivacao p, string slotId) =>
-        Derivar(p).FirstOrDefault(s => s.SlotId == slotId);
+    // Busca pontual: percorre os candidatos preguiçosamente e para no primeiro slotId igual, sem
+    // materializar/ordenar/deduplicar o conjunto inteiro como Derivar faz para a listagem.
+    public static SlotDisponivel? LocalizarPorId(ParametrosDerivacao p, string slotId)
+    {
+        var (inicioEfetivo, fimEfetivo) = JanelaEfetiva(p);
+        if (inicioEfetivo >= fimEfetivo)
+            return null;
+
+        return CandidatosNaJanela(p, inicioEfetivo, fimEfetivo).FirstOrDefault(s => s.SlotId == slotId);
+    }
 
     public static IReadOnlyList<SlotDisponivel> Derivar(ParametrosDerivacao p)
     {
-        var inicioEfetivo = Maior(p.From, p.Agora.AddHours(p.Politica.AntecedenciaMinimaHoras));
-        var fimEfetivo = Menor(p.To, p.Agora.AddDays(p.Politica.HorizonteDias));
-
+        var (inicioEfetivo, fimEfetivo) = JanelaEfetiva(p);
         if (inicioEfetivo >= fimEfetivo)
             return [];
 
         var candidatos = new List<SlotDisponivel>();
-
-        foreach (var diaLocal in DiasNoIntervalo(inicioEfetivo, fimEfetivo, p.Fuso))
+        foreach (var slot in CandidatosNaJanela(p, inicioEfetivo, fimEfetivo))
         {
+            candidatos.Add(slot);
             if (candidatos.Count >= ParametrosDerivacao.MaxSlotsMaterializados)
                 break;
-
-            var diaSemana = (int)diaLocal.DayOfWeek;
-            var horariosDoDia = p.Horarios.Where(h => h.DiaSemana == diaSemana);
-
-            foreach (var horario in horariosDoDia)
-                candidatos.AddRange(BlocosDoTurno(p, diaLocal, horario));
         }
 
         return candidatos
-            .Where(s => s.InicioUtc >= inicioEfetivo && s.InicioUtc < fimEfetivo)
-            .Where(s => !p.Bloqueios.Any(b => b.Cobre(s.InicioUtc, s.FimUtc, p.Fuso)))
             .DistinctBy(s => s.InicioUtc)
             .OrderBy(s => s.InicioUtc)
             .Take(ParametrosDerivacao.MaxSlotsMaterializados)
             .ToList();
+    }
+
+    private static (DateTime InicioEfetivo, DateTime FimEfetivo) JanelaEfetiva(ParametrosDerivacao p) => (
+        Maior(p.From, p.Agora.AddHours(p.Politica.AntecedenciaMinimaHoras)),
+        Menor(p.To, p.Agora.AddDays(p.Politica.HorizonteDias)));
+
+    private static IEnumerable<SlotDisponivel> CandidatosNaJanela(ParametrosDerivacao p, DateTime inicioEfetivo, DateTime fimEfetivo)
+    {
+        foreach (var diaLocal in DiasNoIntervalo(inicioEfetivo, fimEfetivo, p.Fuso))
+        {
+            var diaSemana = (int)diaLocal.DayOfWeek;
+            var horariosDoDia = p.Horarios.Where(h => h.DiaSemana == diaSemana);
+
+            foreach (var horario in horariosDoDia)
+                foreach (var slot in BlocosDoTurno(p, diaLocal, horario))
+                {
+                    if (slot.InicioUtc >= inicioEfetivo && slot.InicioUtc < fimEfetivo
+                        && !p.Bloqueios.Any(b => b.Cobre(slot.InicioUtc, slot.FimUtc, p.Fuso)))
+                        yield return slot;
+                }
+        }
     }
 
     private static DateTime Maior(DateTime a, DateTime b) => a > b ? a : b;

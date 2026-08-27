@@ -233,6 +233,24 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
         result.Error!.Should().Be(SolicitacaoAgendamentoAgenteErrors.SlotNaoEncontrado);
     }
 
+    // --- AUD-24: horizonte da política (60d) excede o teto de 31d do caminho de escrita ---
+
+    [Fact]
+    public async Task HandleAsync_SlotAlemDoTetoDe31DiasDoCaminhoDeEscrita_RetornaSlotNaoEncontrado()
+    {
+        // Treinador com horizonte padrão de 60 dias: o slot existe no GET availability (que também
+        // capa em 31d, mas isso é responsabilidade do endpoint) e na política, mas o caminho de
+        // escrita deve recusá-lo por estar além do próprio teto de 31 dias, não achar 503/erro.
+        var (treinador, pacote) = SetupTenant();
+        var segundaAlemDoTeto = new DateTime(2026, 9, 28, 11, 0, 0, DateTimeKind.Utc);
+        var slotIdAlemDoTeto = SlotId.Calcular(treinador.Id, pacote.Id, segundaAlemDoTeto);
+
+        var result = await _handler.HandleAsync(ComandoValido(treinador.Id, pacote.Id, slotId: slotIdAlemDoTeto));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(SolicitacaoAgendamentoAgenteErrors.SlotNaoEncontrado);
+    }
+
     // --- AGF4-03: slot lotado ⇒ slot_unavailable ---
 
     [Fact]

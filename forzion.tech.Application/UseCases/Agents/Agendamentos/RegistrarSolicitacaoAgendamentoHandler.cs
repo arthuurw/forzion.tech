@@ -85,7 +85,9 @@ public class RegistrarSolicitacaoAgendamentoHandler(
         // Sem try/catch: se o fuso persistido não resolver, a exceção sobe para o
         // AgentExceptionFilter e vira 503 — mesmo precedente de ConsultarDisponibilidadeAgenteHandler.
         var fuso = TimeZoneInfo.FindSystemTimeZoneById(treinador.FusoHorario);
-        var horizonteUtc = agora.AddDays(treinador.PoliticaAgenda.HorizonteDias);
+        // Mesmo teto de 31 dias do GET availability (AgentEndpoints.cs) — sem isto, um horizonte de
+        // política de até 365 dias faria a derivação materializar a janela inteira só pra localizar 1 slot.
+        var horizonteUtc = agora.AddDays(Math.Min(treinador.PoliticaAgenda.HorizonteDias, 31));
 
         var bloqueios = await bloqueioAgendaRepository
             .ListarVigentesAsync(command.TenantId, agora, horizonteUtc, cancellationToken)
