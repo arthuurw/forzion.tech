@@ -13,4 +13,7 @@ public sealed record ParametrosDerivacao(
     TimeZoneInfo Fuso,
     PoliticaAgenda Politica,
     IReadOnlyList<HorarioFuncionamento> Horarios,
-    IReadOnlyList<BloqueioAgenda> Bloqueios);
+    IReadOnlyList<BloqueioAgenda> Bloqueios)
+{
+    public const int MaxSlotsMaterializados = 10_000;
+}

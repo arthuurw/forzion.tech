@@ -19,6 +19,9 @@ public static class DerivadorDisponibilidade
 
         foreach (var diaLocal in DiasNoIntervalo(inicioEfetivo, fimEfetivo, p.Fuso))
         {
+            if (candidatos.Count >= ParametrosDerivacao.MaxSlotsMaterializados)
+                break;
+
             var diaSemana = (int)diaLocal.DayOfWeek;
             var horariosDoDia = p.Horarios.Where(h => h.DiaSemana == diaSemana);
 
@@ -31,6 +34,7 @@ public static class DerivadorDisponibilidade
             .Where(s => !p.Bloqueios.Any(b => b.Cobre(s.InicioUtc, s.FimUtc, p.Fuso)))
             .DistinctBy(s => s.InicioUtc)
             .OrderBy(s => s.InicioUtc)
+            .Take(ParametrosDerivacao.MaxSlotsMaterializados)
             .ToList();
     }
 
