@@ -222,6 +222,51 @@ public class LeadEndpointsTests : IClassFixture<LeadEndpointsTests.LeadWebFactor
     }
 
     [Fact]
+    public async Task Get_Metricas_SemParametros_FimCobreODiaCorrenteInteiro()
+    {
+        DateTime? fimCapturado = null;
+        _factory.LeadRepositoryMock.Setup(r => r.AgregarMetricasAsync(
+                TreinadorAutenticadoId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Callback<Guid, DateTime, DateTime, CancellationToken>((_, _, fim, _) => fimCapturado = fim)
+            .ReturnsAsync(new LeadMetricas(0, 0, 0, 0, new Dictionary<MotivoDescarteLead, int>()));
+
+        var antesDaChamada = DateTime.UtcNow;
+        var response = await ClienteTreinador().GetAsync("/treinador/leads/metricas");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        fimCapturado.Should().NotBeNull();
+        fimCapturado!.Value.Should().BeOnOrAfter(antesDaChamada,
+            "um lead criado agora mesmo (CreatedAt <= fim) precisa continuar dentro da janela default");
+        fimCapturado.Value.Date.Should().Be(antesDaChamada.Date);
+    }
+
+    [Fact]
+    public async Task Get_Metricas_ComFimExplicito_CobreODiaInteiro()
+    {
+        DateTime? fimCapturado = null;
+        _factory.LeadRepositoryMock.Setup(r => r.AgregarMetricasAsync(
+                TreinadorAutenticadoId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Callback<Guid, DateTime, DateTime, CancellationToken>((_, _, fim, _) => fimCapturado = fim)
+            .ReturnsAsync(new LeadMetricas(0, 0, 0, 0, new Dictionary<MotivoDescarteLead, int>()));
+
+        var response = await ClienteTreinador().GetAsync("/treinador/leads/metricas?fim=2026-08-20");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        fimCapturado.Should().NotBeNull();
+        var leadCriadoNoFimDoDia = new DateTime(2026, 8, 20, 23, 59, 0, DateTimeKind.Utc);
+        fimCapturado!.Value.Should().BeOnOrAfter(leadCriadoNoFimDoDia,
+            "um 'fim' explícito também precisa cobrir o dia inteiro, não só a meia-noite");
+    }
+
+    [Fact]
+    public async Task Get_Metricas_InicioMaiorQueFim_Retorna400()
+    {
+        var response = await ClienteTreinador().GetAsync("/treinador/leads/metricas?inicio=2026-08-20&fim=2026-08-10");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Get_Lista_SemAutenticacao_Retorna401()
     {
         var response = await _factory.CreateClient().GetAsync("/treinador/leads");
