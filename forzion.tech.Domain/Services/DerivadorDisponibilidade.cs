@@ -46,14 +46,14 @@ public static class DerivadorDisponibilidade
         for (var inicioMinutos = abreMinutos; inicioMinutos + p.DuracaoMinutos <= fechaMinutos; inicioMinutos += p.DuracaoMinutos)
         {
             var inicioLocal = diaLocal.AddMinutes(inicioMinutos);
-            var fimLocal = diaLocal.AddMinutes(inicioMinutos + p.DuracaoMinutos);
 
             var inicioUtc = ConversaoFuso.ParaUtc(inicioLocal, p.Fuso);
-            var fimUtc = ConversaoFuso.ParaUtc(fimLocal, p.Fuso);
-            if (inicioUtc is null || fimUtc is null)
+            if (inicioUtc is null)
                 continue;
 
-            yield return new SlotDisponivel(SlotId.Calcular(p.TreinadorId, p.PacoteId, inicioUtc.Value), inicioUtc.Value, fimUtc.Value);
+            var fimUtc = inicioUtc.Value.AddMinutes(p.DuracaoMinutos);
+
+            yield return new SlotDisponivel(SlotId.Calcular(p.TreinadorId, p.PacoteId, inicioUtc.Value), inicioUtc.Value, fimUtc);
         }
     }
 

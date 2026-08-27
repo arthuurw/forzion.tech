@@ -299,4 +299,40 @@ public class DerivadorDisponibilidadeTests
 
         slot.Should().BeNull();
     }
+
+    // --- FimUtc derivado do início, não de segunda conversão de fuso ---
+    // Fim do horário de verão em America/New_York em 2026-11-01 02:00 local (EDT UTC-4 -> EST UTC-5).
+
+    private static readonly TimeZoneInfo FusoNewYork = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
+
+    [Fact]
+    public void Derivar_SlotAtravessaFimDoHorarioDeVeraoEmNewYork_FimUtcEInicioUtcMaisDuracaoNaoConversaoIndependente()
+    {
+        var horario = Horario((int)DayOfWeek.Sunday, 0, 30, 2, 0);
+        var agora = Utc(2026, 10, 1, 0, 0);
+        var from = Utc(2026, 10, 26, 12, 0);
+        var to = Utc(2026, 11, 5, 0, 0);
+        var p = new ParametrosDerivacao(TreinadorId, PacoteId, 90, from, to, agora, FusoNewYork, PoliticaAgenda.Padrao(), [horario], []);
+
+        var slots = DerivadorDisponibilidade.Derivar(p);
+
+        slots.Should().ContainSingle();
+        slots[0].InicioUtc.Should().Be(Utc(2026, 11, 1, 4, 30));
+        slots[0].FimUtc.Should().Be(Utc(2026, 11, 1, 6, 0));
+    }
+
+    [Fact]
+    public void Derivar_VariosSlotsNaVirasDeFimDoHorarioDeVeraoEmNewYork_TodosRespeitamFimUtcIgualInicioUtcMaisDuracao()
+    {
+        var horario = Horario((int)DayOfWeek.Sunday, 0, 0, 4, 0);
+        var agora = Utc(2026, 10, 1, 0, 0);
+        var from = Utc(2026, 10, 26, 12, 0);
+        var to = Utc(2026, 11, 5, 0, 0);
+        var p = new ParametrosDerivacao(TreinadorId, PacoteId, 90, from, to, agora, FusoNewYork, PoliticaAgenda.Padrao(), [horario], []);
+
+        var slots = DerivadorDisponibilidade.Derivar(p);
+
+        slots.Should().HaveCount(2);
+        slots.Should().OnlyContain(s => s.FimUtc == s.InicioUtc.AddMinutes(90));
+    }
 }
