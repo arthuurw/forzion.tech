@@ -1146,7 +1146,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     }
 
     [Fact]
-    public async Task Post_ConfirmarSolicitacao_TransicaoInvalida_Retorna400()
+    public async Task Post_ConfirmarSolicitacao_TransicaoInvalida_Retorna409()
     {
         _factory.ConfirmarSolicitacaoHandlerMock
             .Setup(h => h.HandleAsync(TreinadorId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -1154,7 +1154,9 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         var response = await CriarClienteTreinador().PostAsync($"/treinador/agenda/solicitacoes/{Guid.NewGuid()}/confirmar", null);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("code").GetString().Should().Be("solicitacao_agendamento.transicao_nao_suportada");
     }
 
     // --- POST /treinador/agenda/solicitacoes/{id}/recusar ---
@@ -1185,6 +1187,21 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    [Fact]
+    public async Task Post_RecusarSolicitacao_TransicaoInvalida_Retorna409()
+    {
+        _factory.RecusarSolicitacaoHandlerMock
+            .Setup(h => h.HandleAsync(TreinadorId, It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure(SolicitacaoAgendamentoErrors.TransicaoNaoSuportada));
+
+        var response = await CriarClienteTreinador().PostAsJsonAsync(
+            $"/treinador/agenda/solicitacoes/{Guid.NewGuid()}/recusar", new { });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("code").GetString().Should().Be("solicitacao_agendamento.transicao_nao_suportada");
+    }
+
     // --- POST /treinador/agenda/solicitacoes/{id}/cancelar ---
 
     [Fact]
@@ -1201,7 +1218,7 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
     }
 
     [Fact]
-    public async Task Post_CancelarSolicitacao_TransicaoInvalida_Retorna400()
+    public async Task Post_CancelarSolicitacao_TransicaoInvalida_Retorna409()
     {
         _factory.CancelarSolicitacaoHandlerMock
             .Setup(h => h.HandleAsync(TreinadorId, It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
@@ -1210,7 +1227,9 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
         var response = await CriarClienteTreinador().PostAsJsonAsync(
             $"/treinador/agenda/solicitacoes/{Guid.NewGuid()}/cancelar", new { });
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("code").GetString().Should().Be("solicitacao_agendamento.transicao_nao_suportada");
     }
 
     // --- WebApplicationFactory ---

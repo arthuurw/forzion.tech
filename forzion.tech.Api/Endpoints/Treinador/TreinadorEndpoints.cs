@@ -767,6 +767,7 @@ public static class TreinadorEndpoints
         .WithSummary("Recusa uma solicitação de agendamento pendente")
         .Produces(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status409Conflict)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         group.MapPost("/agenda/solicitacoes/{id:guid}/cancelar", async (
@@ -783,6 +784,7 @@ public static class TreinadorEndpoints
         .WithSummary("Cancela uma solicitação de agendamento confirmada, devolvendo a capacidade")
         .Produces(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status409Conflict)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         group.MapGet("/cep/{cep}", async (
