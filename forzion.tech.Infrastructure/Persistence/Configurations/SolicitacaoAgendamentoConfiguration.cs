@@ -11,6 +11,11 @@ public class SolicitacaoAgendamentoConfiguration : IEntityTypeConfiguration<Soli
         builder.ToTable("solicitacoes_agendamento");
         builder.HasKey(s => s.Id);
 
+        builder.Property<uint>("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
+
         builder.Property(s => s.TreinadorId).IsRequired();
         builder.HasOne<Treinador>()
             .WithMany()
