@@ -404,6 +404,55 @@ public class RegistrarAlunoHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_ConviteDeLeadDescartado_CriaContaSemConversao()
+    {
+        var (treinadorDoConvite, pacoteDoConvite) = ArrangeTreinadorAtivoComPacote();
+        var (lead, convite) = ArrangeConviteValido(treinadorDoConvite);
+        lead.Descartar(MotivoDescarteLead.SemInteresse, Guid.NewGuid(), null, DateTime.UtcNow);
+
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand(
+            "joao5@teste.com", "SenhaForte123", "Joao", treinadorDoConvite, pacoteDoConvite.Id,
+            ConviteToken: "token-cru"));
+
+        result.IsSuccess.Should().BeTrue();
+        convite.UsadoEm.Should().BeNull();
+        lead.Status.Should().Be(LeadStatus.Descartado);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ConviteDeLeadAnonimizado_CriaContaSemConversao()
+    {
+        var (treinadorDoConvite, pacoteDoConvite) = ArrangeTreinadorAtivoComPacote();
+        var (lead, convite) = ArrangeConviteValido(treinadorDoConvite);
+        lead.Anonimizar(DateTime.UtcNow);
+
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand(
+            "joao6@teste.com", "SenhaForte123", "Joao", treinadorDoConvite, pacoteDoConvite.Id,
+            ConviteToken: "token-cru"));
+
+        result.IsSuccess.Should().BeTrue();
+        convite.UsadoEm.Should().BeNull();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ConviteDeLeadJaConvertido_CriaContaSemConversao()
+    {
+        var (treinadorDoConvite, pacoteDoConvite) = ArrangeTreinadorAtivoComPacote();
+        var (lead, convite) = ArrangeConviteValido(treinadorDoConvite);
+        lead.Converter(Guid.NewGuid(), DateTime.UtcNow);
+
+        var result = await _handler.HandleAsync(new RegistrarAlunoCommand(
+            "joao7@teste.com", "SenhaForte123", "Joao", treinadorDoConvite, pacoteDoConvite.Id,
+            ConviteToken: "token-cru"));
+
+        result.IsSuccess.Should().BeTrue();
+        convite.UsadoEm.Should().BeNull();
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task HandleAsync_SemConviteToken_ComportamentoIdenticoAoCadastroAtual()
     {
         var (treinadorId, pacote) = ArrangeTreinadorAtivoComPacote();
