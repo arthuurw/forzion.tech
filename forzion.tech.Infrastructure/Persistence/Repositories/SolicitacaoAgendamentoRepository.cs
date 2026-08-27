@@ -54,6 +54,10 @@ public class SolicitacaoAgendamentoRepository(AppDbContext context) : ISolicitac
         if (status.HasValue)
             query = query.Where(s => s.Status == status.Value);
 
+        // Total sobre a query BASE, sem os JOINs de pacote/lead — a contagem não precisa deles,
+        // e arrastá-los custaria dois hash joins a mais só para descartar o resultado.
+        var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
+
         var projetada =
             from s in query
             join p in context.Pacotes.AsNoTracking() on s.PacoteId equals p.Id
@@ -63,7 +67,6 @@ public class SolicitacaoAgendamentoRepository(AppDbContext context) : ISolicitac
                 s.Id, s.PacoteId, p.Nome, s.InicioUtc, s.FimUtc, s.Status, s.Motivo, s.CreatedAt,
                 l.Id, l.Nome, l.Contato.Tipo, l.Contato.Valor, l.Anonimizado);
 
-        var total = await projetada.CountAsync(cancellationToken).ConfigureAwait(false);
         var items = await projetada
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)

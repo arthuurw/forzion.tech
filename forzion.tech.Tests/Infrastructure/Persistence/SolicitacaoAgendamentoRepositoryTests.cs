@@ -6,6 +6,7 @@ using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Persistence.Repositories;
 using forzion.tech.Tests.Builders;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace forzion.tech.Tests.Infrastructure.Persistence;
 
@@ -130,6 +131,57 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
 
         total.Should().Be(1);
         items.Should().ContainSingle(s => s.Id == deA.Id);
+    }
+
+    [Fact]
+    public async Task ListarPorTreinadorAsync_SemFiltroDeStatus_PlanoDeExecucaoUsaIndiceDedicado()
+    {
+        // AUD-42: reproduz a forma real da consulta paginada (WHERE treinador_id + ORDER BY +
+        // LIMIT, como em ListarPorTreinadorAsync). Sem o LIMIT o planner prefere um bitmap scan
+        // pelo índice (treinador_id, status, inicio_utc) já existente seguido de sort completo —
+        // só o LIMIT torna vantajoso evitar esse sort via o índice novo pré-ordenado.
+        await using var ctx = fixture.CreateContext();
+        var treinadorAlvo = await SeedTreinadorAsync(ctx);
+        var pacoteAlvo = await SeedPacoteAsync(ctx, treinadorAlvo);
+        var leadAlvo = await SeedLeadAsync(ctx, treinadorAlvo);
+        for (var i = 0; i < 200; i++)
+            await Repo(ctx).AdicionarAsync(CriarSolicitacao(treinadorAlvo, pacoteAlvo, leadAlvo, $"chave-alvo-{i}", Agora.AddMinutes(i), Agora.AddMinutes(i).AddMinutes(30)));
+
+        for (var t = 0; t < 60; t++)
+        {
+            var outroTreinador = await SeedTreinadorAsync(ctx);
+            var outroPacote = await SeedPacoteAsync(ctx, outroTreinador);
+            var outroLead = await SeedLeadAsync(ctx, outroTreinador);
+            for (var i = 0; i < 10; i++)
+                await Repo(ctx).AdicionarAsync(CriarSolicitacao(outroTreinador, outroPacote, outroLead, $"chave-ruido-{t}-{i}", Agora.AddDays(i), Agora.AddDays(i).AddMinutes(30)));
+        }
+
+        await ctx.SaveChangesAsync();
+
+        await using var conn = new NpgsqlConnection(fixture.ConnectionString);
+        await conn.OpenAsync();
+        await using (var analyze = conn.CreateCommand())
+        {
+            analyze.CommandText = "ANALYZE solicitacoes_agendamento";
+            await analyze.ExecuteNonQueryAsync();
+        }
+
+        await using var explain = conn.CreateCommand();
+        explain.CommandText = @"EXPLAIN (FORMAT TEXT)
+            SELECT id, inicio_utc FROM solicitacoes_agendamento
+            WHERE treinador_id = @treinadorId
+            ORDER BY inicio_utc, id
+            LIMIT 20";
+        explain.Parameters.AddWithValue("treinadorId", treinadorAlvo);
+
+        var linhas = new List<string>();
+        await using (var reader = await explain.ExecuteReaderAsync())
+            while (await reader.ReadAsync())
+                linhas.Add(reader.GetString(0));
+
+        var plano = string.Join('\n', linhas);
+        plano.Should().Contain("ix_solicitacoes_agendamento_treinador_id_inicio_utc_id",
+            $"o plano deveria usar o índice dedicado à listagem sem filtro de status; plano obtido:\n{plano}");
     }
 
     [Fact]
