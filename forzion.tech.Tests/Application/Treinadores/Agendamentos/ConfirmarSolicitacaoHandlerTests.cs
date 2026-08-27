@@ -8,6 +8,7 @@ using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Tests.Builders;
 using forzion.tech.Tests.TestSupport;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -174,5 +175,41 @@ public class ConfirmarSolicitacaoHandlerTests
         tentativasContagem.Should().Be(2, "primeira tentativa aborta com 40001, segunda conclui");
         solicitacao.Status.Should().Be(SolicitacaoAgendamentoStatus.Confirmada);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ConflitoDeConcorrenciaOtimistaNoCommit_RetentaERetornaTransicaoJaDecidida()
+    {
+        // Simula Recusar/Cancelar commitando entre o SELECT e o UPDATE desta tx (T9 — xmin de
+        // solicitacoes_agendamento). O mock reusa a MESMA instância entre tentativas: a 1ª chamada
+        // a Confirmar() já mutou Status para Confirmada antes do commit abortar; a 2ª tentativa
+        // relê essa instância (releitura real veria Recusada/Cancelada) e Confirmar() rejeita por
+        // já não estar mais PendenteAgente — mesmo efeito observável do caminho real.
+        var pacote = CriarPacote(TreinadorId, capacidadeMaxima: 2);
+        var solicitacao = CriarSolicitacaoPendente(pacote.Id, Agora.AddHours(2));
+        _solicitacaoRepo.Setup(r => r.ObterPorIdAsync(solicitacao.Id, TreinadorId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(solicitacao);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
+        _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(
+                TreinadorId, pacote.Id, solicitacao.InicioUtc, solicitacao.FimUtc, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+
+        var conflito = new DbUpdateConcurrencyException();
+        _databaseErrorInspector.Setup(i => i.EhConflitoDeConcorrenciaOtimista(conflito)).Returns(true);
+
+        var tentativasCommit = 0;
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(() =>
+            {
+                tentativasCommit++;
+                return tentativasCommit == 1 ? throw conflito : Task.CompletedTask;
+            });
+
+        var result = await _handler.HandleAsync(TreinadorId, solicitacao.Id);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(SolicitacaoAgendamentoErrors.TransicaoNaoSuportada);
+        tentativasCommit.Should().Be(1, "a 2ª tentativa falha antes do commit, ao reavaliar o status já mutado");
+        _unitOfWork.Verify(u => u.DescartarAlteracoesPendentes(), Times.Once);
     }
 }

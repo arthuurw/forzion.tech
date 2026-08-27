@@ -1446,11 +1446,11 @@ public class TreinadorEndpointsTests : IClassFixture<TreinadorEndpointsTests.Tre
 
         public Mock<RecusarSolicitacaoHandler> RecusarSolicitacaoHandlerMock { get; } = new(
             Mock.Of<ISolicitacaoAgendamentoRepository>(),
-            Mock.Of<IUnitOfWork>(), TimeProvider.System);
+            Mock.Of<IUnitOfWork>(), Mock.Of<IDatabaseErrorInspector>(), TimeProvider.System);
 
         public Mock<CancelarSolicitacaoHandler> CancelarSolicitacaoHandlerMock { get; } = new(
             Mock.Of<ISolicitacaoAgendamentoRepository>(),
-            Mock.Of<IUnitOfWork>(), TimeProvider.System);
+            Mock.Of<IUnitOfWork>(), Mock.Of<IDatabaseErrorInspector>(), TimeProvider.System);
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

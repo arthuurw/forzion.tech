@@ -10,6 +10,7 @@ namespace forzion.tech.Application.UseCases.Treinadores.Agendamentos;
 public class CancelarSolicitacaoHandler(
     ISolicitacaoAgendamentoRepository solicitacaoAgendamentoRepository,
     IUnitOfWork unitOfWork,
+    IDatabaseErrorInspector databaseErrorInspector,
     TimeProvider timeProvider)
 {
     public virtual Task<Result> HandleAsync(Guid treinadorId, Guid solicitacaoId, string? motivo, CancellationToken cancellationToken = default) =>
@@ -27,7 +28,19 @@ public class CancelarSolicitacaoHandler(
         if (cancelarResult.IsFailure)
             return cancelarResult;
 
-        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        // O xmin de solicitacoes_agendamento (T8) aborta o UPDATE quando outra transição
+        // (Confirmar/Recusar) já commitou nesta solicitação entre a leitura e este commit —
+        // a decisão concorrente venceu, então a transição pedida aqui não se aplica mais.
+        catch (Exception ex) when (databaseErrorInspector.EhConflitoDeConcorrenciaOtimista(ex))
+        {
+            unitOfWork.DescartarAlteracoesPendentes();
+            return Result.Failure(SolicitacaoAgendamentoErrors.TransicaoNaoSuportada);
+        }
+
         return Result.Success();
     }
 }
