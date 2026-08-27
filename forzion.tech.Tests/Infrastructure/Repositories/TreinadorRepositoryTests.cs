@@ -70,6 +70,97 @@ public class TreinadorRepositoryTests(InfrastructureTestFixture fixture)
         }
     }
 
+    // AUD-03: leads.treinador_id → treinadores é RESTRICT; sem apagar leads/convites antes,
+    // a exclusão abortava com violação de FK.
+    [Fact]
+    public async Task ExcluirComDependenciasAsync_ComLeadELeadConvite_ExcluiSemViolarFK()
+    {
+        Guid treinadorId, leadId, conviteId;
+
+        await using (var seedCtx = fixture.CreateContext())
+        {
+            var contaT = Conta.Criar(Email.Criar($"t{Guid.NewGuid():N}@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+            var treinador = Treinador.Criar(contaT.Id, $"Tr{Guid.NewGuid():N}", DateTime.UtcNow).Value;
+            var contato = ContatoLead.Criar(TipoContatoLead.Email, $"lead{Guid.NewGuid():N}@test.com").Value;
+            var consentimento = ConsentimentoLead.Criar("Contato comercial", DateTime.UtcNow, DateTime.UtcNow).Value;
+            var lead = Lead.Criar(treinador.Id, "Fulano", contato, null, consentimento, null, LeadSource.Agent, null, null, DateTime.UtcNow).Value;
+            var convite = LeadConvite.Criar(lead.Id, treinador.Id, "hash-token", DateTime.UtcNow.AddDays(14), DateTime.UtcNow).Value;
+
+            await seedCtx.Contas.AddAsync(contaT);
+            await seedCtx.Treinadores.AddAsync(treinador);
+            await seedCtx.Leads.AddAsync(lead);
+            await seedCtx.LeadConvites.AddAsync(convite);
+            await seedCtx.SaveChangesAsync();
+
+            treinadorId = treinador.Id;
+            leadId = lead.Id;
+            conviteId = convite.Id;
+        }
+
+        await using (var actCtx = fixture.CreateContext())
+        {
+            var treinador = await actCtx.Treinadores.FirstAsync(t => t.Id == treinadorId);
+
+            var act = async () => await new TreinadorRepository(actCtx, TimeProvider.System).ExcluirComDependenciasAsync(treinador, Guid.NewGuid());
+
+            await act.Should().NotThrowAsync();
+        }
+
+        await using (var assertCtx = fixture.CreateContext())
+        {
+            (await assertCtx.Treinadores.AnyAsync(t => t.Id == treinadorId)).Should().BeFalse();
+            (await assertCtx.Leads.AnyAsync(l => l.Id == leadId)).Should().BeFalse();
+            (await assertCtx.LeadConvites.AnyAsync(c => c.Id == conviteId)).Should().BeFalse();
+        }
+    }
+
+    // Edge case da spec: lead que já converteu em aluno (leads.aluno_id também é RESTRICT) —
+    // apagar o lead não pode ser barrado por essa segunda FK nem tentar apagar o aluno.
+    [Fact]
+    public async Task ExcluirComDependenciasAsync_ComLeadJaConvertidoEmAluno_ExcluiSemViolarFK()
+    {
+        Guid treinadorId, leadId, alunoId;
+
+        await using (var seedCtx = fixture.CreateContext())
+        {
+            var contaT = Conta.Criar(Email.Criar($"t{Guid.NewGuid():N}@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+            var treinador = Treinador.Criar(contaT.Id, $"Tr{Guid.NewGuid():N}", DateTime.UtcNow).Value;
+            var contaA = Conta.Criar(Email.Criar($"a{Guid.NewGuid():N}@test.com").Value, "hash", TipoConta.Aluno, DateTime.UtcNow).Value;
+            var aluno = Aluno.Criar(contaA.Id, $"Al{Guid.NewGuid():N}", DateTime.UtcNow).Value;
+            var contato = ContatoLead.Criar(TipoContatoLead.Email, $"lead{Guid.NewGuid():N}@test.com").Value;
+            var consentimento = ConsentimentoLead.Criar("Contato comercial", DateTime.UtcNow, DateTime.UtcNow).Value;
+            var lead = Lead.Criar(treinador.Id, "Fulano", contato, null, consentimento, null, LeadSource.Agent, null, null, DateTime.UtcNow).Value;
+            lead.Converter(aluno.Id, DateTime.UtcNow);
+
+            await seedCtx.Contas.AddRangeAsync(contaT, contaA);
+            await seedCtx.Treinadores.AddAsync(treinador);
+            await seedCtx.Alunos.AddAsync(aluno);
+            await seedCtx.Leads.AddAsync(lead);
+            await seedCtx.SaveChangesAsync();
+
+            treinadorId = treinador.Id;
+            leadId = lead.Id;
+            alunoId = aluno.Id;
+        }
+
+        await using (var actCtx = fixture.CreateContext())
+        {
+            var treinador = await actCtx.Treinadores.FirstAsync(t => t.Id == treinadorId);
+
+            var act = async () => await new TreinadorRepository(actCtx, TimeProvider.System).ExcluirComDependenciasAsync(treinador, Guid.NewGuid());
+
+            await act.Should().NotThrowAsync();
+        }
+
+        await using (var assertCtx = fixture.CreateContext())
+        {
+            (await assertCtx.Treinadores.AnyAsync(t => t.Id == treinadorId)).Should().BeFalse();
+            (await assertCtx.Leads.AnyAsync(l => l.Id == leadId)).Should().BeFalse();
+            (await assertCtx.Alunos.AnyAsync(a => a.Id == alunoId)).Should().BeTrue(
+                "o aluno convertido não é apagado pela exclusão do treinador — só o lead que referencia ele");
+        }
+    }
+
     // Timestamp do log de exclusão (prova de auditoria, §2 specification-coding) usa o
     // relógio do servidor via TimeProvider injetado, não DateTime.UtcNow.
     [Fact]

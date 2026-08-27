@@ -142,6 +142,25 @@ public class TreinadorRepository(AppDbContext context, TimeProvider timeProvider
                 .Where(c => c.TreinadorId == treinador.Id)
                 .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 
+            // leads.treinador_id → treinadores (RESTRICT). lead_interacoes cascata de leads (ON
+            // DELETE CASCADE, owned collection); lead_convites é entidade própria e não tem FK
+            // para treinador — precisa ser apagado antes de leads via o próprio lead_id.
+            var leadIds = await _context.Leads
+                .Where(l => l.TreinadorId == treinador.Id)
+                .Select(l => l.Id)
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+            if (leadIds.Count > 0)
+            {
+                await _context.LeadConvites
+                    .Where(c => leadIds.Contains(c.LeadId))
+                    .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+                await _context.Leads
+                    .Where(l => treinador.Id == l.TreinadorId)
+                    .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+            }
+
             await _context.Treinadores
                 .Where(t => t.Id == treinador.Id)
                 .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
