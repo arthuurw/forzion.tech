@@ -65,23 +65,45 @@ public class LeadRepository(AppDbContext context) : ILeadRepository
 
     public async Task<LeadMetricas> AgregarMetricasAsync(Guid treinadorId, DateTime inicio, DateTime fim, CancellationToken cancellationToken = default)
     {
-        var baseQuery = context.Leads
+        // Uma varredura da janela: os 5 contadores (antes 5 round-trips sequenciais, um por
+        // filtro) saem de uma única agregação condicional (Sum de ternário -> CASE WHEN no SQL).
+        // GroupBy(l => 1) produz ZERO grupos quando a janela não tem lead nenhum — por isso o
+        // FirstOrDefaultAsync pode vir null, tratado abaixo como todos os contadores zerados.
+        var agregado = await context.Leads
             .AsNoTracking()
-            .Where(l => l.TreinadorId == treinadorId && l.CreatedAt >= inicio && l.CreatedAt <= fim);
-
-        var total = await baseQuery.CountAsync(cancellationToken).ConfigureAwait(false);
-        var porAgente = await baseQuery.CountAsync(l => l.Source == LeadSource.Agent, cancellationToken).ConfigureAwait(false);
-        var porManual = await baseQuery.CountAsync(l => l.Source == LeadSource.Manual, cancellationToken).ConfigureAwait(false);
-        var convertidos = await baseQuery.CountAsync(l => l.Status == LeadStatus.Convertido, cancellationToken).ConfigureAwait(false);
-
-        var porMotivo = await baseQuery
-            .Where(l => l.MotivoDescarte != null)
-            .GroupBy(l => l.MotivoDescarte!.Value)
-            .Select(g => new { Motivo = g.Key, Quantidade = g.Count() })
-            .ToDictionaryAsync(x => x.Motivo, x => x.Quantidade, cancellationToken)
+            .Where(l => l.TreinadorId == treinadorId && l.CreatedAt >= inicio && l.CreatedAt <= fim)
+            .GroupBy(l => 1)
+            .Select(g => new
+            {
+                Total = g.Count(),
+                PorAgente = g.Sum(l => l.Source == LeadSource.Agent ? 1 : 0),
+                PorManual = g.Sum(l => l.Source == LeadSource.Manual ? 1 : 0),
+                Convertidos = g.Sum(l => l.Status == LeadStatus.Convertido ? 1 : 0),
+                SemInteresse = g.Sum(l => l.MotivoDescarte == MotivoDescarteLead.SemInteresse ? 1 : 0),
+                ForaDoPerfil = g.Sum(l => l.MotivoDescarte == MotivoDescarteLead.ForaDoPerfil ? 1 : 0),
+                SemResposta = g.Sum(l => l.MotivoDescarte == MotivoDescarteLead.SemResposta ? 1 : 0),
+                Duplicado = g.Sum(l => l.MotivoDescarte == MotivoDescarteLead.Duplicado ? 1 : 0),
+                Outro = g.Sum(l => l.MotivoDescarte == MotivoDescarteLead.Outro ? 1 : 0)
+            })
+            .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return new LeadMetricas(total, porAgente, porManual, convertidos, porMotivo);
+        if (agregado is null)
+            return new LeadMetricas(0, 0, 0, 0, new Dictionary<MotivoDescarteLead, int>());
+
+        var porMotivo = new Dictionary<MotivoDescarteLead, int>();
+        if (agregado.SemInteresse > 0)
+            porMotivo[MotivoDescarteLead.SemInteresse] = agregado.SemInteresse;
+        if (agregado.ForaDoPerfil > 0)
+            porMotivo[MotivoDescarteLead.ForaDoPerfil] = agregado.ForaDoPerfil;
+        if (agregado.SemResposta > 0)
+            porMotivo[MotivoDescarteLead.SemResposta] = agregado.SemResposta;
+        if (agregado.Duplicado > 0)
+            porMotivo[MotivoDescarteLead.Duplicado] = agregado.Duplicado;
+        if (agregado.Outro > 0)
+            porMotivo[MotivoDescarteLead.Outro] = agregado.Outro;
+
+        return new LeadMetricas(agregado.Total, agregado.PorAgente, agregado.PorManual, agregado.Convertidos, porMotivo);
     }
 
     public async Task<int> AnonimizarInativosAsync(DateTime cutoff, DateTime agora, CancellationToken cancellationToken = default)
