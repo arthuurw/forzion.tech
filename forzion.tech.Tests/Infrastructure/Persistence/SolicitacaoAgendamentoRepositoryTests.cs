@@ -226,9 +226,28 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
         await Repo(ctx).AdicionarAsync(confirmadaDeB);
         await ctx.SaveChangesAsync();
 
-        var contagem = await Repo(ctx).ContarConfirmadasSobrepostasAsync(treinadorA, pacoteA, inicio, fim);
+        var contagem = await Repo(ctx).ContarConfirmadasSobrepostasAsync(treinadorA, inicio, fim);
 
         contagem.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ContarConfirmadasSobrepostasAsync_ConfirmadaDeOutroPacoteDoMesmoTreinador_Conta()
+    {
+        // AD-021: a agenda do treinador é o recurso escasso — a contagem não filtra por pacote.
+        await using var ctx = fixture.CreateContext();
+        var (treinadorId, pacoteA, leadId) = await SeedTenantAsync(ctx);
+        var pacoteB = await SeedPacoteAsync(ctx, treinadorId);
+        var inicio = Agora.AddDays(2);
+        var fim = inicio.AddMinutes(30);
+        var confirmadaNoPacoteA = CriarSolicitacao(treinadorId, pacoteA, leadId, "chave-pacote-a", inicio, fim);
+        confirmadaNoPacoteA.Confirmar(Guid.NewGuid(), Agora);
+        await Repo(ctx).AdicionarAsync(confirmadaNoPacoteA);
+        await ctx.SaveChangesAsync();
+
+        var contagem = await Repo(ctx).ContarConfirmadasSobrepostasAsync(treinadorId, inicio, fim);
+
+        contagem.Should().Be(1, "confirmar no pacote A abate a agenda do treinador, que também serve o pacote B");
     }
 
     [Fact]
@@ -247,7 +266,7 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
         var inicioSlot = Agora.AddDays(2);
         var fimSlot = inicioConfirmada.AddMinutes(10);
 
-        var contagem = await Repo(ctx).ContarConfirmadasSobrepostasAsync(treinadorId, pacoteId, inicioSlot, fimSlot);
+        var contagem = await Repo(ctx).ContarConfirmadasSobrepostasAsync(treinadorId, inicioSlot, fimSlot);
 
         contagem.Should().Be(1);
     }
@@ -278,7 +297,7 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
         await Repo(ctx).AdicionarAsync(solicitacao);
         await ctx.SaveChangesAsync();
 
-        var contagem = await Repo(ctx).ContarConfirmadasSobrepostasAsync(treinadorId, pacoteId, inicio, fim);
+        var contagem = await Repo(ctx).ContarConfirmadasSobrepostasAsync(treinadorId, inicio, fim);
 
         contagem.Should().Be(0);
     }
@@ -296,9 +315,28 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
         await Repo(ctx).AdicionarAsync(confirmadaDeB);
         await ctx.SaveChangesAsync();
 
-        var resultado = await Repo(ctx).ListarConfirmadasNoIntervaloAsync(treinadorA, pacoteA, Agora, Agora.AddDays(30));
+        var resultado = await Repo(ctx).ListarConfirmadasNoIntervaloAsync(treinadorA, Agora, Agora.AddDays(30));
 
         resultado.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListarConfirmadasNoIntervaloAsync_ConfirmadaDeOutroPacoteDoMesmoTreinador_Retorna()
+    {
+        // AD-021: mesma agenda serve todos os pacotes do treinador.
+        await using var ctx = fixture.CreateContext();
+        var (treinadorId, pacoteA, leadId) = await SeedTenantAsync(ctx);
+        await SeedPacoteAsync(ctx, treinadorId);
+        var inicio = Agora.AddDays(2);
+        var fim = inicio.AddMinutes(30);
+        var confirmadaNoPacoteA = CriarSolicitacao(treinadorId, pacoteA, leadId, "chave-pacote-a", inicio, fim);
+        confirmadaNoPacoteA.Confirmar(Guid.NewGuid(), Agora);
+        await Repo(ctx).AdicionarAsync(confirmadaNoPacoteA);
+        await ctx.SaveChangesAsync();
+
+        var resultado = await Repo(ctx).ListarConfirmadasNoIntervaloAsync(treinadorId, Agora, Agora.AddDays(30));
+
+        resultado.Should().ContainSingle(s => s.Id == confirmadaNoPacoteA.Id);
     }
 
     [Fact]

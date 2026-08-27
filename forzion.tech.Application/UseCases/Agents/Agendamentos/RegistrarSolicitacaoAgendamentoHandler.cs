@@ -108,7 +108,7 @@ public class RegistrarSolicitacaoAgendamentoHandler(
             return Result.Failure<StagedBookingRequest>(SolicitacaoAgendamentoAgenteErrors.SlotNaoEncontrado);
 
         var confirmadas = await solicitacaoAgendamentoRepository
-            .ContarConfirmadasSobrepostasAsync(command.TenantId, command.ServiceId, slot.InicioUtc, slot.FimUtc, cancellationToken)
+            .ContarConfirmadasSobrepostasAsync(command.TenantId, slot.InicioUtc, slot.FimUtc, cancellationToken)
             .ConfigureAwait(false);
         if (confirmadas >= pacote.CapacidadeMaxima)
             return Result.Failure<StagedBookingRequest>(SolicitacaoAgendamentoAgenteErrors.SlotIndisponivel);

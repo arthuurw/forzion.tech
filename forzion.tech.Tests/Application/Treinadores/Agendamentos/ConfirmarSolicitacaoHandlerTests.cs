@@ -73,7 +73,7 @@ public class ConfirmarSolicitacaoHandlerTests
             .ReturnsAsync(solicitacao);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
         _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(
-                TreinadorId, pacote.Id, solicitacao.InicioUtc, solicitacao.FimUtc, It.IsAny<CancellationToken>()))
+                TreinadorId, solicitacao.InicioUtc, solicitacao.FimUtc, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
         var result = await _handler.HandleAsync(TreinadorId, solicitacao.Id);
@@ -93,7 +93,7 @@ public class ConfirmarSolicitacaoHandlerTests
             .ReturnsAsync(solicitacao);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
         _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(
-                TreinadorId, pacote.Id, solicitacao.InicioUtc, solicitacao.FimUtc, It.IsAny<CancellationToken>()))
+                TreinadorId, solicitacao.InicioUtc, solicitacao.FimUtc, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
         var result = await _handler.HandleAsync(TreinadorId, solicitacao.Id);
@@ -114,7 +114,7 @@ public class ConfirmarSolicitacaoHandlerTests
             .ReturnsAsync(solicitacao);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
         _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(
-                TreinadorId, pacote.Id, solicitacao.InicioUtc, solicitacao.FimUtc, It.IsAny<CancellationToken>()))
+                TreinadorId, solicitacao.InicioUtc, solicitacao.FimUtc, It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
 
         var result = await _handler.HandleAsync(TreinadorId, solicitacao.Id);
@@ -133,7 +133,7 @@ public class ConfirmarSolicitacaoHandlerTests
             .ReturnsAsync(solicitacao);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
         _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(
-                TreinadorId, pacote.Id, solicitacao.InicioUtc, solicitacao.FimUtc, It.IsAny<CancellationToken>()))
+                TreinadorId, solicitacao.InicioUtc, solicitacao.FimUtc, It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
 
         var result = await _handler.HandleAsync(TreinadorId, solicitacao.Id);
@@ -162,7 +162,7 @@ public class ConfirmarSolicitacaoHandlerTests
 
         var tentativasContagem = 0;
         _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(
-                TreinadorId, pacote.Id, solicitacao.InicioUtc, solicitacao.FimUtc, It.IsAny<CancellationToken>()))
+                TreinadorId, solicitacao.InicioUtc, solicitacao.FimUtc, It.IsAny<CancellationToken>()))
             .Returns(() =>
             {
                 tentativasContagem++;
@@ -191,7 +191,7 @@ public class ConfirmarSolicitacaoHandlerTests
             .ReturnsAsync(solicitacao);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
         _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(
-                TreinadorId, pacote.Id, solicitacao.InicioUtc, solicitacao.FimUtc, It.IsAny<CancellationToken>()))
+                TreinadorId, solicitacao.InicioUtc, solicitacao.FimUtc, It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
 
         var conflito = new DbUpdateConcurrencyException();

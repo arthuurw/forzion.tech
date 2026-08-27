@@ -61,7 +61,7 @@ public class ConsultarDisponibilidadeAgenteHandler(
         // aqui em memória, por SOBREPOSIÇÃO de intervalo — nunca por igualdade de slotId (R2),
         // que quebraria em silêncio se o treinador mudasse a duração do pacote.
         var confirmadas = await solicitacaoAgendamentoRepository
-            .ListarConfirmadasNoIntervaloAsync(query.TenantId, query.ServiceId, query.FromUtc, query.ToUtc, cancellationToken)
+            .ListarConfirmadasNoIntervaloAsync(query.TenantId, query.FromUtc, query.ToUtc, cancellationToken)
             .ConfigureAwait(false);
 
         return Result.Success<IReadOnlyList<AvailabilitySlotResponse>>(

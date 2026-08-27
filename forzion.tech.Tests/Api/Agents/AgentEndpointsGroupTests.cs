@@ -113,7 +113,7 @@ public class AgentEndpointsGroupTests
         builder.Services.AddSingleton(new Mock<IPacoteRepository>().Object);
         builder.Services.AddSingleton(new Mock<IBloqueioAgendaRepository>().Object);
         var solicitacaoRepoPadrao = new Mock<ISolicitacaoAgendamentoRepository>();
-        solicitacaoRepoPadrao.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        solicitacaoRepoPadrao.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<SolicitacaoAgendamento>)[]);
         builder.Services.AddSingleton(solicitacaoRepoPadrao.Object);
         builder.Services.AddScoped<ConsultarDisponibilidadeAgenteHandler>();

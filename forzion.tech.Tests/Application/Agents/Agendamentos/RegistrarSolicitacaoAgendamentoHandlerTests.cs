@@ -37,7 +37,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
             _unitOfWork.Object, _timeProvider, _databaseErrorInspector.Object);
         _bloqueioRepo.Setup(r => r.ListarVigentesAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<BloqueioAgenda>)[]);
-        _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
         _leadRepo.Setup(r => r.ObterReutilizavelPorContatoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Lead?)null);
@@ -239,7 +239,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
     public async Task HandleAsync_SlotLotado_RetornaSlotIndisponivel()
     {
         var (treinador, pacote) = SetupTenant(capacidadeMaxima: 1);
-        _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(treinador.Id, pacote.Id, InicioSlotValido, FimSlotValido, It.IsAny<CancellationToken>()))
+        _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(treinador.Id, InicioSlotValido, FimSlotValido, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
         var result = await _handler.HandleAsync(ComandoValido(treinador.Id, pacote.Id));

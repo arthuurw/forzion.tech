@@ -46,7 +46,7 @@ public class ConsultarDisponibilidadeAgenteHandlerTests
             .ReturnsAsync((IReadOnlyList<BloqueioAgenda>)[]);
 
     private void SetupSemConfirmadas() =>
-        _solicitacaoRepo.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        _solicitacaoRepo.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<SolicitacaoAgendamento>)[]);
 
     private static ConsultarDisponibilidadeQuery Query(Guid tenantId, Guid serviceId, DateTime from, DateTime to) =>

@@ -65,7 +65,7 @@ public class ConfirmarSolicitacaoHandler(
             // de outra confirmação concorrente formam dependência read-write que o Postgres detecta
             // e aborta com 40001 em vez de deixar as duas commitarem (D-E).
             var confirmadas = await solicitacaoAgendamentoRepository
-                .ContarConfirmadasSobrepostasAsync(treinadorId, solicitacao.PacoteId, solicitacao.InicioUtc, solicitacao.FimUtc, ct)
+                .ContarConfirmadasSobrepostasAsync(treinadorId, solicitacao.InicioUtc, solicitacao.FimUtc, ct)
                 .ConfigureAwait(false);
             if (confirmadas >= pacote.CapacidadeMaxima)
                 return Result.Failure(SolicitacaoAgendamentoErrors.CapacidadeEsgotada);

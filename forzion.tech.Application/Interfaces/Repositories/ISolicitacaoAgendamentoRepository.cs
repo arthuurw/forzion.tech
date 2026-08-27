@@ -11,9 +11,12 @@ public interface ISolicitacaoAgendamentoRepository
 
     Task<SolicitacaoAgendamento?> ObterPorIdempotencyKeyAsync(Guid treinadorId, string idempotencyKey, CancellationToken cancellationToken = default);
 
-    Task<int> ContarConfirmadasSobrepostasAsync(Guid treinadorId, Guid pacoteId, DateTime inicioUtc, DateTime fimUtc, CancellationToken cancellationToken = default);
+    // Sem pacoteId: a agenda do treinador é o recurso escasso (AD-021) — slots de todos os
+    // pacotes derivam do mesmo HorarioFuncionamento, então a confirmada de QUALQUER pacote
+    // sobrepõe o mesmo horário do treinador.
+    Task<int> ContarConfirmadasSobrepostasAsync(Guid treinadorId, DateTime inicioUtc, DateTime fimUtc, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<SolicitacaoAgendamento>> ListarConfirmadasNoIntervaloAsync(Guid treinadorId, Guid pacoteId, DateTime deUtc, DateTime ateUtc, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<SolicitacaoAgendamento>> ListarConfirmadasNoIntervaloAsync(Guid treinadorId, DateTime deUtc, DateTime ateUtc, CancellationToken cancellationToken = default);
 
     Task<(IReadOnlyList<SolicitacaoAgendamentoListItem> Items, int Total)> ListarPorTreinadorAsync(
         Guid treinadorId,

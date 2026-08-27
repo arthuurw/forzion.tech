@@ -22,21 +22,19 @@ public class SolicitacaoAgendamentoRepository(AppDbContext context) : ISolicitac
             .FirstOrDefaultAsync(s => s.TreinadorId == treinadorId && s.IdempotencyKey == idempotencyKey, cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<int> ContarConfirmadasSobrepostasAsync(Guid treinadorId, Guid pacoteId, DateTime inicioUtc, DateTime fimUtc, CancellationToken cancellationToken = default) =>
+    public async Task<int> ContarConfirmadasSobrepostasAsync(Guid treinadorId, DateTime inicioUtc, DateTime fimUtc, CancellationToken cancellationToken = default) =>
         await context.SolicitacoesAgendamento
             .AsNoTracking()
             .Where(s => s.TreinadorId == treinadorId
-                && s.PacoteId == pacoteId
                 && s.Status == SolicitacaoAgendamentoStatus.Confirmada
                 && s.InicioUtc < fimUtc && s.FimUtc > inicioUtc)
             .CountAsync(cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<IReadOnlyList<SolicitacaoAgendamento>> ListarConfirmadasNoIntervaloAsync(Guid treinadorId, Guid pacoteId, DateTime deUtc, DateTime ateUtc, CancellationToken cancellationToken = default) =>
+    public async Task<IReadOnlyList<SolicitacaoAgendamento>> ListarConfirmadasNoIntervaloAsync(Guid treinadorId, DateTime deUtc, DateTime ateUtc, CancellationToken cancellationToken = default) =>
         await context.SolicitacoesAgendamento
             .AsNoTracking()
             .Where(s => s.TreinadorId == treinadorId
-                && s.PacoteId == pacoteId
                 && s.Status == SolicitacaoAgendamentoStatus.Confirmada
                 && s.InicioUtc < ateUtc && s.FimUtc > deUtc)
             .ToListAsync(cancellationToken)

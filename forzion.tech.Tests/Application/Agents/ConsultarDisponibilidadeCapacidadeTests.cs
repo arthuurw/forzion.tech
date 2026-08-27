@@ -55,7 +55,7 @@ public class ConsultarDisponibilidadeCapacidadeTests
     }
 
     private void SetupConfirmadas(params SolicitacaoAgendamento[] confirmadas) =>
-        _solicitacaoRepo.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        _solicitacaoRepo.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<SolicitacaoAgendamento>)confirmadas);
 
     private static SolicitacaoAgendamento CriarConfirmada(Guid treinadorId, Guid pacoteId, DateTime inicioUtc, DateTime fimUtc)
@@ -109,6 +109,23 @@ public class ConsultarDisponibilidadeCapacidadeTests
         apoisCancelamento.IsSuccess.Should().BeTrue();
         apoisCancelamento.Value.Should().ContainSingle(s => s.StartsAt == new DateTimeOffset(InicioSlot0800, TimeSpan.Zero));
         apoisCancelamento.Value.Single().CapacityRemaining.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ConfirmadaDeOutroPacoteDoMesmoTreinador_AbateACapacidadeDoPacoteConsultado()
+    {
+        // AD-021: a agenda do treinador é o recurso escasso — confirmar no pacote B deve abater a
+        // disponibilidade do pacote A do mesmo treinador, não só a do próprio pacote confirmado.
+        var (treinador, pacoteA) = SetupTenant(capacidadeMaxima: 1);
+        var pacoteB = new PacoteBuilder().ComTreinadorId(treinador.Id).Build();
+        pacoteB.AtualizarCatalogoPublico("Categoria", 60, false, DateTime.UtcNow, capacidadeMaxima: 1);
+        pacoteB.TornarPublico(DateTime.UtcNow);
+        SetupConfirmadas(CriarConfirmada(treinador.Id, pacoteB.Id, InicioSlot0800, FimSlot0800));
+
+        var result = await _handler.HandleAsync(new ConsultarDisponibilidadeQuery(treinador.Id, pacoteA.Id, From, To));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeEmpty("a confirmada do pacote B ocupa a mesma agenda do treinador que serve o pacote A");
     }
 
     [Fact]
