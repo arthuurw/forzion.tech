@@ -204,8 +204,9 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
     }
 
     [Fact]
-    public async Task ListarPorTreinadorAsync_OrdenaPorInicioUtcAscendente()
+    public async Task ListarPorTreinadorAsync_OrdenaPorInicioUtcDescendente()
     {
+        // AUD-05: mais recente primeiro — pendente nova não fica escondida atrás de histórico.
         await using var ctx = fixture.CreateContext();
         var (treinadorId, pacoteId, leadId) = await SeedTenantAsync(ctx);
         var maisTarde = CriarSolicitacao(treinadorId, pacoteId, leadId, "chave-mais-tarde", Agora.AddDays(3), Agora.AddDays(3).AddMinutes(30));
@@ -218,7 +219,41 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
 
         var (items, _) = await Repo(ctx).ListarPorTreinadorAsync(treinadorId, null, 1, 10);
 
-        items.Select(i => i.Id).Should().ContainInOrder(maisCedo.Id, intermediaria.Id, maisTarde.Id);
+        items.Select(i => i.Id).Should().ContainInOrder(maisTarde.Id, intermediaria.Id, maisCedo.Id);
+    }
+
+    [Fact]
+    public async Task ListarPorTreinadorAsync_MesmoInicioUtc_DesempataPorIdEPaginacaoNaoRepiteNemPerdeItem()
+    {
+        // AUD-05: sem o desempate por Id, ORDER BY inicio_utc empatado não tem ordem estável —
+        // a mesma página pode devolver itens em ordem diferente entre chamadas, fazendo a
+        // paginação por offset repetir ou pular linha ao avançar de página.
+        await using var ctx = fixture.CreateContext();
+        var (treinadorId, pacoteId, leadId) = await SeedTenantAsync(ctx);
+        var mesmoInicio = Agora.AddDays(5);
+        var solicitacoes = new List<SolicitacaoAgendamento>();
+        for (var i = 0; i < 5; i++)
+        {
+            var s = CriarSolicitacao(treinadorId, pacoteId, leadId, $"chave-empate-{i}", mesmoInicio, mesmoInicio.AddMinutes(30));
+            solicitacoes.Add(s);
+            await Repo(ctx).AdicionarAsync(s);
+        }
+        await ctx.SaveChangesAsync();
+
+        var (todosNumaChamada, _) = await Repo(ctx).ListarPorTreinadorAsync(treinadorId, null, 1, 10);
+        var esperado = todosNumaChamada.Select(i => i.Id).ToList();
+
+        var pagina1 = await Repo(ctx).ListarPorTreinadorAsync(treinadorId, null, 1, 2);
+        var pagina2 = await Repo(ctx).ListarPorTreinadorAsync(treinadorId, null, 2, 2);
+        var pagina3 = await Repo(ctx).ListarPorTreinadorAsync(treinadorId, null, 3, 2);
+
+        var idsPaginados = pagina1.Items.Select(i => i.Id)
+            .Concat(pagina2.Items.Select(i => i.Id))
+            .Concat(pagina3.Items.Select(i => i.Id))
+            .ToList();
+
+        idsPaginados.Should().Equal(esperado, "o desempate por Id garante ordem estável entre chamadas de página distintas");
+        idsPaginados.Should().BeEquivalentTo(solicitacoes.Select(s => s.Id), "paginação por offset não pode repetir nem perder item");
     }
 
     [Fact]

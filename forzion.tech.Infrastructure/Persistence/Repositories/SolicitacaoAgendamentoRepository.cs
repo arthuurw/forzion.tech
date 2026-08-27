@@ -62,7 +62,7 @@ public class SolicitacaoAgendamentoRepository(AppDbContext context) : ISolicitac
             from s in query
             join p in context.Pacotes.AsNoTracking() on s.PacoteId equals p.Id
             join l in context.Leads.AsNoTracking() on s.LeadId equals l.Id
-            orderby s.InicioUtc, s.Id
+            orderby s.InicioUtc descending, s.Id descending
             select new SolicitacaoAgendamentoListItem(
                 s.Id, s.PacoteId, p.Nome, s.InicioUtc, s.FimUtc, s.Status, s.Motivo, s.CreatedAt,
                 l.Id, l.Nome, l.Contato.Tipo, l.Contato.Valor, l.Anonimizado);
