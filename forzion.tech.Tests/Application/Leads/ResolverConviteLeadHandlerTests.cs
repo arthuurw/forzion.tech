@@ -104,4 +104,19 @@ public class ResolverConviteLeadHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be(LeadConviteErrors.TokenInvalido);
     }
+
+    [Fact]
+    public async Task HandleAsync_LeadAnonimizado_RetornaMesmoErroDoInexistenteSemVazarSentinela()
+    {
+        var lead = NovoLead();
+        lead.Anonimizar(Agora);
+        var convite = LeadConvite.Criar(lead.Id, TreinadorId, "hash", Agora.AddDays(14), Agora).Value;
+        _conviteRepo.Setup(r => r.ObterPorTokenHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(convite);
+        _leadRepo.Setup(r => r.ObterComHistoricoAsync(TreinadorId, lead.Id, It.IsAny<CancellationToken>())).ReturnsAsync(lead);
+
+        var result = await _handler.HandleAsync(new ResolverConviteLeadQuery("token-cru"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(LeadConviteErrors.TokenInvalido);
+    }
 }
