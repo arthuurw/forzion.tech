@@ -75,6 +75,24 @@ public class AdminLeadsEndpointTests : IClassFixture<AdminLeadsEndpointTests.Adm
     }
 
     [Fact]
+    public async Task Get_Leads_ComContatoEncontrado_GravaLogDeAuditoriaAtribuidoAoAdmin()
+    {
+        var lead = NovoLead(Guid.NewGuid());
+        _factory.LeadRepositoryMock.Setup(r => r.BuscarPorContatoCrossTenantAsync("fulano@lead.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync([lead]);
+
+        var response = await ClienteAdmin().GetAsync("/admin/leads?contato=fulano@lead.com");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        _factory.LogAprovacaoRepositoryMock.Verify(r => r.AdicionarAsync(
+            It.Is<LogAprovacao>(l =>
+                l.TipoAcao == TipoAcaoAprovacao.BuscaLeadPorContato &&
+                l.RealizadoPorId == AdminContaId &&
+                l.Observacao != null && !l.Observacao.Contains("fulano@lead.com")),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task Post_Anonimizar_LeadExistente_Retorna204EGravaLog()
     {
         var lead = NovoLead(Guid.NewGuid());

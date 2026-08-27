@@ -27,5 +27,6 @@ public enum TipoAcaoAprovacao
     AlteracaoStatusAluno = 22,
     AlteracaoModoPagamentoTreinador = 23,
     DefinicaoCortesiaTreinador = 25,
-    AnonimizacaoLead = 26
+    AnonimizacaoLead = 26,
+    BuscaLeadPorContato = 27
 }

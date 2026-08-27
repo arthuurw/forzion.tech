@@ -1,3 +1,4 @@
+using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
@@ -6,7 +7,7 @@ using forzion.tech.Domain.ValueObjects;
 
 namespace forzion.tech.Application.UseCases.Admin.Leads;
 
-public record BuscarLeadsPorContatoQuery(string Contato);
+public record BuscarLeadsPorContatoQuery(string Contato, Guid AdminId);
 
 public record LeadAdminItem(
     Guid Id,
@@ -18,7 +19,11 @@ public record LeadAdminItem(
     bool Anonimizado,
     DateTime CreatedAt);
 
-public class BuscarLeadsPorContatoHandler(ILeadRepository leadRepository)
+public class BuscarLeadsPorContatoHandler(
+    ILeadRepository leadRepository,
+    ILogAprovacaoRepository logAprovacaoRepository,
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider)
 {
     public virtual Task<IReadOnlyList<LeadAdminItem>> HandleAsync(
         BuscarLeadsPorContatoQuery query,
@@ -38,14 +43,44 @@ public class BuscarLeadsPorContatoHandler(ILeadRepository leadRepository)
             ? NormalizarEmail(query.Contato)
             : PhoneNumberNormalizer.Normalizar(query.Contato);
 
-        if (valorNormalizado is null)
-            return [];
+        var leads = valorNormalizado is null
+            ? []
+            : await leadRepository.BuscarPorContatoCrossTenantAsync(valorNormalizado, cancellationToken).ConfigureAwait(false);
 
-        var leads = await leadRepository.BuscarPorContatoCrossTenantAsync(valorNormalizado, cancellationToken).ConfigureAwait(false);
+        await RegistrarAuditoriaAsync(query, cancellationToken).ConfigureAwait(false);
 
         return leads
             .Select(l => new LeadAdminItem(l.Id, l.TreinadorId, l.Nome, l.Contato.Tipo, l.Contato.Valor, l.Status, l.Anonimizado, l.CreatedAt))
             .ToList();
+    }
+
+    // Ação atribuída ao admin (nunca ao titular buscado — a busca cruza tenants e pode não
+    // apontar para um único lead). Fail-closed: se o log não puder ser registrado, a busca não
+    // pode devolver dado silenciosamente sem rastro (coding §3).
+    private async Task RegistrarAuditoriaAsync(BuscarLeadsPorContatoQuery query, CancellationToken cancellationToken)
+    {
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var logResult = LogAprovacao.Registrar(
+            TipoAcaoAprovacao.BuscaLeadPorContato,
+            query.AdminId,
+            query.AdminId,
+            "BuscaLeadPorContato",
+            agora,
+            MascararContato(query.Contato));
+        if (logResult.IsFailure)
+            throw new InvalidOperationException($"Falha ao registrar auditoria de busca admin de leads: {logResult.Error!.Code}");
+
+        await logAprovacaoRepository.AdicionarAsync(logResult.Value, cancellationToken).ConfigureAwait(false);
+        await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string MascararContato(string valor)
+    {
+        var arroba = valor.IndexOf('@');
+        if (arroba > 0)
+            return $"{valor[0]}***@{valor[(arroba + 1)..]}";
+
+        return valor.Length <= 4 ? "***" : $"***{valor[^4..]}";
     }
 
     private static string? NormalizarEmail(string valor)

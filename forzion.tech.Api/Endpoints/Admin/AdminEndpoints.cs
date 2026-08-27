@@ -610,12 +610,13 @@ public static class AdminEndpoints
         group.MapGet("/leads", async (
             string? contato,
             [FromServices] BuscarLeadsPorContatoHandler handler,
+            [FromServices] IUserContext userContext,
             CancellationToken cancellationToken) =>
         {
             if (string.IsNullOrWhiteSpace(contato))
                 return Results.Ok(Array.Empty<LeadAdminItem>());
 
-            var result = await handler.HandleAsync(new BuscarLeadsPorContatoQuery(contato), cancellationToken).ConfigureAwait(false);
+            var result = await handler.HandleAsync(new BuscarLeadsPorContatoQuery(contato, userContext.ContaId), cancellationToken).ConfigureAwait(false);
             return Results.Ok(result);
         })
         .RequireRateLimiting("read")
