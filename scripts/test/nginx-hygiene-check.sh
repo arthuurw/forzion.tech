@@ -32,9 +32,8 @@ else
   sem_aead=0
   while IFS= read -r line; do
     valor="$(printf '%s' "$line" | sed -E 's/^[[:space:]]*ssl_ciphers[[:space:]]+//; s/;[[:space:]]*$//')"
-    old_ifs="$IFS"
-    IFS=':'
-    for suite in $valor; do
+    IFS=':' read -ra suites <<<"$valor"
+    for suite in "${suites[@]}"; do
       case "$suite" in
         ECDHE-*) ;;
         *) sem_ecdhe=1 ;;
@@ -44,7 +43,6 @@ else
         *) sem_aead=1 ;;
       esac
     done
-    IFS="$old_ifs"
   done <<<"$cipher_lines"
 
   if [ "$sem_ecdhe" -eq 1 ]; then
