@@ -258,6 +258,7 @@ public class AuthEndpointsTests : IClassFixture<AuthEndpointsTests.AuthWebFactor
             Mock.Of<ILoginPerfilResolver>(),
             Mock.Of<IContaMfaRepository>(),
             Mock.Of<ITrustedDeviceRepository>(),
+            Mock.Of<ITentativasLoginContaRepository>(),
             Mock.Of<IUnitOfWork>(),
             TimeProvider.System,
             Mock.Of<IValidator<LoginCommand>>(),

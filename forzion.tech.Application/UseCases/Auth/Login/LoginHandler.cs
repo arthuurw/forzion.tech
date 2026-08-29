@@ -3,6 +3,7 @@ using forzion.tech.Application.Auth;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Auth.Mfa;
+using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
@@ -16,6 +17,7 @@ public class LoginHandler(
     ILoginPerfilResolver perfilResolver,
     IContaMfaRepository contaMfaRepository,
     ITrustedDeviceRepository trustedDeviceRepository,
+    ITentativasLoginContaRepository tentativasLoginContaRepository,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider,
     IValidator<LoginCommand> validator,
@@ -52,11 +54,23 @@ public class LoginHandler(
             throw new CredenciaisInvalidasException();
         }
 
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+
+        var tentativasAtuais = await tentativasLoginContaRepository
+            .ObterTentativasAsync(conta.Id, cancellationToken)
+            .ConfigureAwait(false);
+        var delay = TentativasLoginConta.CalcularDelay(tentativasAtuais);
+        if (delay > TimeSpan.Zero)
+            await Task.Delay(delay, timeProvider, cancellationToken).ConfigureAwait(false);
+
         if (!passwordHasher.Verify(command.Senha, conta.PasswordHash))
         {
+            await tentativasLoginContaRepository.RegistrarFalhaAsync(conta.Id, agora, cancellationToken).ConfigureAwait(false);
             logger.LogWarning("Login falhou — senha inválida para conta {ContaId}.", conta.Id);
             throw new CredenciaisInvalidasException();
         }
+
+        await tentativasLoginContaRepository.ZerarAsync(conta.Id, agora, cancellationToken).ConfigureAwait(false);
 
         if (!conta.EmailVerificado)
         {
@@ -64,7 +78,6 @@ public class LoginHandler(
             throw new EmailNaoVerificadoException();
         }
 
-        var agora = timeProvider.GetUtcNow().UtcDateTime;
         var (perfilId, nome) = await perfilResolver.ResolverAsync(conta, cancellationToken).ConfigureAwait(false);
 
         var mfa = await contaMfaRepository.BuscarPorContaIdAsync(conta.Id, cancellationToken).ConfigureAwait(false);

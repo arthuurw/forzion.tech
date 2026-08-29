@@ -32,12 +32,14 @@ public class TentativasLoginConta
         AtualizadoEm = agora;
     }
 
-    public TimeSpan DelayAtual()
+    public TimeSpan DelayAtual() => CalcularDelay(Tentativas);
+
+    public static TimeSpan CalcularDelay(int tentativas)
     {
-        if (Tentativas <= 0)
+        if (tentativas <= 0)
             return TimeSpan.Zero;
 
-        var segundos = Math.Min(DelayMaximoSegundos, DelayBase.TotalSeconds * Math.Pow(2, Tentativas - 1));
+        var segundos = Math.Min(DelayMaximoSegundos, DelayBase.TotalSeconds * Math.Pow(2, tentativas - 1));
         return TimeSpan.FromSeconds(segundos);
     }
 }
