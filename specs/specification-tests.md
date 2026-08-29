@@ -70,6 +70,7 @@ A infra de teste DEVE ser detectada da realidade do repo, NUNCA hardcoded. Cada 
 | `lint-migrations` | valida migrations EF (naming/ordem/schema-agnostic) | **PR-only** | sim |
 | `zap-baseline` | DAST passivo EFÊMERO: sobe frontend, ZAP baseline (headers/CSP), reprova em alerta novo | **PR-only** | sim |
 | `gitleaks` | gitleaks na **árvore INTEIRA** (`detect --no-git`, sem path-filter — pega segredo em QUALQUER path versionado: docker-compose*, infra/, scripts/, .env*). Job PRÓPRIO (saiu do `security`); `needs` do `gate` + gate crítico do deploy | **PR + push (todo disparo)** | sim |
+| `ci-hygiene` | `bash scripts/test/ci-hygiene-check.sh` (auditoria 2026-08-26): re-deriva do CONTEÚDO do arquivo a cada run (nunca lista hardcoded) que todo workflow declara `permissions:`, toda imagem de gate crítico está pinada `@sha256` (nunca `:latest`/`:stable`), `zap.yml` resolve `full` no schedule, `renovate.json` mira `homolog`. Sem path-filter — roda incondicional | **PR + push (todo disparo)** | sim |
 | `security` | OSV, `npm audit --omit=dev >=high`, license-checker, SBOM (npm) | **PR (path-filter) + push (incondicional — gate crítico do deploy)** | sim |
 | `security-backend` | NuGet `--vulnerable` (gate manual), SBOM CycloneDX | **PR (path-filter) + push (incondicional — gate crítico do deploy)** | sim |
 | `build-frontend` | `next build` + `storybook:build` (sanity frontend no push) | PR + push | sim |

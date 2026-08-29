@@ -109,6 +109,8 @@ Enumeração de rotas re-derivável por `ls src/app/api/auth/`; contratos de coo
 - `planos` (GET, proxy `/auth/planos`) usa `cache: "no-store"` e **sem rate limit** (wizard de cadastro).
 - `treinador/[id]/pagamento` (POST, body `{ metodo }`) inicia pagamento do plano no signup.
 
+**Guard cross-origin** (`withSameOrigin`, `src/lib/security/withSameOrigin.ts`, auditoria 2026-08-26): wrapper aplicado aos 11 handlers `POST` sob `src/app/api/auth/**` — checa `isCrossOrigin` (mesmo `sameOrigin.ts` do proxy BFF, [specification-security] §2.4) ANTES do handler rodar, `403 {error:"cross-origin"}` se `Origin` presente e cruzado. Teste de regressão faz scan de filesystem (não lista hardcoded) — falha se um `POST` novo nascer sem o wrapper.
+
 **Rate limit** (`src/lib/rateLimit.ts`): 10 req/60s por IP real (`getClientIp`: `X-Real-IP` → 1º hop de `X-Forwarded-For`, nunca o último hop — evita spoofing por concatenação). Mapa em memória por processo, bounded (`MAX_ENTRIES`, eviction por `resetAt` expirado), não persistido entre restarts. Aplicado em login e register. É a ÚNICA camada no caminho de autenticação que enxerga o IP real do cliente — o rate-limit do backend, atrás do proxy `/api/backend`, não vê (ver §API PROXY, `[GAP]`).
 
 **Cliente das auth routes** (`src/lib/api/auth.ts`): módulo `authApi` (wrapper `fetch` fino — NÃO `apiClient`, pois estas rotas setam cookie httpOnly e não usam Bearer). Páginas públicas (login, cadastro aluno/treinador) chamam `authApi.*` em vez de `fetch("/api/auth/...")` cru. Erros via `AuthApiError` (carrega `status` + `ProblemDetails`).
