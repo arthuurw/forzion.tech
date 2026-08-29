@@ -95,11 +95,21 @@ public static class WebhookEndpoints
             HttpContext httpContext,
             [FromServices] IConfiguration configuration) =>
         {
+            // Defesa em profundidade: mesmo gate do POST, aqui também — WhatsApp desabilitado não
+            // deveria responder handshake nenhum, nem 200 nem eco de challenge.
+            if (!configuration.GetValue<bool>("WhatsApp:Habilitado"))
+                return Results.Forbid();
+
             var mode = httpContext.Request.Query["hub.mode"].FirstOrDefault();
             var verifyToken = httpContext.Request.Query["hub.verify_token"].FirstOrDefault() ?? string.Empty;
             var challenge = httpContext.Request.Query["hub.challenge"].FirstOrDefault();
 
             var expectedToken = configuration["WhatsApp:WebhookVerifyToken"] ?? string.Empty;
+            // Fail-closed: segredo não configurado NUNCA autentica, mesmo com verify_token vazio
+            // (dois arrays de tamanho zero são iguais por FixedTimeEquals — sem este guard, a
+            // ausência de config vira handshake aberto, mesmo padrão de HmacSignatureVerifier.Confere).
+            if (expectedToken.Length == 0)
+                return Results.Forbid();
 
             // Constant-time comparison to prevent timing-based token oracle attacks.
             var verifyTokenBytes = Encoding.UTF8.GetBytes(verifyToken);

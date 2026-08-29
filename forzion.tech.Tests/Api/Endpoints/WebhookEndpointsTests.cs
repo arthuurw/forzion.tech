@@ -206,13 +206,19 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
     }
 
     // --- GET /webhooks/whatsapp (Meta verification handshake) ---
+    // O gate WhatsApp:Habilitado vale também no GET (defesa em profundidade, igual ao POST) —
+    // todo teste do MATCH de token precisa ligar a flag explicitamente, senão "passaria" só por
+    // causa do gate, sem exercitar a comparação de token nenhuma.
+
+    private static HttpClient ClienteHabilitado(WebhookWebFactory factory) =>
+        factory.WithWebHostBuilder(builder => builder.UseSetting("WhatsApp:Habilitado", "true")).CreateClient();
 
     [Fact]
     public async Task Get_WebhookWhatsApp_TokenCorreto_Retorna200ComChallenge()
     {
         // Token real configurado na factory (não vazio) — exercita o match verdadeiro,
         // não o caso degenerado empty==empty.
-        var response = await _factory.CreateClient()
+        var response = await ClienteHabilitado(_factory)
             .GetAsync($"/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token={WebhookWebFactory.VerifyToken}&hub.challenge=abc123");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -224,7 +230,7 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
     public async Task Get_WebhookWhatsApp_TokenVazio_Retorna403()
     {
         // Com token real configurado, um verify_token vazio NÃO pode passar.
-        var response = await _factory.CreateClient()
+        var response = await ClienteHabilitado(_factory)
             .GetAsync("/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=&hub.challenge=abc123");
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -233,7 +239,7 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
     [Fact]
     public async Task Get_WebhookWhatsApp_TokenErrado_Retorna403()
     {
-        var response = await _factory.CreateClient()
+        var response = await ClienteHabilitado(_factory)
             .GetAsync("/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=wrong-token&hub.challenge=abc123");
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -242,27 +248,38 @@ public class WebhookEndpointsTests : IClassFixture<WebhookEndpointsTests.Webhook
     [Fact]
     public async Task Get_WebhookWhatsApp_ModeErrado_Retorna403()
     {
-        var response = await _factory.CreateClient()
+        var response = await ClienteHabilitado(_factory)
             .GetAsync("/webhooks/whatsapp?hub.mode=unsubscribe&hub.verify_token=&hub.challenge=abc123");
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]
-    public async Task Get_WebhookWhatsApp_ComFlagHabilitada_HandshakeInalterado()
+    public async Task Get_WebhookWhatsApp_FlagDesabilitada_Retorna403MesmoComTokenCorreto()
     {
-        // Complementa Get_WebhookWhatsApp_TokenCorreto_Retorna200ComChallenge (roda com a
-        // factory base, flag ausente/false): prova que o GET também é idêntico com flag=true.
-        var client = _factory.WithWebHostBuilder(builder =>
-                builder.UseSetting("WhatsApp:Habilitado", "true"))
-            .CreateClient();
-
-        var response = await client
+        // Factory base não seta WhatsApp:Habilitado — default false, igual ao ambiente real
+        // (mesmo comentário de Post_WebhookWhatsApp_Desabilitado_Retorna200SemInvocarHandler).
+        var response = await _factory.CreateClient()
             .GetAsync($"/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token={WebhookWebFactory.VerifyToken}&hub.challenge=abc123");
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadAsStringAsync();
-        body.Should().Be("abc123");
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Get_WebhookWhatsApp_SegredoNaoConfigurado_TokenVazioNaoAutentica_Retorna403()
+    {
+        // expectedToken="" e verify_token="" são dois arrays de tamanho zero — antes do fix,
+        // FixedTimeEquals([], []) == true fazia o handshake abrir sem segredo nenhum.
+        var client = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("WhatsApp:Habilitado", "true");
+            builder.UseSetting("WhatsApp:WebhookVerifyToken", "");
+        }).CreateClient();
+
+        var response = await client
+            .GetAsync("/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=&hub.challenge=abc123");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     // --- WebApplicationFactory ---
