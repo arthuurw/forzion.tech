@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.UseCases.Agents;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
@@ -36,12 +37,15 @@ public class RegistrarLeadAgenteHandler(
         if (command.Interest is { Length: > 1000 })
             return Result.Failure<StagedLead>(LeadErrors.InteresseMuitoLongo);
 
-        if (command.IdempotencyKey is { Length: > 200 })
+        if (string.IsNullOrWhiteSpace(command.IdempotencyKey))
+            return Result.Failure<StagedLead>(LeadAgenteErrors.IdempotencyKeyObrigatoria);
+        if (command.IdempotencyKey.Length > 200)
             return Result.Failure<StagedLead>(LeadAgenteErrors.IdempotencyKeyMuitoLonga);
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 
-        var consentimentoResult = ConsentimentoLead.Criar(command.ConsentPurpose, command.ConsentGrantedAt ?? agora, agora);
+        var grantedAtNormalizado = AgentDateTimeNormalizer.ParaUtcClampado(command.ConsentGrantedAt, agora);
+        var consentimentoResult = ConsentimentoLead.Criar(command.ConsentPurpose, grantedAtNormalizado, agora);
         if (consentimentoResult.IsFailure)
             return Result.Failure<StagedLead>(consentimentoResult.Error!);
 
@@ -60,24 +64,18 @@ public class RegistrarLeadAgenteHandler(
         var contato = contatoResult.Value;
         var consentimento = consentimentoResult.Value;
 
-        var treinador = await treinadorRepository.ObterPorIdAsync(command.TenantId, cancellationToken).ConfigureAwait(false);
+        var treinador = await treinadorRepository.ObterPorIdSemTrackingAsync(command.TenantId, cancellationToken).ConfigureAwait(false);
         if (!AgentTenantGuard.EstaPublicado(treinador))
             return Result.Failure<StagedLead>(TreinadorErrors.NaoEncontrado);
 
         var interesseNormalizado = string.IsNullOrWhiteSpace(command.Interest) ? null : command.Interest.Trim();
         var argumentosHash = IdempotenciaLead.Calcular(nomeNormalizado, contato.Tipo, contato.Valor, interesseNormalizado, consentimento.Finalidade);
 
-        var temIdempotencyKey = !string.IsNullOrWhiteSpace(command.IdempotencyKey);
-
-        if (temIdempotencyKey)
-        {
-            var existente = await leadRepository
-                .ObterPorIdempotencyKeyAsync(command.TenantId, command.IdempotencyKey!, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (existente is not null)
-                return ResolverIdempotente(existente, argumentosHash);
-        }
+        var existenteAntesDoCommit = await leadRepository
+            .ObterPorIdempotencyKeyAsync(command.TenantId, command.IdempotencyKey, cancellationToken)
+            .ConfigureAwait(false);
+        if (existenteAntesDoCommit is not null)
+            return ResolverIdempotente(existenteAntesDoCommit, argumentosHash);
 
         var leadResult = Lead.Criar(
             command.TenantId, nomeNormalizado, contato, interesseNormalizado, consentimento, origemResult.Value,
@@ -95,10 +93,10 @@ public class RegistrarLeadAgenteHandler(
         // Corrida: duas requisições com a mesma chave passam o lookup acima e colidem no índice
         // único parcial — a violação significa que o concorrente já gravou primeiro; relê e
         // resolve pelo mesmo critério do caminho normal (D9/TD-1).
-        catch (Exception ex) when (temIdempotencyKey && databaseErrorInspector.EhViolacaoDeUnicidade(ex))
+        catch (Exception ex) when (databaseErrorInspector.EhViolacaoDeUnicidade(ex))
         {
             var existente = await leadRepository
-                .ObterPorIdempotencyKeyAsync(command.TenantId, command.IdempotencyKey!, cancellationToken)
+                .ObterPorIdempotencyKeyAsync(command.TenantId, command.IdempotencyKey, cancellationToken)
                 .ConfigureAwait(false);
             if (existente is null)
                 throw;

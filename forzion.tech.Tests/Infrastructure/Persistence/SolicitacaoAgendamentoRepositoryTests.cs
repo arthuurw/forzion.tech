@@ -6,6 +6,7 @@ using forzion.tech.Infrastructure.Persistence;
 using forzion.tech.Infrastructure.Persistence.Repositories;
 using forzion.tech.Tests.Builders;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace forzion.tech.Tests.Infrastructure.Persistence;
 
@@ -133,6 +134,57 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
     }
 
     [Fact]
+    public async Task ListarPorTreinadorAsync_SemFiltroDeStatus_PlanoDeExecucaoUsaIndiceDedicado()
+    {
+        // Reproduz a forma real da consulta paginada (WHERE treinador_id + ORDER BY +
+        // LIMIT, como em ListarPorTreinadorAsync). Sem o LIMIT o planner prefere um bitmap scan
+        // pelo índice (treinador_id, status, inicio_utc) já existente seguido de sort completo —
+        // só o LIMIT torna vantajoso evitar esse sort via o índice novo pré-ordenado.
+        await using var ctx = fixture.CreateContext();
+        var treinadorAlvo = await SeedTreinadorAsync(ctx);
+        var pacoteAlvo = await SeedPacoteAsync(ctx, treinadorAlvo);
+        var leadAlvo = await SeedLeadAsync(ctx, treinadorAlvo);
+        for (var i = 0; i < 200; i++)
+            await Repo(ctx).AdicionarAsync(CriarSolicitacao(treinadorAlvo, pacoteAlvo, leadAlvo, $"chave-alvo-{i}", Agora.AddMinutes(i), Agora.AddMinutes(i).AddMinutes(30)));
+
+        for (var t = 0; t < 60; t++)
+        {
+            var outroTreinador = await SeedTreinadorAsync(ctx);
+            var outroPacote = await SeedPacoteAsync(ctx, outroTreinador);
+            var outroLead = await SeedLeadAsync(ctx, outroTreinador);
+            for (var i = 0; i < 10; i++)
+                await Repo(ctx).AdicionarAsync(CriarSolicitacao(outroTreinador, outroPacote, outroLead, $"chave-ruido-{t}-{i}", Agora.AddDays(i), Agora.AddDays(i).AddMinutes(30)));
+        }
+
+        await ctx.SaveChangesAsync();
+
+        await using var conn = new NpgsqlConnection(fixture.ConnectionString);
+        await conn.OpenAsync();
+        await using (var analyze = conn.CreateCommand())
+        {
+            analyze.CommandText = "ANALYZE solicitacoes_agendamento";
+            await analyze.ExecuteNonQueryAsync();
+        }
+
+        await using var explain = conn.CreateCommand();
+        explain.CommandText = @"EXPLAIN (FORMAT TEXT)
+            SELECT id, inicio_utc FROM solicitacoes_agendamento
+            WHERE treinador_id = @treinadorId
+            ORDER BY inicio_utc, id
+            LIMIT 20";
+        explain.Parameters.AddWithValue("treinadorId", treinadorAlvo);
+
+        var linhas = new List<string>();
+        await using (var reader = await explain.ExecuteReaderAsync())
+            while (await reader.ReadAsync())
+                linhas.Add(reader.GetString(0));
+
+        var plano = string.Join('\n', linhas);
+        plano.Should().Contain("ix_solicitacoes_agendamento_treinador_id_inicio_utc_id",
+            $"o plano deveria usar o índice dedicado à listagem sem filtro de status; plano obtido:\n{plano}");
+    }
+
+    [Fact]
     public async Task ListarPorTreinadorAsync_FiltraPorStatus_ExcluiOsQueNaoCorrespondem()
     {
         await using var ctx = fixture.CreateContext();
@@ -152,8 +204,9 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
     }
 
     [Fact]
-    public async Task ListarPorTreinadorAsync_OrdenaPorInicioUtcAscendente()
+    public async Task ListarPorTreinadorAsync_OrdenaPorInicioUtcDescendente()
     {
+        // Mais recente primeiro — pendente nova não fica escondida atrás de histórico.
         await using var ctx = fixture.CreateContext();
         var (treinadorId, pacoteId, leadId) = await SeedTenantAsync(ctx);
         var maisTarde = CriarSolicitacao(treinadorId, pacoteId, leadId, "chave-mais-tarde", Agora.AddDays(3), Agora.AddDays(3).AddMinutes(30));
@@ -166,7 +219,41 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
 
         var (items, _) = await Repo(ctx).ListarPorTreinadorAsync(treinadorId, null, 1, 10);
 
-        items.Select(i => i.Id).Should().ContainInOrder(maisCedo.Id, intermediaria.Id, maisTarde.Id);
+        items.Select(i => i.Id).Should().ContainInOrder(maisTarde.Id, intermediaria.Id, maisCedo.Id);
+    }
+
+    [Fact]
+    public async Task ListarPorTreinadorAsync_MesmoInicioUtc_DesempataPorIdEPaginacaoNaoRepiteNemPerdeItem()
+    {
+        // Sem o desempate por Id, ORDER BY inicio_utc empatado não tem ordem estável —
+        // a mesma página pode devolver itens em ordem diferente entre chamadas, fazendo a
+        // paginação por offset repetir ou pular linha ao avançar de página.
+        await using var ctx = fixture.CreateContext();
+        var (treinadorId, pacoteId, leadId) = await SeedTenantAsync(ctx);
+        var mesmoInicio = Agora.AddDays(5);
+        var solicitacoes = new List<SolicitacaoAgendamento>();
+        for (var i = 0; i < 5; i++)
+        {
+            var s = CriarSolicitacao(treinadorId, pacoteId, leadId, $"chave-empate-{i}", mesmoInicio, mesmoInicio.AddMinutes(30));
+            solicitacoes.Add(s);
+            await Repo(ctx).AdicionarAsync(s);
+        }
+        await ctx.SaveChangesAsync();
+
+        var (todosNumaChamada, _) = await Repo(ctx).ListarPorTreinadorAsync(treinadorId, null, 1, 10);
+        var esperado = todosNumaChamada.Select(i => i.Id).ToList();
+
+        var pagina1 = await Repo(ctx).ListarPorTreinadorAsync(treinadorId, null, 1, 2);
+        var pagina2 = await Repo(ctx).ListarPorTreinadorAsync(treinadorId, null, 2, 2);
+        var pagina3 = await Repo(ctx).ListarPorTreinadorAsync(treinadorId, null, 3, 2);
+
+        var idsPaginados = pagina1.Items.Select(i => i.Id)
+            .Concat(pagina2.Items.Select(i => i.Id))
+            .Concat(pagina3.Items.Select(i => i.Id))
+            .ToList();
+
+        idsPaginados.Should().Equal(esperado, "o desempate por Id garante ordem estável entre chamadas de página distintas");
+        idsPaginados.Should().BeEquivalentTo(solicitacoes.Select(s => s.Id), "paginação por offset não pode repetir nem perder item");
     }
 
     [Fact]
@@ -226,9 +313,28 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
         await Repo(ctx).AdicionarAsync(confirmadaDeB);
         await ctx.SaveChangesAsync();
 
-        var contagem = await Repo(ctx).ContarConfirmadasSobrepostasAsync(treinadorA, pacoteA, inicio, fim);
+        var contagem = await Repo(ctx).ContarConfirmadasSobrepostasAsync(treinadorA, inicio, fim);
 
         contagem.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ContarConfirmadasSobrepostasAsync_ConfirmadaDeOutroPacoteDoMesmoTreinador_Conta()
+    {
+        // AD-021: a agenda do treinador é o recurso escasso — a contagem não filtra por pacote.
+        await using var ctx = fixture.CreateContext();
+        var (treinadorId, pacoteA, leadId) = await SeedTenantAsync(ctx);
+        var pacoteB = await SeedPacoteAsync(ctx, treinadorId);
+        var inicio = Agora.AddDays(2);
+        var fim = inicio.AddMinutes(30);
+        var confirmadaNoPacoteA = CriarSolicitacao(treinadorId, pacoteA, leadId, "chave-pacote-a", inicio, fim);
+        confirmadaNoPacoteA.Confirmar(Guid.NewGuid(), Agora);
+        await Repo(ctx).AdicionarAsync(confirmadaNoPacoteA);
+        await ctx.SaveChangesAsync();
+
+        var contagem = await Repo(ctx).ContarConfirmadasSobrepostasAsync(treinadorId, inicio, fim);
+
+        contagem.Should().Be(1, "confirmar no pacote A abate a agenda do treinador, que também serve o pacote B");
     }
 
     [Fact]
@@ -247,7 +353,7 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
         var inicioSlot = Agora.AddDays(2);
         var fimSlot = inicioConfirmada.AddMinutes(10);
 
-        var contagem = await Repo(ctx).ContarConfirmadasSobrepostasAsync(treinadorId, pacoteId, inicioSlot, fimSlot);
+        var contagem = await Repo(ctx).ContarConfirmadasSobrepostasAsync(treinadorId, inicioSlot, fimSlot);
 
         contagem.Should().Be(1);
     }
@@ -278,7 +384,7 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
         await Repo(ctx).AdicionarAsync(solicitacao);
         await ctx.SaveChangesAsync();
 
-        var contagem = await Repo(ctx).ContarConfirmadasSobrepostasAsync(treinadorId, pacoteId, inicio, fim);
+        var contagem = await Repo(ctx).ContarConfirmadasSobrepostasAsync(treinadorId, inicio, fim);
 
         contagem.Should().Be(0);
     }
@@ -296,9 +402,28 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
         await Repo(ctx).AdicionarAsync(confirmadaDeB);
         await ctx.SaveChangesAsync();
 
-        var resultado = await Repo(ctx).ListarConfirmadasNoIntervaloAsync(treinadorA, pacoteA, Agora, Agora.AddDays(30));
+        var resultado = await Repo(ctx).ListarConfirmadasNoIntervaloAsync(treinadorA, Agora, Agora.AddDays(30));
 
         resultado.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListarConfirmadasNoIntervaloAsync_ConfirmadaDeOutroPacoteDoMesmoTreinador_Retorna()
+    {
+        // AD-021: mesma agenda serve todos os pacotes do treinador.
+        await using var ctx = fixture.CreateContext();
+        var (treinadorId, pacoteA, leadId) = await SeedTenantAsync(ctx);
+        await SeedPacoteAsync(ctx, treinadorId);
+        var inicio = Agora.AddDays(2);
+        var fim = inicio.AddMinutes(30);
+        var confirmadaNoPacoteA = CriarSolicitacao(treinadorId, pacoteA, leadId, "chave-pacote-a", inicio, fim);
+        confirmadaNoPacoteA.Confirmar(Guid.NewGuid(), Agora);
+        await Repo(ctx).AdicionarAsync(confirmadaNoPacoteA);
+        await ctx.SaveChangesAsync();
+
+        var resultado = await Repo(ctx).ListarConfirmadasNoIntervaloAsync(treinadorId, Agora, Agora.AddDays(30));
+
+        resultado.Should().ContainSingle(s => s.Id == confirmadaNoPacoteA.Id);
     }
 
     [Fact]

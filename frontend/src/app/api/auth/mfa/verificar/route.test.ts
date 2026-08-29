@@ -124,4 +124,27 @@ describe("POST /api/auth/mfa/verificar", () => {
     const cookies = extractCookies(res);
     expect(cookies.token).toBeUndefined();
   });
+
+  it("cross-origin → 403 sem chamar o backend", async () => {
+    let chamado = false;
+    server.use(
+      http.post("*/auth/mfa/verificar", () => {
+        chamado = true;
+        return HttpResponse.json(loginPayload(null));
+      }),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      headers: { origin: "http://evil.com" },
+      cookies: { mfa_pending: "pending-tok" },
+      body: { codigo: "123456", fator: 0, lembrarDispositivo: false },
+    });
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body).toEqual({ error: "cross-origin" });
+    expect(chamado).toBe(false);
+  });
 });

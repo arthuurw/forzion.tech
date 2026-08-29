@@ -49,6 +49,8 @@ export default function PacotesTreinadorPage() {
 
   const categoriaObrigatoriaCriar = publico && !categoria.trim();
   const categoriaObrigatoriaEditar = editPublico && !editCategoria.trim();
+  const duracaoObrigatoriaCriar = publico && !duracaoMinutos;
+  const duracaoObrigatoriaEditar = editPublico && !editDuracaoMinutos;
 
   const load = async () => {
     setLoading(true);
@@ -70,7 +72,7 @@ export default function PacotesTreinadorPage() {
   };
 
   const handleCriar = async () => {
-    if (!nome.trim() || !preco || categoriaObrigatoriaCriar) return;
+    if (!nome.trim() || !preco || categoriaObrigatoriaCriar || duracaoObrigatoriaCriar) return;
     setSaving(true);
     try {
       await treinadorApi.criarPacote({
@@ -120,15 +122,18 @@ export default function PacotesTreinadorPage() {
   };
 
   const handleEditar = async () => {
-    if (!editTarget || !editNome.trim() || !editPreco || categoriaObrigatoriaEditar) return;
+    if (!editTarget || !editNome.trim() || !editPreco || categoriaObrigatoriaEditar || duracaoObrigatoriaEditar) return;
     setEditSaving(true);
     try {
       await treinadorApi.atualizarPacote(editTarget.pacoteId, {
         nome: editNome.trim(),
         preco: Number(editPreco),
         descricao: editDescricao.trim() || null,
-        categoria: editCategoria.trim() || null,
-        duracaoMinutos: editDuracaoMinutos ? Number(editDuracaoMinutos) : null,
+        // "" e 0 são as sentinelas de "limpar" do contrato de AtualizarCatalogoPublico —
+        // null significa "campo ausente" (não mexer), por isso nunca usado aqui: o form
+        // de edição sempre representa o estado completo do pacote.
+        categoria: editCategoria.trim(),
+        duracaoMinutos: editDuracaoMinutos ? Number(editDuracaoMinutos) : 0,
         trialDisponivel: editTrialDisponivel,
         isPublico: editPublico,
       });
@@ -268,6 +273,10 @@ export default function PacotesTreinadorPage() {
               onChange={(e) => setDuracaoMinutos(e.target.value)}
               size="small"
               fullWidth
+              error={duracaoObrigatoriaCriar}
+              helperText={duracaoObrigatoriaCriar
+                ? "Duração é obrigatória para tornar o pacote público."
+                : undefined}
               slotProps={{ htmlInput: { min: 1, step: 1 } }}
             />
             <FormControlLabel
@@ -284,7 +293,7 @@ export default function PacotesTreinadorPage() {
           <Button onClick={() => { setOpen(false); resetForm(); }}>Cancelar</Button>
           <Button
             variant="contained"
-            disabled={!nome.trim() || !preco || categoriaObrigatoriaCriar || saving}
+            disabled={!nome.trim() || !preco || categoriaObrigatoriaCriar || duracaoObrigatoriaCriar || saving}
             onClick={handleCriar}
           >
             Criar
@@ -354,6 +363,10 @@ export default function PacotesTreinadorPage() {
               onChange={(e) => setEditDuracaoMinutos(e.target.value)}
               size="small"
               fullWidth
+              error={duracaoObrigatoriaEditar}
+              helperText={duracaoObrigatoriaEditar
+                ? "Duração é obrigatória para tornar o pacote público."
+                : undefined}
               slotProps={{ htmlInput: { min: 1, step: 1 } }}
             />
             <FormControlLabel
@@ -370,7 +383,7 @@ export default function PacotesTreinadorPage() {
           <Button onClick={() => setEditTarget(null)}>Cancelar</Button>
           <Button
             variant="contained"
-            disabled={!editNome.trim() || !editPreco || categoriaObrigatoriaEditar || editSaving}
+            disabled={!editNome.trim() || !editPreco || categoriaObrigatoriaEditar || duracaoObrigatoriaEditar || editSaving}
             onClick={handleEditar}
           >
             Salvar

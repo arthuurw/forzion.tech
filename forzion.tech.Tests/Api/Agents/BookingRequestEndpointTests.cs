@@ -73,14 +73,15 @@ public class BookingRequestEndpointTests
     {
         var mock = new Mock<RegistrarSolicitacaoAgendamentoHandler>(
             Mock.Of<ITreinadorRepository>(), Mock.Of<IPacoteRepository>(), Mock.Of<IBloqueioAgendaRepository>(),
-            Mock.Of<ISolicitacaoAgendamentoRepository>(), new ResolvedorLeadAgendamento(Mock.Of<ILeadRepository>()),
+            Mock.Of<ISolicitacaoAgendamentoRepository>(),
+            new ResolvedorLeadAgendamento(Mock.Of<ILeadRepository>(), Mock.Of<IUnitOfWork>(), Mock.Of<IDatabaseErrorInspector>()),
             Mock.Of<IUnitOfWork>(), TimeProvider.System, Mock.Of<IDatabaseErrorInspector>());
         mock.Setup(h => h.HandleAsync(It.IsAny<RegistrarSolicitacaoAgendamentoCommand>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(resultado);
         return mock;
     }
 
-    private static async Task<HttpResponseMessage> EnviarAssinadaAsync(HttpClient cliente, string caminho, string corpoJson)
+    private static async Task<HttpResponseMessage> EnviarAssinadaAsync(HttpClient cliente, string caminho, string corpoJson, string contentType = "application/json")
     {
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var corpoBytes = Encoding.UTF8.GetBytes(corpoJson);
@@ -89,7 +90,7 @@ public class BookingRequestEndpointTests
 
         using var requisicao = new HttpRequestMessage(HttpMethod.Post, caminho)
         {
-            Content = new StringContent(corpoJson, Encoding.UTF8, "application/json")
+            Content = new StringContent(corpoJson, Encoding.UTF8, contentType)
         };
         requisicao.Headers.TryAddWithoutValidation(HmacSignatureFilter.HeaderDeAssinatura, "v1=" + Convert.ToHexStringLower(mac));
         requisicao.Headers.TryAddWithoutValidation(HmacSignatureFilter.HeaderDeTimestamp, timestamp.ToString(provider: null));
@@ -241,5 +242,18 @@ public class BookingRequestEndpointTests
 
         resposta.StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await LerCodeAsync(resposta)).Should().Be("idempotency_conflict");
+    }
+
+    [Fact]
+    public async Task ContentTypeNaoJson_Retorna400ComValidationFailedNaoServiceUnavailable()
+    {
+        var mockHandler = CriarMockHandler(Result.Success(new StagedBookingRequest(Guid.NewGuid().ToString(), "pending-agent")));
+        await using var servidor = await IniciarAsync(mockHandler);
+
+        using var resposta = await EnviarAssinadaAsync(servidor.Cliente, CaminhoDeBookingRequests, CorpoValido, contentType: "text/plain");
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await LerCodeAsync(resposta)).Should().Be("validation_failed");
+        mockHandler.Verify(h => h.HandleAsync(It.IsAny<RegistrarSolicitacaoAgendamentoCommand>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

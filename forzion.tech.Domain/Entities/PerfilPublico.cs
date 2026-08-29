@@ -1,3 +1,4 @@
+using forzion.tech.Domain.Services;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
 using forzion.tech.Domain.ValueObjects;
@@ -21,6 +22,23 @@ public class PerfilPublico
 
     public Result AtualizarDados(string? nomeFantasia, EnderecoPublico? endereco, IReadOnlyDictionary<string, string>? politicas, DateTime agora)
     {
+        if (nomeFantasia is not null && nomeFantasia.Trim().Length > ParametrosDerivacao.MaxNomeFantasiaLength)
+            return Result.Failure(PerfilPublicoErrors.NomeFantasiaMuitoLongo);
+
+        if (politicas is not null)
+        {
+            if (politicas.Count > ParametrosDerivacao.MaxPoliticas)
+                return Result.Failure(PerfilPublicoErrors.PoliticasExcedemLimite);
+
+            foreach (var (chave, valor) in politicas)
+            {
+                if (chave.Length > ParametrosDerivacao.MaxPoliticaChaveLength)
+                    return Result.Failure(PerfilPublicoErrors.PoliticaChaveMuitoLonga);
+                if (valor.Length > ParametrosDerivacao.MaxPoliticaValorLength)
+                    return Result.Failure(PerfilPublicoErrors.PoliticaValorMuitoLongo);
+            }
+        }
+
         NomeFantasia = string.IsNullOrWhiteSpace(nomeFantasia) ? null : nomeFantasia.Trim();
         Endereco = endereco;
         Politicas = politicas;
@@ -68,6 +86,9 @@ public class PerfilPublico
 
     public Result SubstituirHorarios(IReadOnlyList<(int DiaSemana, TimeOnly AbreAs, TimeOnly FechaAs)> horarios, DateTime agora)
     {
+        if (horarios.Count > ParametrosDerivacao.MaxHorariosFuncionamento)
+            return Result.Failure(PerfilPublicoErrors.HorariosExcedemLimite);
+
         var novos = new List<HorarioFuncionamento>(horarios.Count);
         foreach (var (diaSemana, abreAs, fechaAs) in horarios)
         {

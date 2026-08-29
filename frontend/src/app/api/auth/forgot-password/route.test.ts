@@ -97,4 +97,26 @@ describe("POST /api/auth/forgot-password", () => {
 
     expect(received).toBe("203.0.113.7");
   });
+
+  it("cross-origin → 403 sem chamar o backend", async () => {
+    let backendCalled = false;
+    server.use(
+      http.post("*/auth/forgot-password", () => {
+        backendCalled = true;
+        return HttpResponse.json({}, { status: 200 });
+      }),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      headers: { origin: "http://evil.com" },
+      body: { email: "user@forzion.tech" },
+    });
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body).toEqual({ error: "cross-origin" });
+    expect(backendCalled).toBe(false);
+  });
 });

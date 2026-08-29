@@ -35,7 +35,7 @@ public class ResolverConviteLeadHandler(
         var lead = await leadRepository
             .ObterComHistoricoAsync(convite.TreinadorId, convite.LeadId, cancellationToken)
             .ConfigureAwait(false);
-        if (lead is null)
+        if (lead is null || lead.Anonimizado)
             return Result.Failure<ResolverConviteLeadResponse>(LeadConviteErrors.TokenInvalido);
 
         var treinador = await treinadorRepository

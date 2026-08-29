@@ -36,7 +36,7 @@ public class ConsultarDisponibilidadeAgenteHandlerTests
     }
 
     private void SetupTreinador(Treinador? treinador, Guid tenantId) =>
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
     private void SetupPacote(Pacote? pacote, Guid serviceId) =>
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(serviceId, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
@@ -46,7 +46,7 @@ public class ConsultarDisponibilidadeAgenteHandlerTests
             .ReturnsAsync((IReadOnlyList<BloqueioAgenda>)[]);
 
     private void SetupSemConfirmadas() =>
-        _solicitacaoRepo.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        _solicitacaoRepo.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<SolicitacaoAgendamento>)[]);
 
     private static ConsultarDisponibilidadeQuery Query(Guid tenantId, Guid serviceId, DateTime from, DateTime to) =>
@@ -162,6 +162,76 @@ public class ConsultarDisponibilidadeAgenteHandlerTests
         slot.StartsAt.Should().Be(new DateTimeOffset(2026, 8, 24, 11, 0, 0, TimeSpan.Zero));
         slot.EndsAt.Should().Be(new DateTimeOffset(2026, 8, 24, 12, 0, 0, TimeSpan.Zero));
         slot.CapacityRemaining.Should().Be(3);
+    }
+
+    // --- janela auxiliar cobre a cauda do último slot ---
+
+    [Fact]
+    public async Task HandleAsync_BloqueioComecaDepoisDeToUtcMasSobrepoeUltimoSlot_RemoveOSlot()
+    {
+        var treinador = CriarTreinadorPublicado();
+        treinador.PerfilPublico.AdicionarHorario((int)DayOfWeek.Monday, new TimeOnly(22, 0), new TimeOnly(23, 0), DateTime.UtcNow);
+        SetupTreinador(treinador, treinador.Id);
+        var pacote = new PacoteBuilder().ComTreinadorId(treinador.Id).Build();
+        pacote.AtualizarCatalogoPublico("Categoria", 60, false, DateTime.UtcNow);
+        pacote.TornarPublico(DateTime.UtcNow);
+        SetupPacote(pacote, pacote.Id);
+
+        // Turno 22:00-23:00 local (America/Sao_Paulo, UTC-3) de segunda 2026-08-24 produz um único
+        // slot: 01:00-02:00 UTC de terça 2026-08-25. `to` corta em 01:30, no MEIO do slot.
+        var from = new DateTime(2026, 8, 24, 0, 0, 0, DateTimeKind.Utc);
+        var to = new DateTime(2026, 8, 25, 1, 30, 0, DateTimeKind.Utc);
+        var duracaoMinutos = 60;
+
+        // Bloqueio começa em 01:45 (DEPOIS de `to`=01:30) mas termina em 01:50, ainda dentro do
+        // slot [01:00,02:00). Só visível pra quem consulta bloqueios até to+duracaoMinutos=02:30 —
+        // uma implementação que consulta só até `to` não o enxerga.
+        var inicioBloqueio = new DateTime(2026, 8, 25, 1, 45, 0, DateTimeKind.Utc);
+        var fimBloqueio = new DateTime(2026, 8, 25, 1, 50, 0, DateTimeKind.Utc);
+        var bloqueio = BloqueioAgenda.CriarPontual(treinador.Id, inicioBloqueio, fimBloqueio, null, DateTime.UtcNow).Value;
+
+        _bloqueioRepo.Setup(r => r.ListarVigentesAsync(
+                treinador.Id, from, It.Is<DateTime>(ate => ate >= to.AddMinutes(duracaoMinutos)), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<BloqueioAgenda>)[bloqueio]);
+
+        var result = await _handler.HandleAsync(Query(treinador.Id, pacote.Id, from, to));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeEmpty("o bloqueio sobrepõe a cauda do único slot, mesmo começando depois de ToUtc");
+    }
+
+    [Fact]
+    public async Task HandleAsync_ConfirmadaComecaDepoisDeToUtcMasSobrepoeUltimoSlot_AbateACapacidade()
+    {
+        var treinador = CriarTreinadorPublicado();
+        treinador.PerfilPublico.AdicionarHorario((int)DayOfWeek.Monday, new TimeOnly(22, 0), new TimeOnly(23, 0), DateTime.UtcNow);
+        SetupTreinador(treinador, treinador.Id);
+        var pacote = new PacoteBuilder().ComTreinadorId(treinador.Id).Build();
+        pacote.AtualizarCatalogoPublico("Categoria", 60, false, DateTime.UtcNow, capacidadeMaxima: 1);
+        pacote.TornarPublico(DateTime.UtcNow);
+        SetupPacote(pacote, pacote.Id);
+
+        var from = new DateTime(2026, 8, 24, 0, 0, 0, DateTimeKind.Utc);
+        var to = new DateTime(2026, 8, 25, 1, 30, 0, DateTimeKind.Utc);
+        var duracaoMinutos = 60;
+
+        // Confirmada começa em 01:45 (DEPOIS de `to`=01:30) mas termina em 01:50, dentro do slot
+        // [01:00,02:00) — só visível pra quem consulta confirmadas até to+duracaoMinutos=02:30.
+        var inicioConfirmada = new DateTime(2026, 8, 25, 1, 45, 0, DateTimeKind.Utc);
+        var fimConfirmada = new DateTime(2026, 8, 25, 1, 50, 0, DateTimeKind.Utc);
+        var confirmada = SolicitacaoAgendamento.Criar(
+            treinador.Id, pacote.Id, Guid.NewGuid(), "slot-outro", inicioConfirmada, fimConfirmada,
+            "idem-key", "hash", DateTime.UtcNow).Value;
+        confirmada.Confirmar(Guid.NewGuid(), DateTime.UtcNow);
+
+        _solicitacaoRepo.Setup(r => r.ListarConfirmadasNoIntervaloAsync(
+                treinador.Id, from, It.Is<DateTime>(ate => ate >= to.AddMinutes(duracaoMinutos)), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<SolicitacaoAgendamento>)[confirmada]);
+
+        var result = await _handler.HandleAsync(Query(treinador.Id, pacote.Id, from, to));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeEmpty("a confirmada sobrepõe a cauda do único slot, mesmo começando depois de ToUtc");
     }
 
     [Fact]

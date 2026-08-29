@@ -60,7 +60,29 @@ public class HmacSignatureFilterTests
         }
     }
 
-    private static async Task<Servidor> IniciarAsync(long agoraUnix = TimestampBase, string? alvoCru = null)
+    private sealed class StreamQueLancaAoLer(Exception excecao) : Stream
+    {
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw excecao;
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            throw excecao;
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            throw excecao;
+
+        public override void Flush() => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    private static async Task<Servidor> IniciarAsync(long agoraUnix = TimestampBase, string? alvoCru = null, Exception? erroDeLeituraDoCorpo = null)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -84,6 +106,15 @@ public class HmacSignatureFilterTests
             app.Use(async (contexto, proximo) =>
             {
                 contexto.Features.Get<IHttpRequestFeature>()!.RawTarget = alvoCru;
+                await proximo();
+            });
+        }
+
+        if (erroDeLeituraDoCorpo is not null)
+        {
+            app.Use(async (contexto, proximo) =>
+            {
+                contexto.Request.Body = new StreamQueLancaAoLer(erroDeLeituraDoCorpo);
                 await proximo();
             });
         }
@@ -263,6 +294,47 @@ public class HmacSignatureFilterTests
 
         resposta.StatusCode.Should().Be(HttpStatusCode.OK);
         (await resposta.Content.ReadAsStringAsync()).Should().HaveLength(65_535);
+    }
+
+    [Fact]
+    public async Task LeituraDoCorpoLancaBadHttpRequestException_RespondeQuatrocentosComValidationFailed()
+    {
+        await using var servidor = await IniciarAsync(erroDeLeituraDoCorpo: new BadHttpRequestException("corpo malformado"));
+
+        using var resposta = await EnviarAsync(
+            servidor.Cliente, HttpMethod.Post, CaminhoDeEco, "{}",
+            Assinar("POST", CaminhoDeEco, "{}"u8.ToArray(), TimestampBase), TimestampBase.ToString(provider: null));
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await LerCodeAsync(resposta)).Should().Be("validation_failed");
+    }
+
+    [Fact]
+    public async Task LeituraDoCorpoLancaIOException_RespondeQuatrocentosComValidationFailed()
+    {
+        await using var servidor = await IniciarAsync(erroDeLeituraDoCorpo: new IOException("conexao resetada"));
+
+        using var resposta = await EnviarAsync(
+            servidor.Cliente, HttpMethod.Post, CaminhoDeEco, "{}",
+            Assinar("POST", CaminhoDeEco, "{}"u8.ToArray(), TimestampBase), TimestampBase.ToString(provider: null));
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await LerCodeAsync(resposta)).Should().Be("validation_failed");
+    }
+
+    [Fact]
+    public async Task LeituraDoCorpoLancaOperationCanceledException_NaoVira400ValidationFailed()
+    {
+        await using var servidor = await IniciarAsync(erroDeLeituraDoCorpo: new OperationCanceledException("request abortado"));
+
+        Func<Task> agir = async () => await EnviarAsync(
+            servidor.Cliente, HttpMethod.Post, CaminhoDeEco, "{}",
+            Assinar("POST", CaminhoDeEco, "{}"u8.ToArray(), TimestampBase), TimestampBase.ToString(provider: null));
+
+        // Cancelamento de RequestAborted NÃO é falha de verificação do corpo — a filter não pode
+        // capturá-lo como se fosse. Propaga (aqui, sem exception middleware no pipeline de teste,
+        // como exceção não tratada) em vez de virar 400 validation_failed.
+        await agir.Should().ThrowAsync<Exception>();
     }
 
     [Fact]

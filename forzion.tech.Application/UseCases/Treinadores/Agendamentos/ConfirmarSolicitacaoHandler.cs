@@ -33,9 +33,11 @@ public class ConfirmarSolicitacaoHandler(
             }
             // A NpgsqlExecutionStrategy reembrulha PostgresException — o inspector varre a cadeia
             // inteira de InnerException para reconhecer 40001 (R7/specification-concurrency §3).
-            catch (Exception ex) when (databaseErrorInspector.EhConflitoDeSerializacao(ex) && tentativa < MaxTentativas)
+            // EhConflitoDeConcorrenciaOtimista cobre o xmin de solicitacoes_agendamento:
+            // Recusar/Cancelar commitando entre o SELECT e o UPDATE desta tx.
+            catch (Exception ex) when ((databaseErrorInspector.EhConflitoDeSerializacao(ex) || databaseErrorInspector.EhConflitoDeConcorrenciaOtimista(ex)) && tentativa < MaxTentativas)
             {
-                logger.LogWarning(ex, "Conflito de serialização ao confirmar solicitação {SolicitacaoId}, tentativa {Tentativa}/{Max}. Retentando.",
+                logger.LogWarning(ex, "Conflito de concorrência ao confirmar solicitação {SolicitacaoId}, tentativa {Tentativa}/{Max}. Retentando.",
                     solicitacaoId, tentativa, MaxTentativas);
                 // A tx abortada não reverte o estado já mutado no ChangeTracker (EF não desfaz
                 // property values no rollback) — sem isto, o retry relê a MESMA instância tracked
@@ -63,7 +65,7 @@ public class ConfirmarSolicitacaoHandler(
             // de outra confirmação concorrente formam dependência read-write que o Postgres detecta
             // e aborta com 40001 em vez de deixar as duas commitarem (D-E).
             var confirmadas = await solicitacaoAgendamentoRepository
-                .ContarConfirmadasSobrepostasAsync(treinadorId, solicitacao.PacoteId, solicitacao.InicioUtc, solicitacao.FimUtc, ct)
+                .ContarConfirmadasSobrepostasAsync(treinadorId, solicitacao.InicioUtc, solicitacao.FimUtc, ct)
                 .ConfigureAwait(false);
             if (confirmadas >= pacote.CapacidadeMaxima)
                 return Result.Failure(SolicitacaoAgendamentoErrors.CapacidadeEsgotada);

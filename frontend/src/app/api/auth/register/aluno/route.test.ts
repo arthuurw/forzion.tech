@@ -97,4 +97,25 @@ describe("POST /api/auth/register/aluno", () => {
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "email ja existe" });
   });
+
+  it("cross-origin → 403 sem chamar o backend", async () => {
+    let backendCalled = false;
+    server.use(
+      http.post("*/auth/register/aluno", () => {
+        backendCalled = true;
+        return HttpResponse.json({}, { status: 201 });
+      }),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      headers: { origin: "http://evil.com" },
+      body: { nome: "X", email: "x@x.com" },
+    });
+    const res = await POST(req);
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: "cross-origin" });
+    expect(backendCalled).toBe(false);
+  });
 });

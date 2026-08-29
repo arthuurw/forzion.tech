@@ -16,7 +16,7 @@ public sealed record PoliticaAgenda
 
     public static Result<PoliticaAgenda> Criar(int antecedenciaMinimaHoras, int horizonteDias)
     {
-        if (antecedenciaMinimaHoras < 0)
+        if (antecedenciaMinimaHoras is < 0 or > 8760)
             return Result.Failure<PoliticaAgenda>(PoliticaAgendaErrors.AntecedenciaMinimaInvalida);
         if (horizonteDias is <= 0 or > 365)
             return Result.Failure<PoliticaAgenda>(PoliticaAgendaErrors.HorizonteInvalido);

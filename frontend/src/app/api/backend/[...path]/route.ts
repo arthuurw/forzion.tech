@@ -12,6 +12,27 @@ const ALLOWED_REQUEST_HEADERS = ["content-type", "accept", "x-step-up-token"];
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+const BACKEND_TIMEOUT_MS = 30_000;
+
+// Alinhado a client_max_body_size 10m do nginx (nginx/nginx.conf) — o proxy nunca deve
+// aceitar um corpo que a borda já rejeitaria.
+const MAX_BODY_BYTES = 10 * 1024 * 1024;
+
+// Allowlist (fail-closed) dos prefixos de topo que `src/lib/api/**` de fato consome. Um prefixo
+// novo do backend (ex.: `/internal/**`, `/health/**`) nasce BLOQUEADO até entrar aqui de propósito
+// — o inverso (blocklist crescente) deixa qualquer rota nova exposta por omissão.
+const ALLOWED_PATH_PREFIXES = new Set([
+  "admin",
+  "aluno",
+  "alunos",
+  "auth",
+  "conta",
+  "notificacoes",
+  "suporte",
+  "treinador",
+  "treinos",
+]);
+
 // Decodifica em laço porque uma única passada deixa passar `%2569nternal`.
 // Termina: cada passada que muda a string a encurta.
 function decodeFully(segment: string): string | null {
@@ -42,7 +63,7 @@ async function proxy(request: NextRequest, path: string[]): Promise<NextResponse
   if (firstSegment === null) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
-  if (firstSegment.toLowerCase() === "internal") {
+  if (!ALLOWED_PATH_PREFIXES.has(firstSegment.toLowerCase())) {
     return new NextResponse(null, { status: 404 });
   }
 
@@ -64,9 +85,27 @@ async function proxy(request: NextRequest, path: string[]): Promise<NextResponse
   }
 
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
+  const contentLengthHeader = request.headers.get("content-length");
+  const contentLength = contentLengthHeader === null ? null : Number(contentLengthHeader);
+  if (hasBody && contentLength !== null && Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "payload_too_large" }, { status: 413 });
+  }
   const body = hasBody ? await request.arrayBuffer() : undefined;
 
-  const res = await fetch(url, { method: request.method, headers, body });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: request.method,
+      headers,
+      body,
+      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === "TimeoutError") {
+      return NextResponse.json({ error: "backend_timeout" }, { status: 504 });
+    }
+    throw err;
+  }
 
   const responseHeaders = new Headers();
   const responseContentType = res.headers.get("Content-Type");

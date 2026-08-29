@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { forwardedForHeader } from "@/lib/security/forwardedFor";
+import { withSameOrigin } from "@/lib/security/withSameOrigin";
 
 const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
 
-export async function POST(request: NextRequest) {
+export const POST = withSameOrigin(async (request: NextRequest) => {
   let body: unknown;
   try {
     body = await request.json();
@@ -26,4 +27,4 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({}, { status: 200 });
-}
+});

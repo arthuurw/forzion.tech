@@ -83,11 +83,12 @@ public class EnviarConviteLeadHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_ConviteAtivoAnterior_EInvalidadoNaMesmaOperacao()
+    public async Task HandleAsync_ConviteAtivoAnteriorForaDoTetoDiario_EInvalidadoNaMesmaOperacao()
     {
         var lead = NovoLead();
         SetupLead(lead);
-        var anterior = LeadConvite.Criar(lead.Id, TreinadorId, "hash-anterior", _timeProvider.GetUtcNow().UtcDateTime.AddDays(10), _timeProvider.GetUtcNow().UtcDateTime).Value;
+        var criadoEm = _timeProvider.GetUtcNow().UtcDateTime.AddHours(-25);
+        var anterior = LeadConvite.Criar(lead.Id, TreinadorId, "hash-anterior", criadoEm.AddDays(14), criadoEm).Value;
         _conviteRepo.Setup(r => r.ObterAtivoPorLeadAsync(TreinadorId, lead.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(anterior);
 
@@ -96,6 +97,44 @@ public class EnviarConviteLeadHandlerTests
         result.IsSuccess.Should().BeTrue();
         anterior.InvalidadoEm.Should().NotBeNull();
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ConviteAtivoDentroDoCooldown_RecusaComErroDeAguarde()
+    {
+        var lead = NovoLead();
+        SetupLead(lead);
+        var criadoEm = _timeProvider.GetUtcNow().UtcDateTime.AddMinutes(-1);
+        var anterior = LeadConvite.Criar(lead.Id, TreinadorId, "hash-anterior", criadoEm.AddDays(14), criadoEm).Value;
+        _conviteRepo.Setup(r => r.ObterAtivoPorLeadAsync(TreinadorId, lead.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(anterior);
+
+        var result = await _handler.HandleAsync(new EnviarConviteLeadCommand(TreinadorId, lead.Id));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("lead_convite.aguarde");
+        anterior.InvalidadoEm.Should().BeNull();
+        _conviteRepo.Verify(r => r.AdicionarAsync(It.IsAny<LeadConvite>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ConviteAtivoAcimaDoCooldownMasDentroDoTetoDiario_RecusaComErroDeTetoDiario()
+    {
+        var lead = NovoLead();
+        SetupLead(lead);
+        var criadoEm = _timeProvider.GetUtcNow().UtcDateTime.AddHours(-1);
+        var anterior = LeadConvite.Criar(lead.Id, TreinadorId, "hash-anterior", criadoEm.AddDays(14), criadoEm).Value;
+        _conviteRepo.Setup(r => r.ObterAtivoPorLeadAsync(TreinadorId, lead.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(anterior);
+
+        var result = await _handler.HandleAsync(new EnviarConviteLeadCommand(TreinadorId, lead.Id));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("lead_convite.teto_diario_atingido");
+        anterior.InvalidadoEm.Should().BeNull();
+        _conviteRepo.Verify(r => r.AdicionarAsync(It.IsAny<LeadConvite>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -121,6 +160,26 @@ public class EnviarConviteLeadHandlerTests
         var result = await _handler.HandleAsync(new EnviarConviteLeadCommand(TreinadorId, lead.Id));
 
         result.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task HandleAsync_LeadForaDoCutoffDeExpurgo_EmissaoTiraDoAlcanceDoGcDe180Dias()
+    {
+        var agoraEmissao = _timeProvider.GetUtcNow().UtcDateTime;
+        var lead = Lead.Criar(
+            TreinadorId, "Fulano",
+            ContatoLead.Criar(TipoContatoLead.Email, "fulano@lead.com").Value,
+            "quero treinar",
+            ConsentimentoLead.Criar("Contato comercial", agoraEmissao.AddDays(-200), agoraEmissao.AddDays(-200)).Value,
+            null, LeadSource.Agent, null, null, agoraEmissao.AddDays(-200)).Value;
+        SetupLead(lead);
+        var cutoff180Dias = agoraEmissao.AddDays(-180);
+        (lead.UltimoToqueEm < cutoff180Dias).Should().BeTrue("lead sem toque há 200d estaria no alcance do GC antes da emissão");
+
+        var result = await _handler.HandleAsync(new EnviarConviteLeadCommand(TreinadorId, lead.Id));
+
+        result.IsSuccess.Should().BeTrue();
+        (lead.UltimoToqueEm < cutoff180Dias).Should().BeFalse("a emissao do convite deve tirar o lead do alcance do GC de 180 dias");
     }
 
     [Fact]

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { applySessionCookies, clearSessionCookies, fetchBackendRefresh } from "@/lib/auth/sessionCookies";
 import { forwardedForHeader } from "@/lib/security/forwardedFor";
+import { withSameOrigin } from "@/lib/security/withSameOrigin";
 
 /**
  * Proxy de renovação silenciosa. Repassa o cookie httpOnly `refresh` ao backend
@@ -9,7 +10,7 @@ import { forwardedForHeader } from "@/lib/security/forwardedFor";
  * sessão e devolve 401 (caller redireciona p/ /login). Não roteado pelo BFF /api/backend
  * porque precisa do cookie refresh httpOnly, não do Bearer.
  */
-export async function POST(request: NextRequest) {
+export const POST = withSameOrigin(async (request: NextRequest) => {
   const refresh = request.cookies.get("refresh")?.value;
   if (!refresh) {
     const res = NextResponse.json(null, { status: 401 });
@@ -28,4 +29,4 @@ export async function POST(request: NextRequest) {
   const response = NextResponse.json(clientSafeData);
   applySessionCookies(response, { token, refreshToken, tipoConta: data.tipoConta });
   return response;
-}
+});

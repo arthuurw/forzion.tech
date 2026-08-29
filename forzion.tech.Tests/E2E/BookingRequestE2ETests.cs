@@ -119,6 +119,127 @@ public class BookingRequestE2ETests(RealPipelineFixture fixture)
         slotsAposCancelar.Should().HaveCount(3);
     }
 
+    public static IEnumerable<object[]> GrantedAtValidoEUtcEsperado()
+    {
+        yield return ["2026-08-20T09:00:00-03:00", new DateTime(2026, 8, 20, 12, 0, 0, DateTimeKind.Utc)];
+        yield return ["2026-08-20T09:00:00", new DateTime(2026, 8, 20, 9, 0, 0, DateTimeKind.Utc)];
+        yield return ["2026-08-20T12:00:00Z", new DateTime(2026, 8, 20, 12, 0, 0, DateTimeKind.Utc)];
+    }
+
+    [Theory]
+    [MemberData(nameof(GrantedAtValidoEUtcEsperado))]
+    public async Task PostAssinado_GrantedAtEmQualquerFormaValida_ResolveParaLeadNovoRetorna201ENormalizaParaUtc(string grantedAtLiteral, DateTime utcEsperado)
+    {
+        var treinadorId = await TreinadorAprovadoAsync();
+        var treinador = ClienteComToken(await LoginTokenAsync(treinadorId));
+        var segundaLocal = ProximaSegundaLocal();
+
+        var salvarPerfil = await treinador.PutAsJsonAsync("/treinador/perfil-publico", new
+        {
+            nomeFantasia = "Studio GrantedAt E2E",
+            endereco = (object?)null,
+            politicas = (object?)null,
+            horarios = new[] { new { diaSemana = 1, abreAs = "08:00", fechaAs = "11:00" } },
+            isPublicado = true,
+            fusoHorario = "America/Sao_Paulo",
+        });
+        salvarPerfil.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var criarPacote = await treinador.PostAsJsonAsync("/treinador/pacotes", new
+        {
+            nome = "Aula experimental",
+            preco = 120m,
+            categoria = "Treino",
+            duracaoMinutos = 60,
+            trialDisponivel = true,
+            isPublico = true,
+        });
+        criarPacote.StatusCode.Should().Be(HttpStatusCode.Created);
+        var pacoteId = (await criarPacote.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("pacoteId").GetGuid();
+
+        var fromUtc = DateTime.SpecifyKind(segundaLocal.AddDays(-1), DateTimeKind.Utc);
+        var toUtc = DateTime.SpecifyKind(segundaLocal.AddDays(2), DateTimeKind.Utc);
+        var slotsIniciais = await ConsultarAvailabilityAsync(treinadorId, pacoteId, fromUtc, toUtc);
+        var slotId = slotsIniciais[0].GetProperty("slotId").GetString()!;
+
+        var idempotencyKey = $"chave-{Guid.NewGuid():N}";
+        var corpoBooking = $$"""
+            {"serviceId":"{{pacoteId}}","slotId":"{{slotId}}","name":"Consumidor GrantedAt",
+            "contact":{"type":"email","value":"consumidor-grantedat@teste.com"},
+            "consent":{"granted":true,"purpose":"Contato comercial","grantedAt":"{{grantedAtLiteral}}"},
+            "idempotencyKey":"{{idempotencyKey}}"}
+            """;
+        using var respostaBooking = await EnviarAssinadaAsync(
+            fixture.CreateClient(), CaminhoBookingRequests(treinadorId), corpoBooking);
+
+        respostaBooking.StatusCode.Should().Be(HttpStatusCode.Created);
+        using var corpoResposta = JsonDocument.Parse(await respostaBooking.Content.ReadAsStringAsync());
+        var bookingRequestId = Guid.Parse(corpoResposta.RootElement.GetProperty("bookingRequestId").GetString()!);
+
+        using var scope = fixture.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var solicitacao = await db.SolicitacoesAgendamento.SingleAsync(s => s.Id == bookingRequestId);
+        var lead = await db.Leads.SingleAsync(l => l.Id == solicitacao.LeadId);
+        lead.Consentimento.ConcedidoEm.Should().Be(utcEsperado);
+    }
+
+    [Fact]
+    public async Task PostAssinado_GrantedAtFuturo_ClampadoParaORegistradoEm()
+    {
+        var treinadorId = await TreinadorAprovadoAsync();
+        var treinador = ClienteComToken(await LoginTokenAsync(treinadorId));
+        var segundaLocal = ProximaSegundaLocal();
+
+        var salvarPerfil = await treinador.PutAsJsonAsync("/treinador/perfil-publico", new
+        {
+            nomeFantasia = "Studio GrantedAt Futuro E2E",
+            endereco = (object?)null,
+            politicas = (object?)null,
+            horarios = new[] { new { diaSemana = 1, abreAs = "08:00", fechaAs = "11:00" } },
+            isPublicado = true,
+            fusoHorario = "America/Sao_Paulo",
+        });
+        salvarPerfil.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var criarPacote = await treinador.PostAsJsonAsync("/treinador/pacotes", new
+        {
+            nome = "Aula experimental",
+            preco = 120m,
+            categoria = "Treino",
+            duracaoMinutos = 60,
+            trialDisponivel = true,
+            isPublico = true,
+        });
+        criarPacote.StatusCode.Should().Be(HttpStatusCode.Created);
+        var pacoteId = (await criarPacote.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("pacoteId").GetGuid();
+
+        var fromUtc = DateTime.SpecifyKind(segundaLocal.AddDays(-1), DateTimeKind.Utc);
+        var toUtc = DateTime.SpecifyKind(segundaLocal.AddDays(2), DateTimeKind.Utc);
+        var slotsIniciais = await ConsultarAvailabilityAsync(treinadorId, pacoteId, fromUtc, toUtc);
+        var slotId = slotsIniciais[0].GetProperty("slotId").GetString()!;
+
+        var futuro = DateTime.UtcNow.AddDays(30).ToString("O");
+        var idempotencyKey = $"chave-{Guid.NewGuid():N}";
+        var corpoBooking = $$"""
+            {"serviceId":"{{pacoteId}}","slotId":"{{slotId}}","name":"Consumidor GrantedAt Futuro",
+            "contact":{"type":"email","value":"consumidor-grantedat-futuro@teste.com"},
+            "consent":{"granted":true,"purpose":"Contato comercial","grantedAt":"{{futuro}}"},
+            "idempotencyKey":"{{idempotencyKey}}"}
+            """;
+        using var respostaBooking = await EnviarAssinadaAsync(
+            fixture.CreateClient(), CaminhoBookingRequests(treinadorId), corpoBooking);
+
+        respostaBooking.StatusCode.Should().Be(HttpStatusCode.Created);
+        using var corpoResposta = JsonDocument.Parse(await respostaBooking.Content.ReadAsStringAsync());
+        var bookingRequestId = Guid.Parse(corpoResposta.RootElement.GetProperty("bookingRequestId").GetString()!);
+
+        using var scope = fixture.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var solicitacao = await db.SolicitacoesAgendamento.SingleAsync(s => s.Id == bookingRequestId);
+        var lead = await db.Leads.SingleAsync(l => l.Id == solicitacao.LeadId);
+        lead.Consentimento.ConcedidoEm.Should().Be(lead.Consentimento.RegistradoEm);
+    }
+
     // --- Helpers de agenda/availability ---
 
     private static DateTime ProximaSegundaLocal()

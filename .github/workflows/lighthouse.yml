@@ -15,6 +15,9 @@ on:
     # representa o estado pos-deploys da terca (push homolog).
     - cron: "0 6 * * 3"
 
+permissions:
+  contents: read
+
 jobs:
   lighthouse:
     name: lhci — páginas públicas

@@ -216,3 +216,28 @@ describe("POST /api/auth — MFA pendente", () => {
     expect(received).toBe("127.0.0.1");
   });
 });
+
+describe("POST /api/auth — proteção cross-origin", () => {
+  it("cross-origin → 403 sem chamar o backend", async () => {
+    let backendCalled = false;
+    server.use(
+      http.post("*/auth/login", () => {
+        backendCalled = true;
+        return HttpResponse.json({ token: fakeJwt, refreshToken: "raw-refresh", tipoConta: "Aluno", contaId: "c1", perfilId: "p1" });
+      }),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      headers: { origin: "http://evil.com" },
+      body: { email: "u@u.com", senha: "secret" },
+    });
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body).toEqual({ error: "cross-origin" });
+    expect(backendCalled).toBe(false);
+    expect(res.headers.get("set-cookie")).toBeNull();
+  });
+});

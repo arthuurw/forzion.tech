@@ -104,6 +104,20 @@ public class AtualizarPoliticaAgendaHandlerTests
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task HandleAsync_AntecedenciaAcimaDoLimite_PropagaRejeicaoDoVoSemPersistir()
+    {
+        var treinador = new TreinadorBuilder().Build();
+        SetupTreinador(treinador, treinador.Id);
+
+        var result = await _handler.HandleAsync(new AtualizarPoliticaAgendaCommand(treinador.Id, 8761, 30));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(PoliticaAgendaErrors.AntecedenciaMinimaInvalida);
+        treinador.PoliticaAgenda.AntecedenciaMinimaHoras.Should().Be(2);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(366)]

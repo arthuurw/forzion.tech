@@ -3,7 +3,9 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using System.Text.Json;
 using FluentAssertions;
+using forzion.tech.Application.Auth;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Domain.Entities;
@@ -25,6 +27,7 @@ namespace forzion.tech.Tests.Api.Endpoints;
 // genérica (AutorizacaoNegativaMatrixTests) — aqui o foco é o caminho feliz autenticado.
 public class AdminLeadsEndpointTests : IClassFixture<AdminLeadsEndpointTests.AdminLeadsWebFactory>
 {
+    private const string StepUpTokenValido = "step-up-ok";
     private readonly AdminLeadsWebFactory _factory;
     private static readonly Guid AdminContaId = Guid.NewGuid();
 
@@ -43,6 +46,13 @@ public class AdminLeadsEndpointTests : IClassFixture<AdminLeadsEndpointTests.Adm
         return client;
     }
 
+    private HttpClient ClienteAdminComStepUp()
+    {
+        var client = ClienteAdmin();
+        client.DefaultRequestHeaders.Add("X-Step-Up-Token", StepUpTokenValido);
+        return client;
+    }
+
     private static Lead NovoLead(Guid treinadorId) =>
         Lead.Criar(
             treinadorId, "Fulano",
@@ -58,7 +68,7 @@ public class AdminLeadsEndpointTests : IClassFixture<AdminLeadsEndpointTests.Adm
         _factory.LeadRepositoryMock.Setup(r => r.BuscarPorContatoCrossTenantAsync("fulano@lead.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync([lead]);
 
-        var response = await ClienteAdmin().GetAsync("/admin/leads?contato=fulano@lead.com");
+        var response = await ClienteAdminComStepUp().GetAsync("/admin/leads?contato=fulano@lead.com");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -69,9 +79,37 @@ public class AdminLeadsEndpointTests : IClassFixture<AdminLeadsEndpointTests.Adm
         _factory.LeadRepositoryMock.Setup(r => r.BuscarPorContatoCrossTenantAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var response = await ClienteAdmin().GetAsync("/admin/leads?contato=naoexiste@lead.com");
+        var response = await ClienteAdminComStepUp().GetAsync("/admin/leads?contato=naoexiste@lead.com");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Get_Leads_SemStepUp_Retorna403()
+    {
+        var response = await ClienteAdmin().GetAsync("/admin/leads?contato=fulano@lead.com");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("code").GetString().Should().Be("step_up_requerido");
+    }
+
+    [Fact]
+    public async Task Get_Leads_ComContatoEncontrado_GravaLogDeAuditoriaAtribuidoAoAdmin()
+    {
+        var lead = NovoLead(Guid.NewGuid());
+        _factory.LeadRepositoryMock.Setup(r => r.BuscarPorContatoCrossTenantAsync("fulano@lead.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync([lead]);
+
+        var response = await ClienteAdminComStepUp().GetAsync("/admin/leads?contato=fulano@lead.com");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        _factory.LogAprovacaoRepositoryMock.Verify(r => r.AdicionarAsync(
+            It.Is<LogAprovacao>(l =>
+                l.TipoAcao == TipoAcaoAprovacao.BuscaLeadPorContato &&
+                l.RealizadoPorId == AdminContaId &&
+                l.Observacao != null && !l.Observacao.Contains("fulano@lead.com")),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -81,7 +119,7 @@ public class AdminLeadsEndpointTests : IClassFixture<AdminLeadsEndpointTests.Adm
         _factory.LeadRepositoryMock.Setup(r => r.ObterPorIdCrossTenantAsync(lead.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(lead);
 
-        var response = await ClienteAdmin().PostAsync($"/admin/leads/{lead.Id}/anonimizar", null);
+        var response = await ClienteAdminComStepUp().PostAsync($"/admin/leads/{lead.Id}/anonimizar", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         _factory.LogAprovacaoRepositoryMock.Verify(r => r.AdicionarAsync(
@@ -95,9 +133,19 @@ public class AdminLeadsEndpointTests : IClassFixture<AdminLeadsEndpointTests.Adm
         _factory.LeadRepositoryMock.Setup(r => r.ObterPorIdCrossTenantAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Lead?)null);
 
-        var response = await ClienteAdmin().PostAsync($"/admin/leads/{Guid.NewGuid()}/anonimizar", null);
+        var response = await ClienteAdminComStepUp().PostAsync($"/admin/leads/{Guid.NewGuid()}/anonimizar", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Post_Anonimizar_SemStepUp_Retorna403()
+    {
+        var response = await ClienteAdmin().PostAsync($"/admin/leads/{Guid.NewGuid()}/anonimizar", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("code").GetString().Should().Be("step_up_requerido");
     }
 
     public class AdminLeadsWebFactory : WebApplicationFactory<Program>
@@ -117,10 +165,22 @@ public class AdminLeadsEndpointTests : IClassFixture<AdminLeadsEndpointTests.Adm
                 services.RemoveAll<ILeadRepository>();
                 services.RemoveAll<ILogAprovacaoRepository>();
                 services.RemoveAll<IUnitOfWork>();
+                services.RemoveAll<IJwtService>();
+                services.RemoveAll<ITokenRevogadoRepository>();
 
                 services.AddScoped(_ => LeadRepositoryMock.Object);
                 services.AddScoped(_ => LogAprovacaoRepositoryMock.Object);
                 services.AddScoped(_ => UnitOfWorkMock.Object);
+
+                var jwtMock = new Mock<IJwtService>();
+                jwtMock.Setup(j => j.ValidarTokenEscopo(StepUpTokenValido, MfaScopes.StepUp))
+                    .Returns(new EscopoValidado(AdminContaId, Guid.NewGuid()));
+                services.AddScoped(_ => jwtMock.Object);
+
+                var tokenRevogadoMock = new Mock<ITokenRevogadoRepository>();
+                tokenRevogadoMock.Setup(r => r.EstaRevogadoAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(false);
+                services.AddScoped(_ => tokenRevogadoMock.Object);
 
                 services.AddAuthentication("Test")
                     .AddScheme<AuthenticationSchemeOptions, AdminLeadsTestAuthHandler>("Test", _ => { });

@@ -1,13 +1,14 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Chip, Typography, Stack, Button, TextField } from "@mui/material";
+import { useCallback, useState } from "react";
+import { Box, Chip, FormControl, InputLabel, MenuItem, Select, Typography, Stack, Button, TextField } from "@mui/material";
 import AlertBanner from "@/components/ui/AlertBanner";
 import DataList from "@/components/ui/DataList";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { Column } from "@/components/ui/ResponsiveTable";
 import { agendaApi } from "@/lib/api/agenda";
-import { extractApiError, extractApiErrorInfo } from "@/lib/api/extractApiError";
-import type { SolicitacaoAgendamentoListItem } from "@/types";
+import { extractApiErrorInfo } from "@/lib/api/extractApiError";
+import { usePaginatedList } from "@/hooks/usePaginatedList";
+import type { SolicitacaoAgendamentoListItem, SolicitacaoAgendamentoStatus } from "@/types";
 import {
   SOLICITACAO_AGENDAMENTO_STATUS_LABEL,
   SOLICITACAO_AGENDAMENTO_STATUS_COLOR,
@@ -23,6 +24,7 @@ const COLUMNS: Column[] = [
 ];
 
 const ERRO_CAPACIDADE_ESGOTADA = "A capacidade máxima deste horário já foi atingida.";
+const CODE_CAPACIDADE_ESGOTADA = "solicitacao_agendamento.capacidade_esgotada";
 
 type DialogTipo = "recusar" | "cancelar";
 
@@ -39,36 +41,38 @@ function formatarIntervaloSolicitacao(inicioUtc: string, fimUtc: string): string
 }
 
 export default function SolicitacoesTab() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [solicitacoes, setSolicitacoes] = useState<SolicitacaoAgendamentoListItem[]>([]);
+  const [statusFiltro, setStatusFiltro] = useState<SolicitacaoAgendamentoStatus | "">("");
   const [acaoEmCursoId, setAcaoEmCursoId] = useState<string | null>(null);
+  const [erroAcao, setErroAcao] = useState("");
 
   const [dialog, setDialog] = useState<{ tipo: DialogTipo; solicitacao: SolicitacaoAgendamentoListItem } | null>(null);
   const [motivoDialog, setMotivoDialog] = useState("");
 
-  const carregar = () => {
-    setLoading(true);
-    agendaApi
-      .listarSolicitacoes()
-      .then((res) => setSolicitacoes(res.data.items))
-      .catch((err) => setError(extractApiError(err, "Não foi possível carregar as solicitações.")))
-      .finally(() => setLoading(false));
-  };
+  const fetcher = useCallback(
+    (pagina: number, tamanhoPagina: number) =>
+      agendaApi
+        .listarSolicitacoes({ pagina: pagina + 1, tamanhoPagina, status: statusFiltro || undefined })
+        .then((res) => res.data),
+    [statusFiltro],
+  );
 
-  useEffect(() => { carregar(); }, []);
+  const { items: solicitacoes, total, page, pageSize, loading, error, setPage, setPageSize, setError, reload } =
+    usePaginatedList<SolicitacaoAgendamentoListItem>({ fetcher, errorMessage: "Não foi possível carregar as solicitações." });
+
+  const erroExibido = erroAcao || error;
+  const fecharErro = () => { setErroAcao(""); setError(""); };
 
   const tratarErroAcao = (err: unknown, fallback: string) => {
     const info = extractApiErrorInfo(err);
-    setError(info.status === 409 ? ERRO_CAPACIDADE_ESGOTADA : (info.message ?? fallback));
+    setErroAcao(info.code === CODE_CAPACIDADE_ESGOTADA ? ERRO_CAPACIDADE_ESGOTADA : (info.message ?? fallback));
   };
 
   const handleConfirmar = async (s: SolicitacaoAgendamentoListItem) => {
-    setError("");
+    setErroAcao("");
     setAcaoEmCursoId(s.id);
     try {
       await agendaApi.confirmarSolicitacao(s.id);
-      carregar();
+      reload();
     } catch (err) {
       tratarErroAcao(err, "Não foi possível confirmar a solicitação.");
     } finally {
@@ -84,7 +88,7 @@ export default function SolicitacoesTab() {
   const handleConfirmarDialog = async () => {
     if (!dialog) return;
     const { tipo, solicitacao } = dialog;
-    setError("");
+    setErroAcao("");
     setAcaoEmCursoId(solicitacao.id);
     try {
       if (tipo === "recusar") {
@@ -93,7 +97,7 @@ export default function SolicitacoesTab() {
         await agendaApi.cancelarSolicitacao(solicitacao.id, motivoDialog.trim() || null);
       }
       setDialog(null);
-      carregar();
+      reload();
     } catch (err) {
       tratarErroAcao(err, "Não foi possível concluir a ação.");
     } finally {
@@ -103,13 +107,35 @@ export default function SolicitacoesTab() {
 
   return (
     <>
-      <AlertBanner open={!!error} message={error} onClose={() => setError("")} />
+      <AlertBanner open={!!erroExibido} message={erroExibido} onClose={fecharErro} />
+
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel id="solicitacao-status-label">Status</InputLabel>
+          <Select
+            labelId="solicitacao-status-label"
+            value={statusFiltro}
+            label="Status"
+            onChange={(e) => {
+              setStatusFiltro(e.target.value as SolicitacaoAgendamentoStatus | "");
+              setPage(0);
+            }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {(Object.keys(SOLICITACAO_AGENDAMENTO_STATUS_LABEL) as SolicitacaoAgendamentoStatus[]).map((s) => (
+              <MenuItem key={s} value={s}>{SOLICITACAO_AGENDAMENTO_STATUS_LABEL[s]}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
       <DataList
         loading={loading}
         items={solicitacoes}
         emptyMessage="Nenhuma solicitação de agendamento ainda. Solicitações chegam pelo agente conversacional do seu perfil público."
         columns={COLUMNS}
         rowKey={(s) => s.id}
+        pagination={{ count: total, page, rowsPerPage: pageSize, onPageChange: setPage, onRowsPerPageChange: setPageSize }}
         renderCell={(s, i) => {
           if (i === 0) return s.pacoteNome;
           if (i === 1) return formatarIntervaloSolicitacao(s.inicioUtc, s.fimUtc);

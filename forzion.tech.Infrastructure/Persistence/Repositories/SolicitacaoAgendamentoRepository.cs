@@ -22,21 +22,19 @@ public class SolicitacaoAgendamentoRepository(AppDbContext context) : ISolicitac
             .FirstOrDefaultAsync(s => s.TreinadorId == treinadorId && s.IdempotencyKey == idempotencyKey, cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<int> ContarConfirmadasSobrepostasAsync(Guid treinadorId, Guid pacoteId, DateTime inicioUtc, DateTime fimUtc, CancellationToken cancellationToken = default) =>
+    public async Task<int> ContarConfirmadasSobrepostasAsync(Guid treinadorId, DateTime inicioUtc, DateTime fimUtc, CancellationToken cancellationToken = default) =>
         await context.SolicitacoesAgendamento
             .AsNoTracking()
             .Where(s => s.TreinadorId == treinadorId
-                && s.PacoteId == pacoteId
                 && s.Status == SolicitacaoAgendamentoStatus.Confirmada
                 && s.InicioUtc < fimUtc && s.FimUtc > inicioUtc)
             .CountAsync(cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<IReadOnlyList<SolicitacaoAgendamento>> ListarConfirmadasNoIntervaloAsync(Guid treinadorId, Guid pacoteId, DateTime deUtc, DateTime ateUtc, CancellationToken cancellationToken = default) =>
+    public async Task<IReadOnlyList<SolicitacaoAgendamento>> ListarConfirmadasNoIntervaloAsync(Guid treinadorId, DateTime deUtc, DateTime ateUtc, CancellationToken cancellationToken = default) =>
         await context.SolicitacoesAgendamento
             .AsNoTracking()
             .Where(s => s.TreinadorId == treinadorId
-                && s.PacoteId == pacoteId
                 && s.Status == SolicitacaoAgendamentoStatus.Confirmada
                 && s.InicioUtc < ateUtc && s.FimUtc > deUtc)
             .ToListAsync(cancellationToken)
@@ -56,16 +54,19 @@ public class SolicitacaoAgendamentoRepository(AppDbContext context) : ISolicitac
         if (status.HasValue)
             query = query.Where(s => s.Status == status.Value);
 
+        // Total sobre a query BASE, sem os JOINs de pacote/lead — a contagem não precisa deles,
+        // e arrastá-los custaria dois hash joins a mais só para descartar o resultado.
+        var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
+
         var projetada =
             from s in query
             join p in context.Pacotes.AsNoTracking() on s.PacoteId equals p.Id
             join l in context.Leads.AsNoTracking() on s.LeadId equals l.Id
-            orderby s.InicioUtc, s.Id
+            orderby s.InicioUtc descending, s.Id descending
             select new SolicitacaoAgendamentoListItem(
                 s.Id, s.PacoteId, p.Nome, s.InicioUtc, s.FimUtc, s.Status, s.Motivo, s.CreatedAt,
                 l.Id, l.Nome, l.Contato.Tipo, l.Contato.Valor, l.Anonimizado);
 
-        var total = await projetada.CountAsync(cancellationToken).ConfigureAwait(false);
         var items = await projetada
             .Skip((pagina - 1) * tamanhoPagina)
             .Take(tamanhoPagina)

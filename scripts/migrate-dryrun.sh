@@ -69,7 +69,13 @@ echo "migrate-dryrun: clonando schema '$SCHEMA' do DB real para a cópia..."
 
 echo "migrate-dryrun: aplicando migrations na cópia (app migrate)..."
 export DRYRUN_SCHEMA="$SCHEMA"  # mesmo schema do pg_dump --schema acima (compose interpola no Search Path)
-"${DC[@]}" build migrate
+if [ -n "${BACKEND_IMAGE:-}" ]; then
+  echo "migrate-dryrun: BACKEND_IMAGE=$BACKEND_IMAGE — usa a imagem já publicada, sem compilar na VM."
+  "${DC[@]}" pull migrate
+else
+  echo "migrate-dryrun: BACKEND_IMAGE não setado — build local (fallback)."
+  "${DC[@]}" build migrate
+fi
 "${DC[@]}" run --rm migrate
 
 echo "migrate-dryrun: OK — migrate aplicou limpo na cópia do schema real."

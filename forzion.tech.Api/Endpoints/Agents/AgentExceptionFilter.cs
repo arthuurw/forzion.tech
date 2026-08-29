@@ -16,15 +16,21 @@ internal sealed class AgentExceptionFilter(ILogger<AgentExceptionFilter> logger)
         catch (Exception ex)
         {
             // Nunca repassa ex.Message adiante: qualquer sink de log (ex.: ErrorLogDbSinkProvider)
-            // pode renderizar a mensagem crua, e MascaraPii.Scrub cobre e-mail/telefone via regex mas nao
-            // nome proprio — a unica garantia de zero PII aqui e trocar ex por um substituto seguro
-            // antes do logger, mantendo o parametro Exception exigido por S6667.
-            ex = new Exception(ex.GetType().Name);
+            // pode renderizar a mensagem crua, e MascaraPii.Scrub cobre e-mail/telefone via regex mas
+            // nao nome proprio. Tipo completo + stack trace saem como parametros ESTRUTURADOS (nao
+            // via ex.StackTrace do objeto logado — um `new Exception()` nunca lancado tem StackTrace
+            // nulo, apagando o diagnostico real). O objeto Exception passado ao logger (exigido por
+            // S6667) carrega só o tipo no Message, nunca o texto original.
+            var tipoOriginal = ex.GetType().FullName;
+            var stackTraceOriginal = ex.StackTrace;
+            ex = new Exception(tipoOriginal);
             logger.LogError(
                 ex,
-                "Excecao nao tratada no grupo de agentes — Metodo: {Metodo} Caminho: {Caminho}",
+                "Excecao nao tratada no grupo de agentes — Tipo: {TipoExcecao} Metodo: {Metodo} Caminho: {Caminho} StackTrace: {StackTrace}",
+                tipoOriginal,
                 context.HttpContext.Request.Method,
-                context.HttpContext.Request.Path.Value);
+                context.HttpContext.Request.Path.Value,
+                stackTraceOriginal);
 
             return AgentProblem.Criar(AgentErrorCode.DependencyUnavailable, StatusCodes.Status503ServiceUnavailable);
         }

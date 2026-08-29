@@ -71,6 +71,9 @@ public class LeadAgenteE2ETests(RealPipelineFixture fixture)
     private static string CorpoValido(string idempotencyKey, string nome = "Fulano", string interesse = "quero treinar") =>
         $$"""{"name":"{{nome}}","contact":{"type":"email","value":"fulano@lead.com"},"interest":"{{interesse}}","consent":{"granted":true,"purpose":"Contato comercial"},"idempotencyKey":"{{idempotencyKey}}"}""";
 
+    private static string CorpoComGrantedAt(string idempotencyKey, string grantedAtLiteral) =>
+        $$"""{"name":"Fulano","contact":{"type":"email","value":"fulano@lead.com"},"consent":{"granted":true,"purpose":"Contato comercial","grantedAt":"{{grantedAtLiteral}}"},"idempotencyKey":"{{idempotencyKey}}"}""";
+
     [Fact]
     public async Task TreinadorPublicado_PostAssinado_Retorna201EPersisteLeadDeAgentePendente()
     {
@@ -161,5 +164,66 @@ public class LeadAgenteE2ETests(RealPipelineFixture fixture)
         using var verificacaoScope = fixture.Services.CreateScope();
         var verificacaoDb = verificacaoScope.ServiceProvider.GetRequiredService<AppDbContext>();
         (await verificacaoDb.Leads.CountAsync(l => l.TreinadorId == tenantId)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GrantedAtComOffsetNegativo_Retorna201ENormalizaParaUtc()
+    {
+        using var scope = fixture.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var tenantId = await SeedTreinadorPublicadoAsync(db);
+        var corpo = CorpoComGrantedAt($"chave-{Guid.NewGuid():N}", "2026-08-20T09:00:00-03:00");
+
+        using var resposta = await EnviarAssinadaAsync(fixture.CreateClient(), CaminhoLeads(tenantId), corpo);
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.Created);
+        using var corpoResposta = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync());
+        var leadId = Guid.Parse(corpoResposta.RootElement.GetProperty("leadId").GetString()!);
+
+        using var verificacaoScope = fixture.Services.CreateScope();
+        var verificacaoDb = verificacaoScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var lead = await verificacaoDb.Leads.SingleAsync(l => l.Id == leadId);
+        lead.Consentimento.ConcedidoEm.Should().Be(new DateTime(2026, 8, 20, 12, 0, 0, DateTimeKind.Utc));
+    }
+
+    [Fact]
+    public async Task GrantedAtSemOffset_Retorna201ETratadoComoUtc()
+    {
+        using var scope = fixture.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var tenantId = await SeedTreinadorPublicadoAsync(db);
+        var corpo = CorpoComGrantedAt($"chave-{Guid.NewGuid():N}", "2026-08-20T09:00:00");
+
+        using var resposta = await EnviarAssinadaAsync(fixture.CreateClient(), CaminhoLeads(tenantId), corpo);
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.Created);
+        using var corpoResposta = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync());
+        var leadId = Guid.Parse(corpoResposta.RootElement.GetProperty("leadId").GetString()!);
+
+        using var verificacaoScope = fixture.Services.CreateScope();
+        var verificacaoDb = verificacaoScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var lead = await verificacaoDb.Leads.SingleAsync(l => l.Id == leadId);
+        lead.Consentimento.ConcedidoEm.Should().Be(new DateTime(2026, 8, 20, 9, 0, 0, DateTimeKind.Utc));
+    }
+
+    [Fact]
+    public async Task GrantedAtFuturo_ClampadoParaORegistradoEm()
+    {
+        using var scope = fixture.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var tenantId = await SeedTreinadorPublicadoAsync(db);
+        var futuro = DateTime.UtcNow.AddDays(30).ToString("O");
+        var corpo = CorpoComGrantedAt($"chave-{Guid.NewGuid():N}", futuro);
+
+        using var resposta = await EnviarAssinadaAsync(fixture.CreateClient(), CaminhoLeads(tenantId), corpo);
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.Created);
+        using var corpoResposta = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync());
+        var leadId = Guid.Parse(corpoResposta.RootElement.GetProperty("leadId").GetString()!);
+
+        using var verificacaoScope = fixture.Services.CreateScope();
+        var verificacaoDb = verificacaoScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var lead = await verificacaoDb.Leads.SingleAsync(l => l.Id == leadId);
+        lead.Consentimento.ConcedidoEm.Should().Be(lead.Consentimento.RegistradoEm);
     }
 }

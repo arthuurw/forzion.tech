@@ -59,6 +59,31 @@ public class ConcurrentBookingConfirmationRaceTests(RealPipelineFixture fixture)
         confirmadasNoBanco.Should().Be(2, "o estado final do banco deve refletir exatamente 2 confirmadas");
     }
 
+    [Fact]
+    public async Task Confirmar_MesmoHorarioEmPacotesDiferentesDoMesmoTreinador_ExatamenteUmaConfirmaAOutraRecebeConflito()
+    {
+        // AD-021: a agenda do treinador é o recurso escasso — capacidade 1 em cada pacote não
+        // significa 2 vagas simultâneas no mesmo horário quando os pacotes são do mesmo treinador.
+        var treinadorId = await SeedTreinadorAsync();
+        var pacoteAId = await SeedPacoteAsync(treinadorId, capacidadeMaxima: 1);
+        var pacoteBId = await SeedPacoteAsync(treinadorId, capacidadeMaxima: 1);
+        var inicioUtc = DateTime.UtcNow.AddDays(3);
+        var fimUtc = inicioUtc.AddMinutes(60);
+        var solicitacaoNoPacoteA = await SeedSolicitacaoPendenteAsync(treinadorId, pacoteAId, inicioUtc, fimUtc);
+        var solicitacaoNoPacoteB = await SeedSolicitacaoPendenteAsync(treinadorId, pacoteBId, inicioUtc, fimUtc);
+
+        var resultados = await ConfirmarEmParaleloAsync(treinadorId, solicitacaoNoPacoteA, solicitacaoNoPacoteB);
+
+        resultados.Where(r => r.Excecao is not null).Should().BeEmpty(
+            "nenhuma confirmação concorrente cross-pacote deve terminar em erro não tratado (500): {0}",
+            string.Join(" || ", resultados.Where(r => r.Excecao is not null).Select(r => r.Excecao!.GetType().Name + ": " + r.Excecao!.Message)));
+
+        resultados.Count(r => r.Sucesso).Should().Be(1, "a agenda do treinador só comporta uma confirmação nesse horário, mesmo em pacotes diferentes");
+
+        var confirmadasDoTreinador = await ContarConfirmadasPorTreinadorAsync(treinadorId, inicioUtc, fimUtc);
+        confirmadasDoTreinador.Should().Be(1, "o estado final do banco deve refletir exatamente 1 confirmada na agenda do treinador");
+    }
+
     private async Task<HandlerOutcome[]> ConfirmarEmParaleloAsync(Guid treinadorId, params Guid[] solicitacaoIds)
     {
         using var startBarrier = new Barrier(participantCount: solicitacaoIds.Length);
@@ -93,6 +118,13 @@ public class ConcurrentBookingConfirmationRaceTests(RealPipelineFixture fixture)
 
     private async Task<(Guid TreinadorId, Guid PacoteId)> SeedTenantAsync(int capacidadeMaxima)
     {
+        var treinadorId = await SeedTreinadorAsync();
+        var pacoteId = await SeedPacoteAsync(treinadorId, capacidadeMaxima);
+        return (treinadorId, pacoteId);
+    }
+
+    private async Task<Guid> SeedTreinadorAsync()
+    {
         using var scope = fixture.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var agora = DateTime.UtcNow;
@@ -103,12 +135,33 @@ public class ConcurrentBookingConfirmationRaceTests(RealPipelineFixture fixture)
         db.Contas.Add(conta);
         db.Treinadores.Add(treinador);
 
-        var pacote = new PacoteBuilder().ComTreinadorId(treinador.Id).Em(agora).Build();
+        await db.SaveChangesAsync();
+        return treinador.Id;
+    }
+
+    private async Task<Guid> SeedPacoteAsync(Guid treinadorId, int capacidadeMaxima)
+    {
+        using var scope = fixture.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var agora = DateTime.UtcNow;
+
+        var pacote = new PacoteBuilder().ComTreinadorId(treinadorId).Em(agora).Build();
         pacote.AtualizarCatalogoPublico("Categoria", 60, false, agora, capacidadeMaxima: capacidadeMaxima);
         db.Pacotes.Add(pacote);
 
         await db.SaveChangesAsync();
-        return (treinador.Id, pacote.Id);
+        return pacote.Id;
+    }
+
+    private async Task<int> ContarConfirmadasPorTreinadorAsync(Guid treinadorId, DateTime inicioUtc, DateTime fimUtc)
+    {
+        using var scope = fixture.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await db.SolicitacoesAgendamento
+            .Where(s => s.TreinadorId == treinadorId
+                && s.Status == SolicitacaoAgendamentoStatus.Confirmada
+                && s.InicioUtc < fimUtc && s.FimUtc > inicioUtc)
+            .CountAsync();
     }
 
     private async Task<Guid> SeedSolicitacaoPendenteAsync(Guid treinadorId, Guid pacoteId, DateTime inicioUtc, DateTime fimUtc)

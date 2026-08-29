@@ -16,6 +16,13 @@ const PACOTE_PUBLICO = {
   isPublico: true,
 };
 
+const PACOTE_PRIVADO = {
+  ...PACOTE_PUBLICO,
+  pacoteId: "33333333-3333-3333-3333-333333333333",
+  nome: "Avaliação física",
+  isPublico: false,
+};
+
 async function renderPage() {
   const { default: Page } = await import("@/app/(treinador)/treinador/pacotes/page");
   render(<Page />);
@@ -47,7 +54,21 @@ describe("PacotesTreinadorPage — catálogo público", () => {
     expect(screen.getByRole("button", { name: /^criar$/i })).toBeDisabled();
   });
 
-  it("libera criar quando categoria é preenchida com 'Público' ligado", async () => {
+  it("bloqueia criar quando 'Público' está ligado sem duração preenchida", async () => {
+    server.use(http.get("*/treinador/pacotes", () => HttpResponse.json([])));
+    await renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: /novo pacote/i }));
+    fireEvent.change(screen.getByLabelText(/^Nome/i), { target: { value: "Funcional" } });
+    fireEvent.change(screen.getByLabelText(/Preço mensal/i), { target: { value: "100" } });
+    fireEvent.change(screen.getByLabelText(/^Categoria$/i), { target: { value: "Funcional" } });
+    fireEvent.click(screen.getByRole("switch", { name: /público \(visível no catálogo do agente\)/i }));
+
+    expect(screen.getByText(/duração é obrigatória para tornar o pacote público/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^criar$/i })).toBeDisabled();
+  });
+
+  it("libera criar quando categoria e duração são preenchidas com 'Público' ligado", async () => {
     server.use(http.get("*/treinador/pacotes", () => HttpResponse.json([])));
     await renderPage();
 
@@ -56,8 +77,10 @@ describe("PacotesTreinadorPage — catálogo público", () => {
     fireEvent.change(screen.getByLabelText(/Preço mensal/i), { target: { value: "100" } });
     fireEvent.click(screen.getByRole("switch", { name: /público \(visível no catálogo do agente\)/i }));
     fireEvent.change(screen.getByLabelText(/^Categoria$/i), { target: { value: "Funcional" } });
+    fireEvent.change(screen.getByLabelText(/Duração \(min\)/i), { target: { value: "45" } });
 
     expect(screen.queryByText(/categoria é obrigatória para tornar o pacote público/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/duração é obrigatória para tornar o pacote público/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^criar$/i })).toBeEnabled();
   });
 
@@ -119,5 +142,56 @@ describe("PacotesTreinadorPage — catálogo público", () => {
 
     expect(screen.getByText(/categoria é obrigatória para tornar o pacote público/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^salvar$/i })).toBeDisabled();
+  });
+
+  it("bloqueia salvar edição quando desliga duração com 'Público' ligado", async () => {
+    server.use(http.get("*/treinador/pacotes", () => HttpResponse.json([PACOTE_PUBLICO])));
+    await renderPage();
+
+    fireEvent.click(await screen.findByText("Pilates em grupo"));
+    const duracaoInput = await screen.findByLabelText(/Duração \(min\)/i);
+    fireEvent.change(duracaoInput, { target: { value: "" } });
+
+    expect(screen.getByText(/duração é obrigatória para tornar o pacote público/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^salvar$/i })).toBeDisabled();
+  });
+
+  it("limpa categoria e duração de um pacote privado ao esvaziar os campos e salvar", async () => {
+    let corpoEnviado: Record<string, unknown> | null = null;
+    server.use(
+      http.get("*/treinador/pacotes", () => HttpResponse.json([PACOTE_PRIVADO])),
+      http.patch("*/treinador/pacotes/:id", async ({ request }) => {
+        corpoEnviado = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ...PACOTE_PRIVADO, categoria: null, duracaoMinutos: null });
+      }),
+    );
+    await renderPage();
+
+    fireEvent.click(await screen.findByText("Avaliação física"));
+    fireEvent.change(await screen.findByLabelText(/^Categoria$/i), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText(/Duração \(min\)/i), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: /^salvar$/i }));
+
+    await waitFor(() => expect(corpoEnviado).not.toBeNull());
+    expect(corpoEnviado).toMatchObject({ categoria: "", duracaoMinutos: 0 });
+  });
+
+  it("preserva categoria e duração de um pacote privado quando os campos não são tocados", async () => {
+    let corpoEnviado: Record<string, unknown> | null = null;
+    server.use(
+      http.get("*/treinador/pacotes", () => HttpResponse.json([PACOTE_PRIVADO])),
+      http.patch("*/treinador/pacotes/:id", async ({ request }) => {
+        corpoEnviado = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(PACOTE_PRIVADO);
+      }),
+    );
+    await renderPage();
+
+    fireEvent.click(await screen.findByText("Avaliação física"));
+    await screen.findByLabelText(/^Categoria$/i);
+    fireEvent.click(screen.getByRole("button", { name: /^salvar$/i }));
+
+    await waitFor(() => expect(corpoEnviado).not.toBeNull());
+    expect(corpoEnviado).toMatchObject({ categoria: "Pilates", duracaoMinutos: 60 });
   });
 });

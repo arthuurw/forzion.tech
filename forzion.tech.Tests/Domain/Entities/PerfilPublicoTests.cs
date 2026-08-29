@@ -1,5 +1,6 @@
 using FluentAssertions;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Services;
 using forzion.tech.Domain.ValueObjects;
 using forzion.tech.Tests.Builders;
 
@@ -39,6 +40,101 @@ public class PerfilPublicoTests
         perfil.Endereco.Should().NotBeNull();
         perfil.Politicas.Should().BeEquivalentTo(politicas);
         perfil.UpdatedAt.Should().Be(TestData.Agora);
+    }
+
+    [Fact]
+    public void AtualizarDados_NomeFantasiaAcimaDoLimite_Falha()
+    {
+        var perfil = PerfilPublico.CriarVazio();
+        perfil.AtualizarDados("Nome anterior", null, null, TestData.Agora);
+        var nomeExcedente = new string('a', ParametrosDerivacao.MaxNomeFantasiaLength + 1);
+
+        var r = perfil.AtualizarDados(nomeExcedente, null, null, TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("perfil_publico.nome_fantasia_muito_longo");
+        perfil.NomeFantasia.Should().Be("Nome anterior");
+    }
+
+    [Fact]
+    public void AtualizarDados_NomeFantasiaNoLimiteExato_Sucesso()
+    {
+        var perfil = PerfilPublico.CriarVazio();
+        var nomeNoLimite = new string('a', ParametrosDerivacao.MaxNomeFantasiaLength);
+
+        var r = perfil.AtualizarDados(nomeNoLimite, null, null, TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        perfil.NomeFantasia.Should().Be(nomeNoLimite);
+    }
+
+    [Fact]
+    public void AtualizarDados_PoliticasAcimaDoLimiteDeItens_Falha()
+    {
+        var perfil = PerfilPublico.CriarVazio();
+        var politicasExcedentes = Enumerable.Range(0, ParametrosDerivacao.MaxPoliticas + 1)
+            .ToDictionary(i => $"politica{i}", i => "valor");
+
+        var r = perfil.AtualizarDados("Academia X", null, politicasExcedentes, TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("perfil_publico.politicas_excedem_limite");
+        perfil.Politicas.Should().BeNull();
+    }
+
+    [Fact]
+    public void AtualizarDados_PoliticasNoLimiteExatoDeItens_Sucesso()
+    {
+        var perfil = PerfilPublico.CriarVazio();
+        var politicasNoLimite = Enumerable.Range(0, ParametrosDerivacao.MaxPoliticas)
+            .ToDictionary(i => $"politica{i}", i => "valor");
+
+        var r = perfil.AtualizarDados("Academia X", null, politicasNoLimite, TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        perfil.Politicas.Should().HaveCount(ParametrosDerivacao.MaxPoliticas);
+    }
+
+    [Fact]
+    public void AtualizarDados_ChaveDePoliticaAcimaDoLimite_Falha()
+    {
+        var perfil = PerfilPublico.CriarVazio();
+        var chaveExcedente = new string('a', ParametrosDerivacao.MaxPoliticaChaveLength + 1);
+        var politicas = new Dictionary<string, string> { [chaveExcedente] = "valor" };
+
+        var r = perfil.AtualizarDados("Academia X", null, politicas, TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("perfil_publico.politica_chave_muito_longa");
+        perfil.Politicas.Should().BeNull();
+    }
+
+    [Fact]
+    public void AtualizarDados_ValorDePoliticaAcimaDoLimite_Falha()
+    {
+        var perfil = PerfilPublico.CriarVazio();
+        var valorExcedente = new string('a', ParametrosDerivacao.MaxPoliticaValorLength + 1);
+        var politicas = new Dictionary<string, string> { ["cancelamento"] = valorExcedente };
+
+        var r = perfil.AtualizarDados("Academia X", null, politicas, TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("perfil_publico.politica_valor_muito_longo");
+        perfil.Politicas.Should().BeNull();
+    }
+
+    [Fact]
+    public void AtualizarDados_ChaveEValorDePoliticaNoLimiteExato_Sucesso()
+    {
+        var perfil = PerfilPublico.CriarVazio();
+        var chaveNoLimite = new string('a', ParametrosDerivacao.MaxPoliticaChaveLength);
+        var valorNoLimite = new string('b', ParametrosDerivacao.MaxPoliticaValorLength);
+        var politicas = new Dictionary<string, string> { [chaveNoLimite] = valorNoLimite };
+
+        var r = perfil.AtualizarDados("Academia X", null, politicas, TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        perfil.Politicas.Should().BeEquivalentTo(politicas);
     }
 
     // --- Publicar ---
@@ -182,5 +278,31 @@ public class PerfilPublicoTests
 
         r.IsFailure.Should().BeTrue();
         perfil.HorariosFuncionamento.Should().ContainSingle(h => h.DiaSemana == 1);
+    }
+
+    [Fact]
+    public void SubstituirHorarios_ListaAcimaDoLimite_FalhaEPreservaHorariosAntigos()
+    {
+        var perfil = PerfilPublico.CriarVazio();
+        perfil.AdicionarHorario(1, new TimeOnly(8, 0), new TimeOnly(12, 0), TestData.Agora);
+        var acimaDoLimite = Enumerable.Repeat((2, new TimeOnly(9, 0), new TimeOnly(10, 0)), ParametrosDerivacao.MaxHorariosFuncionamento + 1).ToList();
+
+        var r = perfil.SubstituirHorarios(acimaDoLimite, TestData.Agora);
+
+        r.IsFailure.Should().BeTrue();
+        r.Error!.Code.Should().Be("perfil_publico.horarios_excedem_limite");
+        perfil.HorariosFuncionamento.Should().ContainSingle(h => h.DiaSemana == 1);
+    }
+
+    [Fact]
+    public void SubstituirHorarios_ListaNoLimiteExato_Sucesso()
+    {
+        var perfil = PerfilPublico.CriarVazio();
+        var noLimite = Enumerable.Repeat((2, new TimeOnly(9, 0), new TimeOnly(10, 0)), ParametrosDerivacao.MaxHorariosFuncionamento).ToList();
+
+        var r = perfil.SubstituirHorarios(noLimite, TestData.Agora);
+
+        r.IsSuccess.Should().BeTrue();
+        perfil.HorariosFuncionamento.Should().HaveCount(ParametrosDerivacao.MaxHorariosFuncionamento);
     }
 }

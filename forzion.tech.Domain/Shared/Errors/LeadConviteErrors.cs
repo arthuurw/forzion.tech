@@ -9,4 +9,10 @@ public static class LeadConviteErrors
     public static Error Expirado => Error.Business("lead_convite.expirado", "Este convite expirou.");
     public static Error ContatoNaoSuportaConvite => Error.Business("lead_convite.contato_nao_suporta_convite", "O convite exige contato de e-mail (ou WhatsApp, quando disponível) — este lead só tem telefone.");
     public static Error TokenInvalido => Error.NotFound("lead_convite.token_invalido", "Convite não encontrado ou não é mais válido.");
+
+    public static Error Aguarde(DateTime liberadoEm) =>
+        Error.Business("lead_convite.aguarde", $"Aguarde até {liberadoEm:HH:mm} para reenviar o convite a este lead.");
+
+    public static Error TetoDiarioAtingido(DateTime liberadoEm) =>
+        Error.Business("lead_convite.teto_diario_atingido", $"Teto diário de convites para este lead atingido. Tente novamente após {liberadoEm:dd/MM/yyyy HH:mm}.");
 }

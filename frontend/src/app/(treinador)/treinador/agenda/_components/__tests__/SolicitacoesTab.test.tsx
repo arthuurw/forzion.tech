@@ -89,7 +89,7 @@ describe("SolicitacoesTab", () => {
     );
     renderTab();
 
-    expect(await screen.findByText(/falha ao listar/i)).toBeInTheDocument();
+    expect(await screen.findByText(/não foi possível carregar as solicitações/i)).toBeInTheDocument();
   });
 
   it("confirma uma solicitação pendente e reflete o novo status após a resposta", async () => {
@@ -167,17 +167,79 @@ describe("SolicitacoesTab", () => {
     expect(screen.getByText("Pendente")).toBeInTheDocument();
   });
 
-  it("conflito de capacidade (409) ao confirmar mostra mensagem específica", async () => {
+  it("conflito de capacidade (409, code capacidade_esgotada) ao confirmar mostra mensagem específica", async () => {
     server.use(
       http.get("*/treinador/agenda/solicitacoes", () =>
         HttpResponse.json({ items: [SOLICITACAO_BASE], total: 1, pagina: 1, tamanhoPagina: 20 })),
       http.post("*/treinador/agenda/solicitacoes/s1/confirmar", () =>
-        HttpResponse.json({ detail: "solicitacao_agendamento.capacidade_esgotada" }, { status: 409 })),
+        HttpResponse.json(
+          { detail: "A capacidade máxima do horário já foi atingida.", code: "solicitacao_agendamento.capacidade_esgotada" },
+          { status: 409 },
+        )),
     );
     renderTab();
 
     fireEvent.click(await screen.findByRole("button", { name: "Confirmar" }));
 
     expect(await screen.findByText(/capacidade máxima deste horário já foi atingida/i)).toBeInTheDocument();
+  });
+
+  it("conflito de transição não suportada (409, outro code) ao confirmar mostra a mensagem do backend", async () => {
+    server.use(
+      http.get("*/treinador/agenda/solicitacoes", () =>
+        HttpResponse.json({ items: [SOLICITACAO_BASE], total: 1, pagina: 1, tamanhoPagina: 20 })),
+      http.post("*/treinador/agenda/solicitacoes/s1/confirmar", () =>
+        HttpResponse.json(
+          { detail: "Esta transição de status não é suportada por esta operação.", code: "solicitacao_agendamento.transicao_nao_suportada" },
+          { status: 409 },
+        )),
+    );
+    renderTab();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Confirmar" }));
+
+    expect(await screen.findByText(/esta transição de status não é suportada/i)).toBeInTheDocument();
+    expect(screen.queryByText(/capacidade máxima deste horário já foi atingida/i)).not.toBeInTheDocument();
+  });
+
+  it("navega para a página seguinte da listagem de solicitações", async () => {
+    let ultimaPagina: string | null = null;
+    server.use(
+      http.get("*/treinador/agenda/solicitacoes", ({ request }) => {
+        const url = new URL(request.url);
+        ultimaPagina = url.searchParams.get("pagina");
+        const pagina2 = ultimaPagina === "2";
+        return HttpResponse.json({
+          items: [{ ...SOLICITACAO_BASE, id: pagina2 ? "s2" : "s1", pacoteNome: pagina2 ? "Personal" : "Aula experimental" }],
+          total: 11,
+          pagina: pagina2 ? 2 : 1,
+          tamanhoPagina: 10,
+        });
+      }),
+    );
+    renderTab();
+
+    expect(await screen.findByText("Aula experimental")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /ir para a próxima página/i }));
+
+    expect(await screen.findByText("Personal")).toBeInTheDocument();
+    expect(ultimaPagina).toBe("2");
+  });
+
+  it("filtra a listagem por status", async () => {
+    let ultimoStatus: string | null = null;
+    server.use(
+      http.get("*/treinador/agenda/solicitacoes", ({ request }) => {
+        ultimoStatus = new URL(request.url).searchParams.get("status");
+        return HttpResponse.json({ items: [SOLICITACAO_BASE], total: 1, pagina: 1, tamanhoPagina: 10 });
+      }),
+    );
+    renderTab();
+
+    await screen.findByText("Aula experimental");
+    fireEvent.mouseDown(screen.getByLabelText("Status"));
+    fireEvent.click(await screen.findByRole("option", { name: "Confirmada" }));
+
+    await waitFor(() => expect(ultimoStatus).toBe("Confirmada"));
   });
 });

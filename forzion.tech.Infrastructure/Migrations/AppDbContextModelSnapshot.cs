@@ -2053,6 +2053,12 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_solicitacoes_agendamento");
 
@@ -2065,6 +2071,10 @@ namespace forzion.tech.Infrastructure.Migrations
                     b.HasIndex("TreinadorId", "IdempotencyKey")
                         .IsUnique()
                         .HasDatabaseName("ix_solicitacoes_agendamento_treinador_id_idempotency_key_unique");
+
+                    b.HasIndex("TreinadorId", "InicioUtc", "Id")
+                        .IsDescending(false, true, false)
+                        .HasDatabaseName("ix_solicitacoes_agendamento_treinador_id_inicio_utc_id");
 
                     b.HasIndex("TreinadorId", "Status", "InicioUtc")
                         .IsDescending(false, false, true)
@@ -2118,6 +2128,35 @@ namespace forzion.tech.Infrastructure.Migrations
                         .HasDatabaseName("ix_system_users_conta_id");
 
                     b.ToTable("system_users", (string)null);
+                });
+
+            modelBuilder.Entity("forzion.tech.Domain.Entities.TentativasLoginConta", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid>("ContaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conta_id");
+
+                    b.Property<int>("Tentativas")
+                        .HasColumnType("integer")
+                        .HasColumnName("tentativas");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tentativas_login_conta");
+
+                    b.HasIndex("ContaId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tentativas_login_conta_conta_id");
+
+                    b.ToTable("tentativas_login_conta", (string)null);
                 });
 
             modelBuilder.Entity("forzion.tech.Domain.Entities.TokenRevogado", b =>

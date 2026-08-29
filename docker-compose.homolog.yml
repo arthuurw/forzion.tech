@@ -117,7 +117,7 @@ services:
       - forzion-hmg
 
   pact-broker:
-    image: pactfoundation/pact-broker:latest
+    image: pactfoundation/pact-broker@sha256:b584200e9f153bf5896930d006c89b0ebf45df57d96aa08f7c7f16bc8b0343d4
     environment:
       PACT_BROKER_DATABASE_ADAPTER: postgres
       PACT_BROKER_DATABASE_HOST: pact-postgres

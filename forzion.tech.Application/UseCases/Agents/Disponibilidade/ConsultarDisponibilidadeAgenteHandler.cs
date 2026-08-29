@@ -24,7 +24,7 @@ public class ConsultarDisponibilidadeAgenteHandler(
         ConsultarDisponibilidadeQuery query,
         CancellationToken cancellationToken)
     {
-        var treinador = await treinadorRepository.ObterPorIdAsync(query.TenantId, cancellationToken).ConfigureAwait(false);
+        var treinador = await treinadorRepository.ObterPorIdSemTrackingAsync(query.TenantId, cancellationToken).ConfigureAwait(false);
         if (!AgentTenantGuard.EstaPublicado(treinador))
             return Result.Failure<IReadOnlyList<AvailabilitySlotResponse>>(TreinadorErrors.NaoEncontrado);
 
@@ -37,8 +37,13 @@ public class ConsultarDisponibilidadeAgenteHandler(
         var fuso = TimeZoneInfo.FindSystemTimeZoneById(treinador.FusoHorario);
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 
+        // O último slot pode iniciar pouco antes de ToUtc e terminar depois dele (FimUtc =
+        // InicioUtc + duracaoMinutos) — a janela auxiliar estende até ToUtc + duracaoMinutos pra
+        // capturar bloqueio/confirmada que começa depois de ToUtc mas ainda sobrepõe esse slot.
+        var ateUtcComCauda = query.ToUtc.AddMinutes(duracaoMinutos);
+
         var bloqueios = await bloqueioAgendaRepository
-            .ListarVigentesAsync(query.TenantId, query.FromUtc, query.ToUtc, cancellationToken)
+            .ListarVigentesAsync(query.TenantId, query.FromUtc, ateUtcComCauda, cancellationToken)
             .ConfigureAwait(false);
 
         var parametros = new ParametrosDerivacao(
@@ -61,7 +66,7 @@ public class ConsultarDisponibilidadeAgenteHandler(
         // aqui em memória, por SOBREPOSIÇÃO de intervalo — nunca por igualdade de slotId (R2),
         // que quebraria em silêncio se o treinador mudasse a duração do pacote.
         var confirmadas = await solicitacaoAgendamentoRepository
-            .ListarConfirmadasNoIntervaloAsync(query.TenantId, query.ServiceId, query.FromUtc, query.ToUtc, cancellationToken)
+            .ListarConfirmadasNoIntervaloAsync(query.TenantId, query.FromUtc, ateUtcComCauda, cancellationToken)
             .ConfigureAwait(false);
 
         return Result.Success<IReadOnlyList<AvailabilitySlotResponse>>(

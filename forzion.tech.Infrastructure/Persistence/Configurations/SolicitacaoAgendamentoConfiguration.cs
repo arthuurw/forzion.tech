@@ -11,6 +11,11 @@ public class SolicitacaoAgendamentoConfiguration : IEntityTypeConfiguration<Soli
         builder.ToTable("solicitacoes_agendamento");
         builder.HasKey(s => s.Id);
 
+        builder.Property<uint>("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
+
         builder.Property(s => s.TreinadorId).IsRequired();
         builder.HasOne<Treinador>()
             .WithMany()
@@ -51,5 +56,11 @@ public class SolicitacaoAgendamentoConfiguration : IEntityTypeConfiguration<Soli
         builder.HasIndex(s => new { s.TreinadorId, s.Status, s.InicioUtc })
             .IsDescending(false, false, true)
             .HasDatabaseName("ix_solicitacoes_agendamento_treinador_id_status_inicio_utc");
+
+        // Cobre a listagem da esteira SEM filtro de status (o índice acima exige igualdade em
+        // Status pra servir o ORDER BY sem sort extra).
+        builder.HasIndex(s => new { s.TreinadorId, s.InicioUtc, s.Id })
+            .IsDescending(false, true, false)
+            .HasDatabaseName("ix_solicitacoes_agendamento_treinador_id_inicio_utc_id");
     }
 }

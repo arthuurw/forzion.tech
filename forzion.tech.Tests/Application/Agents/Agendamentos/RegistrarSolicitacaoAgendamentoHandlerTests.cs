@@ -31,13 +31,13 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
 
     public RegistrarSolicitacaoAgendamentoHandlerTests()
     {
-        var resolvedor = new ResolvedorLeadAgendamento(_leadRepo.Object);
+        var resolvedor = new ResolvedorLeadAgendamento(_leadRepo.Object, _unitOfWork.Object, _databaseErrorInspector.Object);
         _handler = new RegistrarSolicitacaoAgendamentoHandler(
             _treinadorRepo.Object, _pacoteRepo.Object, _bloqueioRepo.Object, _solicitacaoRepo.Object, resolvedor,
             _unitOfWork.Object, _timeProvider, _databaseErrorInspector.Object);
         _bloqueioRepo.Setup(r => r.ListarVigentesAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<BloqueioAgenda>)[]);
-        _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
         _leadRepo.Setup(r => r.ObterReutilizavelPorContatoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Lead?)null);
@@ -57,7 +57,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
         int capacidadeMaxima = 3, bool ativo = true, bool publico = true, int? duracaoMinutos = 60)
     {
         var treinador = CriarTreinadorPublicado();
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         var pacote = new PacoteBuilder().ComTreinadorId(treinador.Id).Build();
         pacote.AtualizarCatalogoPublico("Categoria", duracaoMinutos, false, DateTime.UtcNow, capacidadeMaxima: capacidadeMaxima);
         if (publico)
@@ -104,7 +104,8 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
         capturada.PacoteId.Should().Be(pacote.Id);
         capturada.InicioUtc.Should().Be(InicioSlotValido, "InicioUtc vem do slot derivado, nunca do command");
         capturada.FimUtc.Should().Be(FimSlotValido);
-        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2),
+            "resolvedor comita o lead novo antes do commit da solicitacao");
     }
 
     [Fact]
@@ -126,7 +127,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
         result.Error!.Should().Be(SolicitacaoAgendamentoAgenteErrors.ConsentimentoNaoConcedido);
         _solicitacaoRepo.Verify(r => r.AdicionarAsync(It.IsAny<SolicitacaoAgendamento>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
-        _treinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _treinadorRepo.Verify(r => r.ObterPorIdSemTrackingAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // --- AGF4-05: tenant não encontrado/inativo/não publicado ⇒ tenant_not_found ---
@@ -135,7 +136,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
     public async Task HandleAsync_TenantInexistente_RetornaTreinadorNaoEncontrado()
     {
         var tenantId = Guid.NewGuid();
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync((Treinador?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync((Treinador?)null);
 
         var result = await _handler.HandleAsync(ComandoValido(tenantId, Guid.NewGuid()));
 
@@ -148,7 +149,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
     {
         var treinador = CriarTreinadorPublicado();
         treinador.Inativar(DateTime.UtcNow);
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         var result = await _handler.HandleAsync(ComandoValido(treinador.Id, Guid.NewGuid()));
 
@@ -161,7 +162,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
     {
         var treinador = new TreinadorBuilder().Build();
         treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         var result = await _handler.HandleAsync(ComandoValido(treinador.Id, Guid.NewGuid()));
 
@@ -175,7 +176,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
     public async Task HandleAsync_ServicoInexistente_RetornaPacoteNaoEncontrado()
     {
         var treinador = CriarTreinadorPublicado();
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         var serviceId = Guid.NewGuid();
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(serviceId, It.IsAny<CancellationToken>())).ReturnsAsync((Pacote?)null);
 
@@ -233,13 +234,31 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
         result.Error!.Should().Be(SolicitacaoAgendamentoAgenteErrors.SlotNaoEncontrado);
     }
 
+    // --- horizonte da política (60d) excede o teto de 31d do caminho de escrita ---
+
+    [Fact]
+    public async Task HandleAsync_SlotAlemDoTetoDe31DiasDoCaminhoDeEscrita_RetornaSlotNaoEncontrado()
+    {
+        // Treinador com horizonte padrão de 60 dias: o slot existe no GET availability (que também
+        // capa em 31d, mas isso é responsabilidade do endpoint) e na política, mas o caminho de
+        // escrita deve recusá-lo por estar além do próprio teto de 31 dias, não achar 503/erro.
+        var (treinador, pacote) = SetupTenant();
+        var segundaAlemDoTeto = new DateTime(2026, 9, 28, 11, 0, 0, DateTimeKind.Utc);
+        var slotIdAlemDoTeto = SlotId.Calcular(treinador.Id, pacote.Id, segundaAlemDoTeto);
+
+        var result = await _handler.HandleAsync(ComandoValido(treinador.Id, pacote.Id, slotId: slotIdAlemDoTeto));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(SolicitacaoAgendamentoAgenteErrors.SlotNaoEncontrado);
+    }
+
     // --- AGF4-03: slot lotado ⇒ slot_unavailable ---
 
     [Fact]
     public async Task HandleAsync_SlotLotado_RetornaSlotIndisponivel()
     {
         var (treinador, pacote) = SetupTenant(capacidadeMaxima: 1);
-        _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(treinador.Id, pacote.Id, InicioSlotValido, FimSlotValido, It.IsAny<CancellationToken>()))
+        _solicitacaoRepo.Setup(r => r.ContarConfirmadasSobrepostasAsync(treinador.Id, InicioSlotValido, FimSlotValido, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
         var result = await _handler.HandleAsync(ComandoValido(treinador.Id, pacote.Id));
@@ -301,7 +320,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Should().Be(SolicitacaoAgendamentoErrors.IdempotencyKeyObrigatoria);
-        _treinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _treinadorRepo.Verify(r => r.ObterPorIdSemTrackingAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // --- AGF4-07: name > 200 ⇒ validation_failed ---
@@ -315,7 +334,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Should().Be(LeadErrors.NomeMuitoLongo);
-        _treinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _treinadorRepo.Verify(r => r.ObterPorIdSemTrackingAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // --- AGF4-07: contact.type fora de phone/email/whatsapp ⇒ validation_failed ---
@@ -327,7 +346,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Should().Be(SolicitacaoAgendamentoAgenteErrors.TipoContatoInvalido);
-        _treinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _treinadorRepo.Verify(r => r.ObterPorIdSemTrackingAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // --- AGF4-07: slotId ausente/vazio/em branco ⇒ validation_failed ---
@@ -344,7 +363,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Should().Be(SolicitacaoAgendamentoErrors.SlotIdObrigatorio);
-        _treinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _treinadorRepo.Verify(r => r.ObterPorIdSemTrackingAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // --- AGF4-10: corrida de idempotência resolvida pela violação de unicidade, nunca 500 ---
@@ -362,7 +381,10 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
             .ReturnsAsync((SolicitacaoAgendamento?)null)
             .ReturnsAsync(vencedor);
         var excecaoDeUnicidade = new InvalidOperationException("23505");
-        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeUnicidade);
+        // 1º commit = o lead novo do resolvedor (sem colisão aqui); só o 2º (solicitação) viola.
+        _unitOfWork.SetupSequence(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask)
+            .ThrowsAsync(excecaoDeUnicidade);
         _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeUnicidade)).Returns(true);
 
         var result = await _handler.HandleAsync(comando);
@@ -383,7 +405,9 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
             .ReturnsAsync((SolicitacaoAgendamento?)null)
             .ReturnsAsync(vencedor);
         var excecaoDeUnicidade = new InvalidOperationException("23505");
-        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeUnicidade);
+        _unitOfWork.SetupSequence(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask)
+            .ThrowsAsync(excecaoDeUnicidade);
         _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeUnicidade)).Returns(true);
 
         var result = await _handler.HandleAsync(comando);
@@ -401,7 +425,9 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
         _solicitacaoRepo.Setup(r => r.ObterPorIdempotencyKeyAsync(treinador.Id, "chave-corrida", It.IsAny<CancellationToken>()))
             .ReturnsAsync((SolicitacaoAgendamento?)null);
         var excecaoDeUnicidade = new InvalidOperationException("23505");
-        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeUnicidade);
+        _unitOfWork.SetupSequence(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask)
+            .ThrowsAsync(excecaoDeUnicidade);
         _databaseErrorInspector.Setup(d => d.EhViolacaoDeUnicidade(excecaoDeUnicidade)).Returns(true);
 
         var act = async () => await _handler.HandleAsync(comando);

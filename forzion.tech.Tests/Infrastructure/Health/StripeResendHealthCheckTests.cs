@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using System.Net;
 using FluentAssertions;
 using forzion.tech.Infrastructure.Health;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 using Moq.Protected;
 
@@ -14,14 +16,14 @@ namespace forzion.tech.Tests.Infrastructure.Health;
 
 public class StripeHealthCheckTests
 {
-    private static StripeHealthCheck Criar(string? secretKey = null)
+    private static StripeHealthCheck Criar(string? secretKey = null, TimeProvider? timeProvider = null)
     {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(secretKey is not null
                 ? new Dictionary<string, string?> { ["Stripe:SecretKey"] = secretKey }
                 : new Dictionary<string, string?>())
             .Build();
-        return new StripeHealthCheck(config);
+        return new StripeHealthCheck(config, timeProvider ?? TimeProvider.System);
     }
 
     private static HealthCheckContext FakeContext() => new()
@@ -63,6 +65,26 @@ public class StripeHealthCheckTests
         result.Status.Should().Be(HealthStatus.Degraded);
         result.Status.Should().NotBe(HealthStatus.Unhealthy);
     }
+
+    // Stripe.net não é mockável (comentário da classe acima) — a única forma observável de provar
+    // que a 2ª chamada não refez a requisição de rede é o tempo: uma chamada real leva o RTT até a
+    // Stripe (centenas de ms), o cache é comparação em memória (sub-ms). Janela ampla o suficiente
+    // para não ser flaky mesmo sob carga.
+    [Fact]
+    public async Task CheckHealthAsync_SegundaChamadaDentroDaJanela_RetornaMemoizadoSemNovaChamadaDeRede()
+    {
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var check = Criar(secretKey: "sk_test_invalid_key_for_unit_test", time);
+
+        var primeira = await check.CheckHealthAsync(FakeContext());
+        var cronometro = Stopwatch.StartNew();
+        var segunda = await check.CheckHealthAsync(FakeContext());
+        cronometro.Stop();
+
+        segunda.Status.Should().Be(primeira.Status);
+        segunda.Description.Should().Be(primeira.Description);
+        cronometro.Elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(100));
+    }
 }
 
 public class ResendHealthCheckTests
@@ -78,7 +100,8 @@ public class ResendHealthCheckTests
     private static (ResendHealthCheck check, Mock<HttpMessageHandler> handler) CriarComHandler(
         string? apiKey,
         HttpStatusCode statusCode = HttpStatusCode.OK,
-        string environment = "Development")
+        string environment = "Development",
+        TimeProvider? timeProvider = null)
     {
         var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         handlerMock
@@ -100,7 +123,7 @@ public class ResendHealthCheckTests
                 : new Dictionary<string, string?>())
             .Build();
 
-        return (new ResendHealthCheck(factoryMock.Object, config, Env(environment)), handlerMock);
+        return (new ResendHealthCheck(factoryMock.Object, config, Env(environment), timeProvider ?? TimeProvider.System), handlerMock);
     }
 
     [Fact]
@@ -173,7 +196,7 @@ public class ResendHealthCheckTests
             .AddInMemoryCollection(new Dictionary<string, string?> { ["Resend:ApiKey"] = "re_test_key" })
             .Build();
 
-        var check = new ResendHealthCheck(factoryMock.Object, config, Env("Development"));
+        var check = new ResendHealthCheck(factoryMock.Object, config, Env("Development"), TimeProvider.System);
 
         var result = await check.CheckHealthAsync(FakeCtx);
 
@@ -206,5 +229,34 @@ public class ResendHealthCheckTests
 
         result.Status.Should().Be(HealthStatus.Degraded);
         result.Status.Should().NotBe(HealthStatus.Unhealthy);
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_SegundaChamadaDentroDaJanela_NaoRefazRequisicaoHttp()
+    {
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var (check, handler) = CriarComHandler(apiKey: "re_test_key", timeProvider: time);
+
+        await check.CheckHealthAsync(FakeCtx);
+        time.Advance(TimeSpan.FromSeconds(29));
+        var segunda = await check.CheckHealthAsync(FakeCtx);
+
+        segunda.Status.Should().Be(HealthStatus.Healthy);
+        handler.Protected().Verify(
+            "SendAsync", Times.Once(), ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_ChamadaAposJanelaExpirar_RefazRequisicaoHttp()
+    {
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var (check, handler) = CriarComHandler(apiKey: "re_test_key", timeProvider: time);
+
+        await check.CheckHealthAsync(FakeCtx);
+        time.Advance(TimeSpan.FromSeconds(31));
+        await check.CheckHealthAsync(FakeCtx);
+
+        handler.Protected().Verify(
+            "SendAsync", Times.Exactly(2), ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>());
     }
 }

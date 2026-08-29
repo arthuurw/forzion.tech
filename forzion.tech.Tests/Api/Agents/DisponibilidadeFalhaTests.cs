@@ -52,13 +52,13 @@ public class DisponibilidadeFalhaTests
 
         var treinadorRepoQueLanca = new Mock<ITreinadorRepository>();
         treinadorRepoQueLanca
-            .Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.ObterPorIdSemTrackingAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("timeout de conexao com o postgres"));
         builder.Services.AddSingleton(treinadorRepoQueLanca.Object);
         builder.Services.AddSingleton(new Mock<IPacoteRepository>().Object);
         builder.Services.AddSingleton(new Mock<IBloqueioAgendaRepository>().Object);
         var solicitacaoRepo = new Mock<ISolicitacaoAgendamentoRepository>();
-        solicitacaoRepo.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        solicitacaoRepo.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<SolicitacaoAgendamento>)[]);
         builder.Services.AddSingleton(solicitacaoRepo.Object);
         builder.Services.AddScoped<ConsultarDisponibilidadeAgenteHandler>();
@@ -123,14 +123,14 @@ public class DisponibilidadeFalhaTests
         pacote.TornarPublico(DateTime.UtcNow);
 
         var treinadorRepo = new Mock<ITreinadorRepository>();
-        treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         builder.Services.AddSingleton(treinadorRepo.Object);
         var pacoteRepo = new Mock<IPacoteRepository>();
         pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
         builder.Services.AddSingleton(pacoteRepo.Object);
         builder.Services.AddSingleton(new Mock<IBloqueioAgendaRepository>().Object);
         var solicitacaoRepo = new Mock<ISolicitacaoAgendamentoRepository>();
-        solicitacaoRepo.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        solicitacaoRepo.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<SolicitacaoAgendamento>)[]);
         builder.Services.AddSingleton(solicitacaoRepo.Object);
         builder.Services.AddScoped<ConsultarDisponibilidadeAgenteHandler>();

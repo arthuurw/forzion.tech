@@ -9,6 +9,7 @@ using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Exceptions;
 using forzion.tech.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 
 namespace forzion.tech.Tests.Application;
@@ -24,9 +25,11 @@ public class LoginHandlerTests
     private readonly Mock<ISystemUserRepository> _systemUserRepo = new();
     private readonly Mock<IContaMfaRepository> _contaMfaRepo = new();
     private readonly Mock<ITrustedDeviceRepository> _trustedDeviceRepo = new();
+    private readonly Mock<ITentativasLoginContaRepository> _tentativasLoginRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ILogger<LoginHandler>> _logger = new();
     private readonly LoginCommandValidator _validator = new();
+    private readonly FakeTimeProvider _timeProvider = new(DateTimeOffset.UtcNow);
     private readonly LoginHandler _handler;
 
     public LoginHandlerTests()
@@ -41,8 +44,9 @@ public class LoginHandlerTests
             new LoginPerfilResolver(_alunoRepo.Object, _treinadorRepo.Object, _systemUserRepo.Object),
             _contaMfaRepo.Object,
             _trustedDeviceRepo.Object,
+            _tentativasLoginRepo.Object,
             _unitOfWork.Object,
-            TimeProvider.System,
+            _timeProvider,
             _validator,
             _logger.Object);
     }
@@ -384,6 +388,82 @@ public class LoginHandlerTests
 
         result.MfaRequerido.Should().BeTrue();
         _jwtService.Verify(j => j.GerarToken(It.IsAny<Conta>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_FalhasAcumuladas_AtrasaRespostaAntesDeAvaliarSenha()
+    {
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _tentativasLoginRepo.Setup(r => r.ObterTentativasAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(3);
+        _passwordHasher.Setup(p => p.Verify(It.IsAny<string>(), "hash")).Returns(false);
+
+        var task = _handler.HandleAsync(new LoginCommand("trainer@test.com", "senhaerrada"));
+
+        task.IsCompleted.Should().BeFalse();
+        _timeProvider.Advance(TentativasLoginConta.CalcularDelay(3));
+        var act = async () => await task;
+        await act.Should().ThrowAsync<CredenciaisInvalidasException>();
+        _tentativasLoginRepo.Verify(r => r.RegistrarFalhaAsync(conta.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SemFalhasAnteriores_NaoAtrasaResposta()
+    {
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _tentativasLoginRepo.Setup(r => r.ObterTentativasAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        _passwordHasher.Setup(p => p.Verify(It.IsAny<string>(), "hash")).Returns(false);
+
+        var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senhaerrada"));
+
+        await act.Should().ThrowAsync<CredenciaisInvalidasException>();
+    }
+
+    [Fact]
+    public async Task HandleAsync_CredenciaisValidas_ZeraContadorDeFalhasENaoRegistraFalha()
+    {
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        conta.MarcarEmailVerificado(DateTime.UtcNow);
+        var treinador = Treinador.Criar(conta.Id, "João Trainer", DateTime.UtcNow).Value;
+        treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _passwordHasher.Setup(p => p.Verify("senha123", "hash")).Returns(true);
+        _treinadorRepo.Setup(r => r.ObterPorContaIdAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _jwtService.Setup(j => j.GerarToken(conta, treinador.Id, It.IsAny<string>(), It.IsAny<Guid>())).Returns("token.jwt");
+
+        await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senha123"));
+
+        _tentativasLoginRepo.Verify(r => r.ZerarAsync(conta.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        _tentativasLoginRepo.Verify(r => r.RegistrarFalhaAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SenhaErrada_RegistraFalhaNoContador()
+    {
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _passwordHasher.Setup(p => p.Verify(It.IsAny<string>(), "hash")).Returns(false);
+
+        var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senhaerrada"));
+
+        await act.Should().ThrowAsync<CredenciaisInvalidasException>();
+        _tentativasLoginRepo.Verify(r => r.RegistrarFalhaAsync(conta.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        _tentativasLoginRepo.Verify(r => r.ZerarAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_FalhasAcumuladas_MensagemDeErroContinuaGenerica()
+    {
+        var conta = Conta.Criar(Email.Criar("trainer@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        _contaRepo.Setup(r => r.ObterPorEmailAsync("trainer@test.com", It.IsAny<CancellationToken>())).ReturnsAsync(conta);
+        _tentativasLoginRepo.Setup(r => r.ObterTentativasAsync(conta.Id, It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        _passwordHasher.Setup(p => p.Verify(It.IsAny<string>(), "hash")).Returns(false);
+
+        var act = async () => await _handler.HandleAsync(new LoginCommand("trainer@test.com", "senhaerrada"));
+
+        var ex = (await act.Should().ThrowAsync<CredenciaisInvalidasException>()).Which;
+        ex.Message.Should().NotContainAny("tentativa", "delay", "bloquead", "contador");
     }
 
     private static ContaMfa MfaHabilitado(Guid contaId)

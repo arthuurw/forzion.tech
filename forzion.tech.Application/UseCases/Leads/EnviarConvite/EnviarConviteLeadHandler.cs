@@ -16,6 +16,8 @@ public class EnviarConviteLeadHandler(
     TimeProvider timeProvider)
 {
     private const int ValidadeDias = 14;
+    private static readonly TimeSpan Cooldown = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan JanelaTetoDiario = TimeSpan.FromHours(24);
 
     public virtual Task<Result<EnviarConviteLeadResponse>> HandleAsync(
         EnviarConviteLeadCommand command,
@@ -55,6 +57,20 @@ public class EnviarConviteLeadHandler(
         var conviteAtivo = await leadConviteRepository
             .ObterAtivoPorLeadAsync(command.TreinadorId, command.LeadId, cancellationToken)
             .ConfigureAwait(false);
+
+        if (conviteAtivo is not null)
+        {
+            var decorrido = agora - conviteAtivo.CreatedAt;
+            if (decorrido < Cooldown)
+                return Result.Failure<EnviarConviteLeadResponse>(LeadConviteErrors.Aguarde(conviteAtivo.CreatedAt + Cooldown));
+            if (decorrido < JanelaTetoDiario)
+                return Result.Failure<EnviarConviteLeadResponse>(LeadConviteErrors.TetoDiarioAtingido(conviteAtivo.CreatedAt + JanelaTetoDiario));
+        }
+
+        var toqueResult = lead.RegistrarToque(agora);
+        if (toqueResult.IsFailure)
+            return Result.Failure<EnviarConviteLeadResponse>(toqueResult.Error!);
+
         conviteAtivo?.Invalidar(agora);
 
         var tokenCru = LeadConviteToken.Gerar();

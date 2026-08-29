@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using FluentAssertions;
 using forzion.tech.Api.Endpoints.Agents;
 using forzion.tech.Api.Endpoints.Agents.Hmac;
@@ -92,6 +93,22 @@ public class RateLimitAgentsPolicyTests
         return resposta.StatusCode;
     }
 
+    private static async Task<HttpResponseMessage> EnviarAssinadaAoGrupoRetornandoRespostaAsync(HttpClient cliente, string ip)
+    {
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var payload = $"GET\n{CaminhoDeEcoDoGrupo}\n{Convert.ToHexStringLower(SHA256.HashData([]))}\n{timestamp}";
+        var mac = HMACSHA256.HashData(Encoding.UTF8.GetBytes(Segredo), Encoding.UTF8.GetBytes(payload));
+
+        using var requisicao = new HttpRequestMessage(HttpMethod.Get, CaminhoDeEcoDoGrupo);
+        requisicao.Headers.Add(HeaderIpDeTeste, ip);
+        requisicao.Headers.TryAddWithoutValidation(
+            HmacSignatureFilter.HeaderDeAssinatura, "v1=" + Convert.ToHexStringLower(mac));
+        requisicao.Headers.TryAddWithoutValidation(
+            HmacSignatureFilter.HeaderDeTimestamp, timestamp.ToString(provider: null));
+
+        return await cliente.SendAsync(requisicao);
+    }
+
     private static async Task<List<HttpStatusCode>> RajadaAsync(HttpClient cliente, string ip, int quantidade)
     {
         var status = new List<HttpStatusCode>();
@@ -132,6 +149,25 @@ public class RateLimitAgentsPolicyTests
 
         status.Take(CapAgentsPorMinuto).Should().AllBeEquivalentTo(HttpStatusCode.OK);
         status[CapAgentsPorMinuto].Should().Be(HttpStatusCode.TooManyRequests);
+    }
+
+    [Fact]
+    public async Task GrupoRealDeAgentes_Rejeicao429_SaiNoEnvelopeRfc9457ComCodeRateLimited()
+    {
+        await using var servidor = await IniciarAsync(limitersReais: true, montarGrupoRealDeAgentes: true);
+
+        HttpResponseMessage? ultima = null;
+        for (var i = 0; i < CapAgentsPorMinuto + 1; i++)
+        {
+            ultima?.Dispose();
+            ultima = await EnviarAssinadaAoGrupoRetornandoRespostaAsync(servidor.Cliente, "203.0.113.50");
+        }
+
+        using var resposta = ultima!;
+        resposta.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        resposta.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
+        using var documento = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync());
+        documento.RootElement.GetProperty("code").GetString().Should().Be("rate_limited");
     }
 
     [Fact]

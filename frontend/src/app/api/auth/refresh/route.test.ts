@@ -95,4 +95,27 @@ describe("POST /api/auth/refresh", () => {
     expect(setCookie).toContain("refresh=;");
     expect(setCookie).toContain("token=;");
   });
+
+  it("cross-origin → 403 sem chamar o backend", async () => {
+    let chamado = false;
+    server.use(
+      http.post("*/auth/refresh", () => {
+        chamado = true;
+        return HttpResponse.json({});
+      }),
+    );
+
+    const res = await POST(
+      createMockRequest({
+        method: "POST",
+        headers: { origin: "http://evil.com" },
+        cookies: { refresh: "refresh-antigo" },
+      }),
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body).toEqual({ error: "cross-origin" });
+    expect(chamado).toBe(false);
+  });
 });

@@ -93,6 +93,19 @@ public class PacoteRepositoryTests(InfrastructureTestFixture fixture)
         result[0].Id.Should().Be(ativo.Id);
     }
 
+    [Fact]
+    public async Task ListarAtivosPorTreinadorAsync_RastreiaEntidadesRetornadas_InativarTreinadorHandlerPrecisaMutarECommitar()
+    {
+        await using var ctx = fixture.CreateContext();
+        var treinadorId = await SeedTreinadorAsync(ctx);
+        await SeedPacoteAsync(ctx, treinadorId, $"Ativo-{Guid.NewGuid():N}");
+        ctx.ChangeTracker.Clear();
+
+        await Repo(ctx).ListarAtivosPorTreinadorAsync(treinadorId);
+
+        ctx.ChangeTracker.Entries<Pacote>().Should().ContainSingle();
+    }
+
     // --- ListarPublicosPorTreinadorAsync ---
 
     [Fact]
@@ -101,7 +114,7 @@ public class PacoteRepositoryTests(InfrastructureTestFixture fixture)
         await using var ctx = fixture.CreateContext();
         var treinadorId = await SeedTreinadorAsync(ctx);
         var publico = await SeedPacoteAsync(ctx, treinadorId, $"Publico-{Guid.NewGuid():N}");
-        publico.AtualizarCatalogoPublico("Pilates", null, null, DateTime.UtcNow);
+        publico.AtualizarCatalogoPublico("Pilates", 60, null, DateTime.UtcNow);
         publico.TornarPublico(DateTime.UtcNow);
         await SeedPacoteAsync(ctx, treinadorId, $"Privado-{Guid.NewGuid():N}");
         await ctx.SaveChangesAsync();
@@ -122,6 +135,22 @@ public class PacoteRepositoryTests(InfrastructureTestFixture fixture)
         var result = await Repo(ctx).ListarPublicosPorTreinadorAsync(treinadorId);
 
         result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListarPublicosPorTreinadorAsync_NaoRastreiaEntidadesRetornadas()
+    {
+        await using var ctx = fixture.CreateContext();
+        var treinadorId = await SeedTreinadorAsync(ctx);
+        var publico = await SeedPacoteAsync(ctx, treinadorId, $"Publico-{Guid.NewGuid():N}");
+        publico.AtualizarCatalogoPublico("Pilates", 60, null, DateTime.UtcNow);
+        publico.TornarPublico(DateTime.UtcNow);
+        await ctx.SaveChangesAsync();
+        ctx.ChangeTracker.Clear();
+
+        await Repo(ctx).ListarPublicosPorTreinadorAsync(treinadorId);
+
+        ctx.ChangeTracker.Entries<Pacote>().Should().BeEmpty();
     }
 
     // --- ExisteVinculoComPacoteAsync ---
@@ -178,6 +207,19 @@ public class PacoteRepositoryTests(InfrastructureTestFixture fixture)
         var result = await Repo(ctx).ObterPorIdAsync(Guid.NewGuid());
 
         result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ObterPorIdAsync_RastreiaEntidadeRetornada_ParaCaminhosDeEscrita()
+    {
+        await using var ctx = fixture.CreateContext();
+        var treinadorId = await SeedTreinadorAsync(ctx);
+        var pacote = await SeedPacoteAsync(ctx, treinadorId, $"Pacote-{Guid.NewGuid():N}");
+        ctx.ChangeTracker.Clear();
+
+        await Repo(ctx).ObterPorIdAsync(pacote.Id);
+
+        ctx.ChangeTracker.Entries<Pacote>().Should().ContainSingle();
     }
 
     // --- AdicionarAsync ---

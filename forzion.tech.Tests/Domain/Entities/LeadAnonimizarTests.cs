@@ -37,6 +37,17 @@ public class LeadAnonimizarTests
     }
 
     [Fact]
+    public void Anonimizar_ZeraArgumentosHashEIdempotencyKey()
+    {
+        var lead = LeadComHistorico();
+
+        lead.Anonimizar(Agora.AddDays(180));
+
+        lead.ArgumentosHash.Should().BeNull();
+        lead.IdempotencyKey.Should().BeNull();
+    }
+
+    [Fact]
     public void Anonimizar_EscruaObservacoesDoHistorico()
     {
         var lead = LeadComHistorico();

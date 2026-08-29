@@ -6,6 +6,7 @@ using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Shared;
 using forzion.tech.Domain.Shared.Errors;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
@@ -15,6 +16,7 @@ public class RecusarSolicitacaoHandlerTests
 {
     private readonly Mock<ISolicitacaoAgendamentoRepository> _solicitacaoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IDatabaseErrorInspector> _databaseErrorInspector = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 8, 24, 10, 0, 0, TimeSpan.Zero));
     private readonly RecusarSolicitacaoHandler _handler;
 
@@ -22,7 +24,7 @@ public class RecusarSolicitacaoHandlerTests
 
     public RecusarSolicitacaoHandlerTests()
     {
-        _handler = new RecusarSolicitacaoHandler(_solicitacaoRepo.Object, _unitOfWork.Object, _timeProvider);
+        _handler = new RecusarSolicitacaoHandler(_solicitacaoRepo.Object, _unitOfWork.Object, _databaseErrorInspector.Object, _timeProvider);
     }
 
     private static SolicitacaoAgendamento CriarPendente(DateTime agora) =>
@@ -103,12 +105,29 @@ public class RecusarSolicitacaoHandlerTests
         result.Error!.Should().Be(SolicitacaoAgendamentoErrors.NaoEncontrada);
         result.Error!.Type.Should().Be(ErrorType.NotFound);
     }
+
+    [Fact]
+    public async Task HandleAsync_ConflitoDeConcorrenciaOtimistaNoCommit_RetornaTransicaoNaoSuportadaEDescartaAlteracoes()
+    {
+        var solicitacao = CriarPendente(_timeProvider.GetUtcNow().UtcDateTime);
+        SetupSolicitacao(solicitacao, solicitacao.Id);
+        var excecaoDeConcorrencia = new DbUpdateConcurrencyException();
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeConcorrencia);
+        _databaseErrorInspector.Setup(i => i.EhConflitoDeConcorrenciaOtimista(excecaoDeConcorrencia)).Returns(true);
+
+        var result = await _handler.HandleAsync(TreinadorId, solicitacao.Id, null);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(SolicitacaoAgendamentoErrors.TransicaoNaoSuportada);
+        _unitOfWork.Verify(u => u.DescartarAlteracoesPendentes(), Times.Once);
+    }
 }
 
 public class CancelarSolicitacaoHandlerTests
 {
     private readonly Mock<ISolicitacaoAgendamentoRepository> _solicitacaoRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IDatabaseErrorInspector> _databaseErrorInspector = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 8, 24, 10, 0, 0, TimeSpan.Zero));
     private readonly CancelarSolicitacaoHandler _handler;
 
@@ -116,7 +135,7 @@ public class CancelarSolicitacaoHandlerTests
 
     public CancelarSolicitacaoHandlerTests()
     {
-        _handler = new CancelarSolicitacaoHandler(_solicitacaoRepo.Object, _unitOfWork.Object, _timeProvider);
+        _handler = new CancelarSolicitacaoHandler(_solicitacaoRepo.Object, _unitOfWork.Object, _databaseErrorInspector.Object, _timeProvider);
     }
 
     private static SolicitacaoAgendamento CriarConfirmada(DateTime agora)
@@ -174,5 +193,21 @@ public class CancelarSolicitacaoHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error!.Should().Be(SolicitacaoAgendamentoErrors.NaoEncontrada);
         result.Error!.Type.Should().Be(ErrorType.NotFound);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ConflitoDeConcorrenciaOtimistaNoCommit_RetornaTransicaoNaoSuportadaEDescartaAlteracoes()
+    {
+        var solicitacao = CriarConfirmada(_timeProvider.GetUtcNow().UtcDateTime);
+        SetupSolicitacao(solicitacao, solicitacao.Id);
+        var excecaoDeConcorrencia = new DbUpdateConcurrencyException();
+        _unitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ThrowsAsync(excecaoDeConcorrencia);
+        _databaseErrorInspector.Setup(i => i.EhConflitoDeConcorrenciaOtimista(excecaoDeConcorrencia)).Returns(true);
+
+        var result = await _handler.HandleAsync(TreinadorId, solicitacao.Id, null);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(SolicitacaoAgendamentoErrors.TransicaoNaoSuportada);
+        _unitOfWork.Verify(u => u.DescartarAlteracoesPendentes(), Times.Once);
     }
 }

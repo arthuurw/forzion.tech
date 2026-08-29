@@ -153,7 +153,12 @@ public static class LeadEndpoints
             if (inicio > fim)
                 return Results.Problem(detail: "O parâmetro 'inicio' deve ser anterior a 'fim'.", statusCode: 400);
 
-            var result = await handler.HandleAsync(new ObterMetricasLeadsQuery(userContext.PerfilId, inicio, fim), cancellationToken).ConfigureAwait(false);
+            // fim é sempre uma data pura (meia-noite) — sem estender até o fim do dia, um lead
+            // criado mais tarde hoje (ou em qualquer instante > 00:00 de um 'fim' explícito) cai
+            // fora de "CreatedAt <= fim" e some da métrica.
+            var fimInclusivo = fim.AddDays(1).AddTicks(-1);
+
+            var result = await handler.HandleAsync(new ObterMetricasLeadsQuery(userContext.PerfilId, inicio, fimInclusivo), cancellationToken).ConfigureAwait(false);
             return Results.Ok(result);
         })
         .RequireRateLimiting("read")

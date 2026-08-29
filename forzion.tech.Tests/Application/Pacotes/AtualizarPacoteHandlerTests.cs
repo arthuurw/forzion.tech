@@ -83,7 +83,7 @@ public class AtualizarPacoteHandlerTests
         var pacote = CriarPacote(treinadorId);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
 
-        var command = new AtualizarPacoteCommand(treinadorId, pacote.Id, null, null, null, Categoria: "Pilates", IsPublico: true);
+        var command = new AtualizarPacoteCommand(treinadorId, pacote.Id, null, null, null, Categoria: "Pilates", DuracaoMinutos: 60, IsPublico: true);
         var result = await _handler.HandleAsync(command);
 
         result.IsSuccess.Should().BeTrue();
@@ -106,11 +106,26 @@ public class AtualizarPacoteHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_IsPublicoTrueSemDuracao_Falha()
+    {
+        var treinadorId = Guid.NewGuid();
+        var pacote = CriarPacote(treinadorId);
+        _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
+
+        var command = new AtualizarPacoteCommand(treinadorId, pacote.Id, null, null, null, Categoria: "Pilates", IsPublico: true);
+        var result = await _handler.HandleAsync(command);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("pacote.duracao_obrigatoria_para_publico");
+        pacote.IsPublico.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task HandleAsync_IsPublicoFalse_TornaPacotePrivado()
     {
         var treinadorId = Guid.NewGuid();
         var pacote = CriarPacote(treinadorId);
-        pacote.AtualizarCatalogoPublico("Pilates", null, null, DateTime.UtcNow);
+        pacote.AtualizarCatalogoPublico("Pilates", 60, null, DateTime.UtcNow);
         pacote.TornarPublico(DateTime.UtcNow);
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);
 

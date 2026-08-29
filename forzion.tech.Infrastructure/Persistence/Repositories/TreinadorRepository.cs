@@ -15,6 +15,12 @@ public class TreinadorRepository(AppDbContext context, TimeProvider timeProvider
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<Treinador?> ObterPorIdSemTrackingAsync(Guid id, CancellationToken cancellationToken = default) =>
+        await _context.Treinadores
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<Treinador?> ObterPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default) =>
         await _context.Treinadores
             .FirstOrDefaultAsync(t => t.ContaId == contaId, cancellationToken)
@@ -111,6 +117,12 @@ public class TreinadorRepository(AppDbContext context, TimeProvider timeProvider
                 .Where(e => e.TreinadorId == treinador.Id)
                 .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 
+            // solicitacoes_agendamento.pacote_id/.lead_id → pacotes/leads (RESTRICT); apagar
+            // antes dos dois para não bloquear a exclusão deles mais abaixo.
+            await _context.SolicitacoesAgendamento
+                .Where(s => s.TreinadorId == treinador.Id)
+                .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
             // FK RESTRICT (ver specification-db): excluir dependentes antes dos pais.
             // pagamentos → assinaturas_aluno → vínculos → pacotes.
             var assinaturaIds = await _context.AssinaturaAlunos
@@ -141,6 +153,25 @@ public class TreinadorRepository(AppDbContext context, TimeProvider timeProvider
             await _context.ContasRecebimento
                 .Where(c => c.TreinadorId == treinador.Id)
                 .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+            // leads.treinador_id → treinadores (RESTRICT). lead_interacoes cascata de leads (ON
+            // DELETE CASCADE, owned collection); lead_convites é entidade própria e não tem FK
+            // para treinador — precisa ser apagado antes de leads via o próprio lead_id.
+            var leadIds = await _context.Leads
+                .Where(l => l.TreinadorId == treinador.Id)
+                .Select(l => l.Id)
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+            if (leadIds.Count > 0)
+            {
+                await _context.LeadConvites
+                    .Where(c => leadIds.Contains(c.LeadId))
+                    .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+                await _context.Leads
+                    .Where(l => treinador.Id == l.TreinadorId)
+                    .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+            }
 
             await _context.Treinadores
                 .Where(t => t.Id == treinador.Id)

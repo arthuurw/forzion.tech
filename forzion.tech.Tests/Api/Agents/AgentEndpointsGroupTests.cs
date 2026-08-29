@@ -56,7 +56,7 @@ public class AgentEndpointsGroupTests
     private static Mock<ITreinadorRepository> TreinadorRepoRetornando(Guid tenantId, Treinador? treinador)
     {
         var mock = new Mock<ITreinadorRepository>();
-        mock.Setup(r => r.ObterPorIdAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        mock.Setup(r => r.ObterPorIdSemTrackingAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         return mock;
     }
 
@@ -113,7 +113,7 @@ public class AgentEndpointsGroupTests
         builder.Services.AddSingleton(new Mock<IPacoteRepository>().Object);
         builder.Services.AddSingleton(new Mock<IBloqueioAgendaRepository>().Object);
         var solicitacaoRepoPadrao = new Mock<ISolicitacaoAgendamentoRepository>();
-        solicitacaoRepoPadrao.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        solicitacaoRepoPadrao.Setup(r => r.ListarConfirmadasNoIntervaloAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<SolicitacaoAgendamento>)[]);
         builder.Services.AddSingleton(solicitacaoRepoPadrao.Object);
         builder.Services.AddScoped<ConsultarDisponibilidadeAgenteHandler>();

@@ -1,5 +1,6 @@
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
+using forzion.tech.Application.UseCases.Agents;
 using forzion.tech.Domain.Entities;
 using forzion.tech.Domain.Enums;
 using forzion.tech.Domain.Services;
@@ -47,7 +48,8 @@ public class RegistrarSolicitacaoAgendamentoHandler(
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
 
-        var consentimentoResult = ConsentimentoLead.Criar(command.ConsentPurpose, command.ConsentGrantedAt ?? agora, agora);
+        var grantedAtNormalizado = AgentDateTimeNormalizer.ParaUtcClampado(command.ConsentGrantedAt, agora);
+        var consentimentoResult = ConsentimentoLead.Criar(command.ConsentPurpose, grantedAtNormalizado, agora);
         if (consentimentoResult.IsFailure)
             return Result.Failure<StagedBookingRequest>(consentimentoResult.Error!);
 
@@ -66,7 +68,7 @@ public class RegistrarSolicitacaoAgendamentoHandler(
         var contato = contatoResult.Value;
         var consentimento = consentimentoResult.Value;
 
-        var treinador = await treinadorRepository.ObterPorIdAsync(command.TenantId, cancellationToken).ConfigureAwait(false);
+        var treinador = await treinadorRepository.ObterPorIdSemTrackingAsync(command.TenantId, cancellationToken).ConfigureAwait(false);
         if (!AgentTenantGuard.EstaPublicado(treinador))
             return Result.Failure<StagedBookingRequest>(TreinadorErrors.NaoEncontrado);
 
@@ -85,7 +87,9 @@ public class RegistrarSolicitacaoAgendamentoHandler(
         // Sem try/catch: se o fuso persistido não resolver, a exceção sobe para o
         // AgentExceptionFilter e vira 503 — mesmo precedente de ConsultarDisponibilidadeAgenteHandler.
         var fuso = TimeZoneInfo.FindSystemTimeZoneById(treinador.FusoHorario);
-        var horizonteUtc = agora.AddDays(treinador.PoliticaAgenda.HorizonteDias);
+        // Mesmo teto de 31 dias do GET availability (AgentEndpoints.cs) — sem isto, um horizonte de
+        // política de até 365 dias faria a derivação materializar a janela inteira só pra localizar 1 slot.
+        var horizonteUtc = agora.AddDays(Math.Min(treinador.PoliticaAgenda.HorizonteDias, 31));
 
         var bloqueios = await bloqueioAgendaRepository
             .ListarVigentesAsync(command.TenantId, agora, horizonteUtc, cancellationToken)
@@ -108,7 +112,7 @@ public class RegistrarSolicitacaoAgendamentoHandler(
             return Result.Failure<StagedBookingRequest>(SolicitacaoAgendamentoAgenteErrors.SlotNaoEncontrado);
 
         var confirmadas = await solicitacaoAgendamentoRepository
-            .ContarConfirmadasSobrepostasAsync(command.TenantId, command.ServiceId, slot.InicioUtc, slot.FimUtc, cancellationToken)
+            .ContarConfirmadasSobrepostasAsync(command.TenantId, slot.InicioUtc, slot.FimUtc, cancellationToken)
             .ConfigureAwait(false);
         if (confirmadas >= pacote.CapacidadeMaxima)
             return Result.Failure<StagedBookingRequest>(SolicitacaoAgendamentoAgenteErrors.SlotIndisponivel);

@@ -164,4 +164,40 @@ describe("PerfilPublicoTreinadorPage", () => {
     await waitFor(() => expect(corpoEnviado).not.toBeNull());
     expect(corpoEnviado).toMatchObject({ nomeFantasia: "Studio Teste", isPublicado: true });
   });
+
+  it("limita o nome fantasia a 200 caracteres, igual ao domínio", async () => {
+    server.use(http.get("*/treinador/perfil-publico", () => HttpResponse.json(null)));
+    await renderPage();
+
+    expect(await screen.findByLabelText(/nome fantasia/i)).toHaveAttribute("maxlength", "200");
+  });
+
+  it("limita nome e descrição de política a 100 e 500 caracteres, igual ao domínio", async () => {
+    server.use(http.get("*/treinador/perfil-publico", () => HttpResponse.json(null)));
+    await renderPage();
+
+    expect(await screen.findByLabelText(/nome da política/i)).toHaveAttribute("maxlength", "100");
+    expect(screen.getByLabelText(/^descrição$/i)).toHaveAttribute("maxlength", "500");
+  });
+
+  it("impede adicionar mais de 20 políticas, igual ao teto do domínio", async () => {
+    const politicas = Object.fromEntries(
+      Array.from({ length: 20 }, (_, i) => [`politica${i}`, "valor"]),
+    );
+    server.use(http.get("*/treinador/perfil-publico", () => HttpResponse.json({
+      nomeFantasia: "Studio Teste",
+      endereco: null,
+      horariosFuncionamento: [],
+      politicas,
+      isPublicado: false,
+    })));
+    await renderPage();
+
+    await screen.findByLabelText(/nome fantasia/i);
+    fireEvent.change(screen.getByLabelText(/nome da política/i), { target: { value: "extra" } });
+    fireEvent.change(screen.getByLabelText(/^descrição$/i), { target: { value: "valor" } });
+
+    expect(screen.getByText(/limite de 20 políticas atingido/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /adicionar política/i })).toBeDisabled();
+  });
 });

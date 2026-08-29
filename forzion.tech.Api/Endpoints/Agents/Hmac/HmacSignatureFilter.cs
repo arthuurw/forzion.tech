@@ -29,6 +29,18 @@ internal sealed class HmacSignatureFilter(
         {
             return Rejeitar(requisicao, AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
         }
+        // Corpo malformado na wire (chunked encoding inválido, conexão resetada no meio da
+        // leitura) — falha do CLIENTE antes de qualquer verificação de assinatura, não do
+        // servidor. Sem isto cai no catch-all do AgentExceptionFilter e vira 503. Cancelamento
+        // por RequestAborted (client desistiu) NÃO é capturado aqui — propaga como o quê é.
+        catch (BadHttpRequestException)
+        {
+            return Rejeitar(requisicao, AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+        }
+        catch (IOException)
+        {
+            return Rejeitar(requisicao, AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+        }
 
         var resultado = verificador.Verificar(
             requisicao.Method,

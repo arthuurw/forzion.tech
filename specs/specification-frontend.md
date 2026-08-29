@@ -17,6 +17,7 @@ DOC AGENTES (denso). Fonte de verdade da arquitetura frontend. Atualizar NA MESM
 
 ## CONFIGURAÇÃO DE BUILD (`next.config.ts`)
 - `output: "standalone"` — container otimizado; necessário para o `docker-compose.homolog.yml`.
+- **Imagem nunca compila na VM de prod**: `docker-compose.server.yml` referencia `frontend` só por `image:` (`${REGISTRY}/forzion/frontend:${TAG}`, publicada por `release-images.yml`); o deploy de prod só faz `pull`. Homolog builda na VM por decisão consciente (staging) — ver [specification-infrastructure] §ISOLAMENTO-PRD-HMG.
 - `turbopack` (dev): `root: path.resolve(__dirname)`.
 - `optimizePackageImports`: `@mui/material`, `@mui/icons-material` (reduz bundle).
 - `withSentryConfig`: source maps só sobem com `SENTRY_AUTH_TOKEN`; `next build` sem token funciona (sem upload). `sourcemaps.disable: !SENTRY_AUTH_TOKEN`.
@@ -98,6 +99,8 @@ Endpoints/contratos na §API ROUTES DE AUTH; aqui só os fatos não-óbvios de c
 - Nunca expõe o token ao cliente.
 - **Emite `X-Forwarded-For` com o IP real do cliente** (`forwardedForHeader(request)` de `src/lib/security/forwardedFor.ts`, valor de `getClientIp`). É EMITIDO pelo proxy, não repassado: o XFF do cliente continua fora da allowlist acima. IP não-parseável (`"unknown"`) ⇒ header omitido, senão o backend descartaria a entrada e cairia no IP do peer sem sinal. Mesmo helper em `src/app/api/auth/*` e em `fetchBackendRefresh`; guard de regressão em `src/app/api/__tests__/forwarded-for-guard.test.ts`, com 3 exceções de rota cacheada. Cross-ref [specification-security] §4.
 - **Bloqueia o prefixo `internal` com 404 sem encaminhar.** `path[0]` é decodificado em laço (`decodeFully` — uma passada só deixaria passar `%2569nternal`) e comparado case-insensitive contra `"internal"`; decodificação malformada (`%zz`) ⇒ 400. Fecha o caminho que o `location /internal/` do nginx não cobria.
+- **Timeout de 30s no fetch ao backend** (`AbortSignal.timeout`, mesma ordem de grandeza do `proxy_read_timeout 30s` do nginx) ⇒ 504 `backend_timeout` em vez de pendurar a request. **Resíduo aceito**: o 504 do proxy não garante que o backend abortou o processamento — uma mutação que já commitou no backend antes do timeout do lado do proxy permanece commitada; o cliente pode ver 504 para uma operação que na verdade teve sucesso.
+- **`content-length` acima de `MAX_BODY_BYTES` (10 MiB, alinhado a `client_max_body_size 10m` do nginx) ⇒ 413 antes de ler o corpo** (`request.arrayBuffer()`). Corpo `chunked` sem `Content-Length` declarado não é pego por este guard (residual aceito — a borda nginx já limita o tamanho real recebido).
 
 ## API ROUTES DE AUTH (Next.js Route Handlers)
 Enumeração de rotas re-derivável por `ls src/app/api/auth/`; contratos de cookie/sessão na §AUTH FLOW. Aqui só os fatos não-óbvios que a listagem não carrega:
@@ -105,6 +108,8 @@ Enumeração de rotas re-derivável por `ls src/app/api/auth/`; contratos de coo
 - `register/treinador` body inclui `planoPlataformaId`+`modoPagamentoAluno`; `register/aluno` idem cadastro.
 - `planos` (GET, proxy `/auth/planos`) usa `cache: "no-store"` e **sem rate limit** (wizard de cadastro).
 - `treinador/[id]/pagamento` (POST, body `{ metodo }`) inicia pagamento do plano no signup.
+
+**Guard cross-origin** (`withSameOrigin`, `src/lib/security/withSameOrigin.ts`, auditoria 2026-08-26): wrapper aplicado aos 11 handlers `POST` sob `src/app/api/auth/**` — checa `isCrossOrigin` (mesmo `sameOrigin.ts` do proxy BFF, [specification-security] §2.4) ANTES do handler rodar, `403 {error:"cross-origin"}` se `Origin` presente e cruzado. Teste de regressão faz scan de filesystem (não lista hardcoded) — falha se um `POST` novo nascer sem o wrapper.
 
 **Rate limit** (`src/lib/rateLimit.ts`): 10 req/60s por IP real (`getClientIp`: `X-Real-IP` → 1º hop de `X-Forwarded-For`, nunca o último hop — evita spoofing por concatenação). Mapa em memória por processo, bounded (`MAX_ENTRIES`, eviction por `resetAt` expirado), não persistido entre restarts. Aplicado em login e register. É a ÚNICA camada no caminho de autenticação que enxerga o IP real do cliente — o rate-limit do backend, atrás do proxy `/api/backend`, não vê (ver §API PROXY, `[GAP]`).
 

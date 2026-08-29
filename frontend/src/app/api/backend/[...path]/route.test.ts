@@ -164,7 +164,7 @@ describe("Backend proxy /api/backend/[...path]", () => {
     });
   });
 
-  describe("Bloqueio do prefixo internal", () => {
+  describe("Allowlist de prefixos (fail-closed)", () => {
     let fetchSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
@@ -211,6 +211,24 @@ describe("Backend proxy /api/backend/[...path]", () => {
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
+    // Health nunca esteve na blocklist antiga (só "internal" estava) — o proxy anônimo
+    // alcançava /health/ready do backend por omissão.
+    it("primeiro segmento 'health' → 404 sem chamar o backend", async () => {
+      const req = createMockRequest({ method: "GET" });
+      const res = await GET(req, makeCtx(["health", "ready"]));
+
+      expect(res.status).toBe(404);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("prefixo desconhecido, ausente do allowlist → 404 sem chamar o backend", async () => {
+      const req = createMockRequest({ method: "GET" });
+      const res = await GET(req, makeCtx(["contas", "internal-teste"]));
+
+      expect(res.status).toBe(404);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
     it("codificação malformada no primeiro segmento → 400 sem chamar o backend", async () => {
       const req = createMockRequest({ method: "GET" });
       const res = await GET(req, makeCtx(["%zz", "foo"]));
@@ -220,27 +238,45 @@ describe("Backend proxy /api/backend/[...path]", () => {
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
-    it("'internal' fora do primeiro segmento não é bloqueado", async () => {
+    it("segmento seguinte contendo 'internal'/'health' não bloqueia — só o primeiro segmento gateia", async () => {
       server.use(
-        http.get("*/contas/internal-teste", () => HttpResponse.json({ ok: true })),
+        http.get("*/treinador/internal-health-teste", () => HttpResponse.json({ ok: true })),
       );
 
       const req = createMockRequest({ method: "GET" });
-      const res = await GET(req, makeCtx(["contas", "internal-teste"]));
+      const res = await GET(req, makeCtx(["treinador", "internal-health-teste"]));
 
       expect(res.status).toBe(200);
     });
 
-    it("primeiro segmento que só começa com 'internal' não é bloqueado", async () => {
-      server.use(
-        http.get("*/internal-teste/contas", () => HttpResponse.json({ ok: true })),
-      );
+    // Copiado à mão de `grep -rhoE "apiClient\.(get|post|put|patch|delete)..." src/lib/api/*.ts`
+    // (não recalculado do próprio ALLOWED_PATH_PREFIXES — senão o teste provaria só que a
+    // constante é igual a si mesma, nunca detectando um prefixo real removido por engano).
+    const PREFIXOS_REALMENTE_USADOS = [
+      "admin",
+      "aluno",
+      "alunos",
+      "auth",
+      "conta",
+      "notificacoes",
+      "suporte",
+      "treinador",
+      "treinos",
+    ];
 
-      const req = createMockRequest({ method: "GET" });
-      const res = await GET(req, makeCtx(["internal-teste", "contas"]));
+    it.each(PREFIXOS_REALMENTE_USADOS)(
+      "prefixo real '%s' de src/lib/api continua passando para o backend",
+      async (prefixo) => {
+        server.use(
+          http.get(`*/${prefixo}/sonda`, () => HttpResponse.json({ ok: true })),
+        );
 
-      expect(res.status).toBe(200);
-    });
+        const req = createMockRequest({ method: "GET" });
+        const res = await GET(req, makeCtx([prefixo, "sonda"]));
+
+        expect(res.status).toBe(200);
+      },
+    );
   });
 
   describe("Repasse do IP real ao backend", () => {
@@ -406,6 +442,113 @@ describe("Backend proxy /api/backend/[...path]", () => {
       });
       const res = await GET(req, makeCtx(["admin", "x"]));
       expect(res.status).toBe(200);
+    });
+  });
+
+  describe("Limite de tamanho do corpo", () => {
+    const MAX_BODY_BYTES = 10 * 1024 * 1024;
+
+    it("content-length acima do teto → 413 sem ler o corpo nem chamar o backend", async () => {
+      setupCookies({});
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      let arrayBufferCalled = false;
+
+      const req = createMockRequest({
+        method: "POST",
+        headers: { "content-length": String(MAX_BODY_BYTES + 1) },
+        body: { a: 1 },
+      });
+      Object.defineProperty(req, "arrayBuffer", {
+        value: async () => {
+          arrayBufferCalled = true;
+          return new ArrayBuffer(0);
+        },
+      });
+
+      const res = await POST(req, makeCtx(["admin", "x"]));
+      const body = await res.json();
+
+      expect(res.status).toBe(413);
+      expect(body).toEqual({ error: "payload_too_large" });
+      expect(arrayBufferCalled).toBe(false);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    it("content-length no teto exato → segue para o backend", async () => {
+      setupCookies({});
+      server.use(http.post("*/admin/x", () => HttpResponse.json({})));
+
+      const req = createMockRequest({
+        method: "POST",
+        headers: { "content-length": String(MAX_BODY_BYTES) },
+        body: { a: 1 },
+      });
+      const res = await POST(req, makeCtx(["admin", "x"]));
+
+      expect(res.status).toBe(200);
+    });
+
+    it("sem content-length → não é bloqueado por este guard", async () => {
+      setupCookies({});
+      server.use(http.post("*/admin/x", () => HttpResponse.json({})));
+
+      const req = createMockRequest({ method: "POST", body: { a: 1 } });
+      const res = await POST(req, makeCtx(["admin", "x"]));
+
+      expect(res.status).toBe(200);
+    });
+
+    it("GET não é afetado pelo guard de corpo (sem corpo a limitar)", async () => {
+      setupCookies({});
+      server.use(http.get("*/admin/x", () => HttpResponse.json({})));
+
+      const req = createMockRequest({
+        method: "GET",
+        headers: { "content-length": String(MAX_BODY_BYTES + 1) },
+      });
+      const res = await GET(req, makeCtx(["admin", "x"]));
+
+      expect(res.status).toBe(200);
+    });
+  });
+
+  describe("Timeout do backend", () => {
+    it("fetch expira (AbortSignal.timeout) → 504 backend_timeout", async () => {
+      setupCookies({});
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockRejectedValue(new DOMException("The operation was aborted due to timeout", "TimeoutError"));
+
+      const req = createMockRequest({ method: "GET" });
+      const res = await GET(req, makeCtx(["admin", "x"]));
+      const body = await res.json();
+
+      expect(res.status).toBe(504);
+      expect(body).toEqual({ error: "backend_timeout" });
+      fetchSpy.mockRestore();
+    });
+
+    it("passa um AbortSignal ao fetch do backend", async () => {
+      setupCookies({});
+      server.use(http.get("*/admin/x", () => HttpResponse.json({})));
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+      const req = createMockRequest({ method: "GET" });
+      await GET(req, makeCtx(["admin", "x"]));
+
+      const init = fetchSpy.mock.calls[0]?.[1] as RequestInit | undefined;
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
+      fetchSpy.mockRestore();
+    });
+
+    it("erro de rede que não é timeout propaga (não vira 504 silencioso)", async () => {
+      setupCookies({});
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("fetch failed"));
+
+      const req = createMockRequest({ method: "GET" });
+      await expect(GET(req, makeCtx(["admin", "x"]))).rejects.toThrow("fetch failed");
+      fetchSpy.mockRestore();
     });
   });
 });

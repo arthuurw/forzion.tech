@@ -59,3 +59,19 @@ updates:
           - "patch"
     commit-message:
       prefix: "chore"
+
+  # Propõe bumps de digest das imagens pinadas @sha256 nos compose (pact-broker,
+  # certbot). NÃO alcança imagens pinadas dentro de .github/workflows/**
+  # (semgrep.yml `container.image`, zap.yml/ci.yml `docker run` inline) — o
+  # Dependabot ainda não suporta isso (dependabot-core#5819, em aberto); essas
+  # duas exigem bump manual, travado por scripts/test/ci-hygiene-check.sh.
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    target-branch: "homolog"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"

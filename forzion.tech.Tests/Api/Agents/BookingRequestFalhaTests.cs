@@ -26,7 +26,7 @@ namespace forzion.tech.Tests.Api.Agents;
 // AGF4-11: prova que falha de infra em QUALQUER ponto do fluxo do POST booking-requests vira 503
 // dependency_unavailable — nunca 201 (disfarçado de sucesso) e nunca 404/409 (disfarçado de decisão
 // de negócio). Molde: DisponibilidadeFalhaTests (fatia 3) — handler REAL registrado no DI, com um
-// repositório que lança; diferente de BookingRequestEndpointTests (T15), que mocka o handler inteiro.
+// repositório que lança; diferente de BookingRequestEndpointTests, que mocka o handler inteiro.
 public class BookingRequestFalhaTests
 {
     private const string Segredo = "segredo-atual-com-pelo-menos-32-bytes!!";
@@ -89,7 +89,7 @@ public class BookingRequestFalhaTests
         var builder = CriarBuilder();
         var treinadorRepoQueLanca = new Mock<ITreinadorRepository>();
         treinadorRepoQueLanca
-            .Setup(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Setup(r => r.ObterPorIdSemTrackingAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("timeout de conexao com o postgres"));
         builder.Services.AddSingleton(treinadorRepoQueLanca.Object);
         builder.Services.AddSingleton(new Mock<IPacoteRepository>().Object);
@@ -125,7 +125,7 @@ public class BookingRequestFalhaTests
         pacote.TornarPublico(DateTime.UtcNow);
 
         var treinadorRepo = new Mock<ITreinadorRepository>();
-        treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         builder.Services.AddSingleton(treinadorRepo.Object);
         var pacoteRepo = new Mock<IPacoteRepository>();
         pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);

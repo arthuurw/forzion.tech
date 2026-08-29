@@ -30,7 +30,7 @@ services:
       - forzion-prd
 
   certbot:
-    image: certbot/certbot:latest
+    image: certbot/certbot@sha256:34ee91d2f43008eb78a007d22f23ed4b2eaa9a454cb27ca2c042b49527a695b4
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot

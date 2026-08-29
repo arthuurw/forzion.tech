@@ -299,4 +299,73 @@ public class DerivadorDisponibilidadeTests
 
         slot.Should().BeNull();
     }
+
+    // --- FimUtc derivado do início, não de segunda conversão de fuso ---
+    // Fim do horário de verão em America/New_York em 2026-11-01 02:00 local (EDT UTC-4 -> EST UTC-5).
+
+    private static readonly TimeZoneInfo FusoNewYork = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
+
+    [Fact]
+    public void Derivar_SlotAtravessaFimDoHorarioDeVeraoEmNewYork_FimUtcEInicioUtcMaisDuracaoNaoConversaoIndependente()
+    {
+        var horario = Horario((int)DayOfWeek.Sunday, 0, 30, 2, 0);
+        var agora = Utc(2026, 10, 1, 0, 0);
+        var from = Utc(2026, 10, 26, 12, 0);
+        var to = Utc(2026, 11, 5, 0, 0);
+        var p = new ParametrosDerivacao(TreinadorId, PacoteId, 90, from, to, agora, FusoNewYork, PoliticaAgenda.Padrao(), [horario], []);
+
+        var slots = DerivadorDisponibilidade.Derivar(p);
+
+        slots.Should().ContainSingle();
+        slots[0].InicioUtc.Should().Be(Utc(2026, 11, 1, 4, 30));
+        slots[0].FimUtc.Should().Be(Utc(2026, 11, 1, 6, 0));
+    }
+
+    [Fact]
+    public void Derivar_VariosSlotsNaVirasDeFimDoHorarioDeVeraoEmNewYork_TodosRespeitamFimUtcIgualInicioUtcMaisDuracao()
+    {
+        var horario = Horario((int)DayOfWeek.Sunday, 0, 0, 4, 0);
+        var agora = Utc(2026, 10, 1, 0, 0);
+        var from = Utc(2026, 10, 26, 12, 0);
+        var to = Utc(2026, 11, 5, 0, 0);
+        var p = new ParametrosDerivacao(TreinadorId, PacoteId, 90, from, to, agora, FusoNewYork, PoliticaAgenda.Padrao(), [horario], []);
+
+        var slots = DerivadorDisponibilidade.Derivar(p);
+
+        slots.Should().HaveCount(2);
+        slots.Should().OnlyContain(s => s.FimUtc == s.InicioUtc.AddMinutes(90));
+    }
+
+    // --- Cap de slots materializados ---
+    // America/Sao_Paulo não observa DST desde 2019: janelas de dia local ficam exatas em UTC-3.
+
+    private static readonly TimeZoneInfo FusoSaoPauloSemDst = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+    private static readonly IReadOnlyList<HorarioFuncionamento> HorariosDiaInteiroTodosOsDias =
+        Enumerable.Range(0, 7).Select(dia => Horario(dia, 0, 0, 23, 45)).ToList();
+    private const int BlocosPorDiaInteiro = 95; // (23h45 - 0h00) / 15min
+
+    [Fact]
+    public void Derivar_HorizonteMaximoComJanelasLargasEDuracaoCurta_ParaExatamenteNoCapSemEstourarAContagem()
+    {
+        var agora = Utc(2026, 6, 1, 3, 0); // 2026-06-01 00:00 local (America/Sao_Paulo, UTC-3)
+        var politica = PoliticaAgenda.Criar(0, 365).Value;
+        var p = new ParametrosDerivacao(TreinadorId, PacoteId, 15, agora, agora.AddDays(400), agora, FusoSaoPauloSemDst, politica, HorariosDiaInteiroTodosOsDias, []);
+
+        var slots = DerivadorDisponibilidade.Derivar(p);
+
+        slots.Should().HaveCount(ParametrosDerivacao.MaxSlotsMaterializados);
+    }
+
+    [Fact]
+    public void Derivar_TotalDeSlotsAbaixoDoCap_RetornaTodosSemTruncar()
+    {
+        const int diasDeHorizonte = 100;
+        var agora = Utc(2026, 6, 1, 3, 0); // 2026-06-01 00:00 local (America/Sao_Paulo, UTC-3)
+        var politica = PoliticaAgenda.Criar(0, diasDeHorizonte).Value;
+        var p = new ParametrosDerivacao(TreinadorId, PacoteId, 15, agora, agora.AddDays(150), agora, FusoSaoPauloSemDst, politica, HorariosDiaInteiroTodosOsDias, []);
+
+        var slots = DerivadorDisponibilidade.Derivar(p);
+
+        slots.Should().HaveCount(diasDeHorizonte * BlocosPorDiaInteiro);
+    }
 }

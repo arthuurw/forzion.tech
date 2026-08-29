@@ -1,6 +1,7 @@
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.UseCases.Leads;
 using forzion.tech.Domain.Entities;
+using forzion.tech.Domain.Enums;
 
 namespace forzion.tech.Application.UseCases.Alunos.RegistrarAluno;
 
@@ -28,7 +29,7 @@ public sealed class LeadConviteResolver(
         var lead = await leadRepository
             .ObterComHistoricoAsync(convite.TreinadorId, convite.LeadId, cancellationToken)
             .ConfigureAwait(false);
-        if (lead is null)
+        if (lead is null || lead.Anonimizado || lead.Status is LeadStatus.Convertido or LeadStatus.Descartado)
             return null;
 
         return new LeadConviteResolvido(convite, lead);

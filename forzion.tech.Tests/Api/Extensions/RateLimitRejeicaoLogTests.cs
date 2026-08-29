@@ -15,6 +15,7 @@ public class RateLimitRejeicaoLogTests
     [Theory]
     [InlineData("auth")]
     [InlineData("mfa")]
+    [InlineData("agents")]
     public void RegistrarRejeicaoAuth_PoliticaSensivel_LogaEventoEstruturadoComIpERota(string politica)
     {
         var coletor = new ColetorLog();
@@ -30,6 +31,7 @@ public class RateLimitRejeicaoLogTests
     [Theory]
     [InlineData("auth")]
     [InlineData("mfa")]
+    [InlineData("agents")]
     public void RegistrarRejeicaoAuth_PoliticaSensivel_RegistraAlertaComPoliticaRotaEIp(string politica)
     {
         var alertaSeguranca = new Mock<IAlertaSegurancaSentry>();

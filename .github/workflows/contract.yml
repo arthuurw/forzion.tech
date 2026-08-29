@@ -29,6 +29,9 @@ on:
       - "forzion.tech.PactVerification/**"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   consumer-contract:
     name: Consumer contract (gera + valida — gate de PR)
