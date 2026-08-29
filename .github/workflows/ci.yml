@@ -10,6 +10,9 @@ on:
     branches: [homolog, main]
     paths-ignore: ["**.md", "docs/**", "specs/**"]
 
+permissions:
+  contents: read
+
 # Cancela runs antigos do mesmo ref quando um novo push chega.
 concurrency:
   group: ci-${{ github.ref }}

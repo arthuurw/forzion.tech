@@ -13,6 +13,9 @@ on:
     paths-ignore: ["**.md", "docs/**", "specs/**"]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   semgrep:
     name: Semgrep scan

@@ -13,6 +13,9 @@ on:
       - "frontend/**"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   hygiene:
     name: Dead code (madge + knip)
