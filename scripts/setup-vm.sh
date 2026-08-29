@@ -90,7 +90,7 @@ STRIPE_URL_BASE=https://homologacao.forzion.tech
 SEED_ZAP_TEST_PASSWORD=
 EOF
   )
-  sudo chown root:root /opt/forzion/.env
+  sudo chown "$USER:$USER" /opt/forzion/.env
   sudo chmod 600 /opt/forzion/.env
   echo ""
   echo "⚠️  Edite /opt/forzion/.env com os valores reais antes de continuar."
