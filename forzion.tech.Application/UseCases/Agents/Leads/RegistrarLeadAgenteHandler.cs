@@ -64,7 +64,7 @@ public class RegistrarLeadAgenteHandler(
         var contato = contatoResult.Value;
         var consentimento = consentimentoResult.Value;
 
-        var treinador = await treinadorRepository.ObterPorIdAsync(command.TenantId, cancellationToken).ConfigureAwait(false);
+        var treinador = await treinadorRepository.ObterPorIdSemTrackingAsync(command.TenantId, cancellationToken).ConfigureAwait(false);
         if (!AgentTenantGuard.EstaPublicado(treinador))
             return Result.Failure<StagedLead>(TreinadorErrors.NaoEncontrado);
 

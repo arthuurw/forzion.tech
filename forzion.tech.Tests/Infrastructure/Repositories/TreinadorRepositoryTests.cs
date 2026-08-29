@@ -196,4 +196,38 @@ public class TreinadorRepositoryTests(InfrastructureTestFixture fixture)
             log.CreatedAt.Should().Be(instante.UtcDateTime);
         }
     }
+
+    // AUD-43: reads da borda de agente não podem trackear — ObterPorIdAsync fica tracked de
+    // propósito para os caminhos de escrita (ex.: ExcluirComDependenciasAsync acima).
+    [Fact]
+    public async Task ObterPorIdSemTrackingAsync_NaoRastreiaEntidadeRetornada()
+    {
+        await using var ctx = fixture.CreateContext();
+        var conta = Conta.Criar(Email.Criar($"t{Guid.NewGuid():N}@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        var treinador = Treinador.Criar(conta.Id, $"Tr{Guid.NewGuid():N}", DateTime.UtcNow).Value;
+        await ctx.Contas.AddAsync(conta);
+        await ctx.Treinadores.AddAsync(treinador);
+        await ctx.SaveChangesAsync();
+        ctx.ChangeTracker.Clear();
+
+        await new TreinadorRepository(ctx, TimeProvider.System).ObterPorIdSemTrackingAsync(treinador.Id);
+
+        ctx.ChangeTracker.Entries<Treinador>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ObterPorIdAsync_RastreiaEntidadeRetornada_ParaCaminhosDeEscrita()
+    {
+        await using var ctx = fixture.CreateContext();
+        var conta = Conta.Criar(Email.Criar($"t{Guid.NewGuid():N}@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+        var treinador = Treinador.Criar(conta.Id, $"Tr{Guid.NewGuid():N}", DateTime.UtcNow).Value;
+        await ctx.Contas.AddAsync(conta);
+        await ctx.Treinadores.AddAsync(treinador);
+        await ctx.SaveChangesAsync();
+        ctx.ChangeTracker.Clear();
+
+        await new TreinadorRepository(ctx, TimeProvider.System).ObterPorIdAsync(treinador.Id);
+
+        ctx.ChangeTracker.Entries<Treinador>().Should().ContainSingle();
+    }
 }

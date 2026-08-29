@@ -15,6 +15,12 @@ public class TreinadorRepository(AppDbContext context, TimeProvider timeProvider
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<Treinador?> ObterPorIdSemTrackingAsync(Guid id, CancellationToken cancellationToken = default) =>
+        await _context.Treinadores
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<Treinador?> ObterPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default) =>
         await _context.Treinadores
             .FirstOrDefaultAsync(t => t.ContaId == contaId, cancellationToken)

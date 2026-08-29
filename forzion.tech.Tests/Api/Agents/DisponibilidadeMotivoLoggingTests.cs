@@ -70,7 +70,7 @@ public class DisponibilidadeMotivoLoggingTests
             treinador.Id, 1, new TimeOnly(8, 0), new TimeOnly(9, 0), motivoSentinela, DateTime.UtcNow).Value;
 
         var treinadorRepo = new Mock<ITreinadorRepository>();
-        treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         builder.Services.AddSingleton(treinadorRepo.Object);
         var pacoteRepo = new Mock<IPacoteRepository>();
         pacoteRepo.Setup(r => r.ObterPorIdAsync(pacote.Id, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);

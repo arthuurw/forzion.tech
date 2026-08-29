@@ -38,13 +38,13 @@ public class ListarServicosHandlerTests
     }
 
     private void SetupTreinadorPublicado(Treinador treinador) =>
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
     [Fact]
     public async Task HandleAsync_TreinadorInexistente_RetornaTenantNotFound()
     {
         var tenantId = Guid.NewGuid();
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync((Treinador?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync((Treinador?)null);
 
         var result = await _handler.HandleAsync(new ListarServicosQuery(tenantId, null));
 

@@ -56,7 +56,7 @@ public class AgentEndpointsGroupTests
     private static Mock<ITreinadorRepository> TreinadorRepoRetornando(Guid tenantId, Treinador? treinador)
     {
         var mock = new Mock<ITreinadorRepository>();
-        mock.Setup(r => r.ObterPorIdAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        mock.Setup(r => r.ObterPorIdSemTrackingAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         return mock;
     }
 

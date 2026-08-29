@@ -6,6 +6,9 @@ namespace forzion.tech.Application.Interfaces.Repositories;
 public interface ITreinadorRepository
 {
     Task<Treinador?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>Mesma leitura de <see cref="ObterPorIdAsync"/> sem change-tracking — para callers read-only (borda de agente) que nunca mutam o treinador retornado.</summary>
+    Task<Treinador?> ObterPorIdSemTrackingAsync(Guid id, CancellationToken cancellationToken = default);
     Task<Treinador?> ObterPorContaIdAsync(Guid contaId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Treinador>> ListarAtivosAsync(CancellationToken cancellationToken = default);
 

@@ -47,7 +47,7 @@ public class ObterBusinessInfoHandlerTests
     public async Task HandleAsync_TreinadorInexistente_RetornaTenantNotFound()
     {
         var tenantId = Guid.NewGuid();
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync((Treinador?)null);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync((Treinador?)null);
 
         var result = await _handler.HandleAsync(new ObterBusinessInfoQuery(tenantId));
 
@@ -60,7 +60,7 @@ public class ObterBusinessInfoHandlerTests
     {
         var treinador = CriarTreinadorAtivoEPublicado();
         treinador.Inativar(DateTime.UtcNow);
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         var result = await _handler.HandleAsync(new ObterBusinessInfoQuery(treinador.Id));
 
@@ -74,7 +74,7 @@ public class ObterBusinessInfoHandlerTests
         var treinador = new TreinadorBuilder().Build();
         treinador.Aprovar(Guid.NewGuid(), DateTime.UtcNow);
         treinador.PerfilPublico.AtualizarDados("Studio Teste", null, null, DateTime.UtcNow);
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
         var result = await _handler.HandleAsync(new ObterBusinessInfoQuery(treinador.Id));
 
@@ -86,7 +86,7 @@ public class ObterBusinessInfoHandlerTests
     public async Task HandleAsync_PublicadoSemPacotes_RetornaSucessoComModalitiesVazio()
     {
         var treinador = CriarTreinadorAtivoEPublicado();
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         SetupSemPacotesPublicos(treinador.Id);
 
         var result = await _handler.HandleAsync(new ObterBusinessInfoQuery(treinador.Id));
@@ -99,7 +99,7 @@ public class ObterBusinessInfoHandlerTests
     public async Task HandleAsync_PacotesComCategoriaDuplicadaCaseInsensitive_DeduplicaPreservandoPrimeiraGrafia()
     {
         var treinador = CriarTreinadorAtivoEPublicado();
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         _pacoteRepo.Setup(r => r.ListarPublicosPorTreinadorAsync(treinador.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Pacote>
             {
@@ -117,7 +117,7 @@ public class ObterBusinessInfoHandlerTests
     public async Task HandleAsync_SemEnderecoNemPoliticas_OmiteAmbosDoJson()
     {
         var treinador = CriarTreinadorAtivoEPublicado();
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         SetupSemPacotesPublicos(treinador.Id);
 
         var result = await _handler.HandleAsync(new ObterBusinessInfoQuery(treinador.Id));
@@ -134,7 +134,7 @@ public class ObterBusinessInfoHandlerTests
         var politicas = new Dictionary<string, string> { ["cancelamento"] = "24h de antecedencia" };
         treinador.PerfilPublico.AtualizarDados("Studio Teste", endereco, politicas, DateTime.UtcNow);
         treinador.PerfilPublico.Publicar(DateTime.UtcNow);
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         SetupSemPacotesPublicos(treinador.Id);
 
         var result = await _handler.HandleAsync(new ObterBusinessInfoQuery(treinador.Id));

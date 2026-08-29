@@ -22,7 +22,7 @@ public class ObterBusinessInfoHandler(
         ObterBusinessInfoQuery query,
         CancellationToken cancellationToken)
     {
-        var treinador = await treinadorRepository.ObterPorIdAsync(query.TenantId, cancellationToken).ConfigureAwait(false);
+        var treinador = await treinadorRepository.ObterPorIdSemTrackingAsync(query.TenantId, cancellationToken).ConfigureAwait(false);
 
         if (!AgentTenantGuard.EstaPublicado(treinador))
             return Result.Failure<BusinessInfoResponse>(TreinadorErrors.NaoEncontrado);

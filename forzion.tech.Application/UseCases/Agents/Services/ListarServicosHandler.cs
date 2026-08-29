@@ -21,7 +21,7 @@ public class ListarServicosHandler(
         ListarServicosQuery query,
         CancellationToken cancellationToken)
     {
-        var treinador = await treinadorRepository.ObterPorIdAsync(query.TenantId, cancellationToken).ConfigureAwait(false);
+        var treinador = await treinadorRepository.ObterPorIdSemTrackingAsync(query.TenantId, cancellationToken).ConfigureAwait(false);
 
         if (!AgentTenantGuard.EstaPublicado(treinador))
             return Result.Failure<IReadOnlyList<ServiceResponse>>(TreinadorErrors.NaoEncontrado);

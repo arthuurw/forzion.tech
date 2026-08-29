@@ -46,7 +46,7 @@ public class ConsultarDisponibilidadeCapacidadeTests
     private (Treinador Treinador, Pacote Pacote) SetupTenant(int capacidadeMaxima, int duracaoMinutos = 60)
     {
         var treinador = CriarTreinadorPublicado();
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
         var pacote = new PacoteBuilder().ComTreinadorId(treinador.Id).Build();
         pacote.AtualizarCatalogoPublico("Categoria", duracaoMinutos, false, DateTime.UtcNow, capacidadeMaxima: capacidadeMaxima);
         pacote.TornarPublico(DateTime.UtcNow);

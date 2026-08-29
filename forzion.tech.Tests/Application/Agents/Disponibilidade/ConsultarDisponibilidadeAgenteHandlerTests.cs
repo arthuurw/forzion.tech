@@ -36,7 +36,7 @@ public class ConsultarDisponibilidadeAgenteHandlerTests
     }
 
     private void SetupTreinador(Treinador? treinador, Guid tenantId) =>
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
     private void SetupPacote(Pacote? pacote, Guid serviceId) =>
         _pacoteRepo.Setup(r => r.ObterPorIdAsync(serviceId, It.IsAny<CancellationToken>())).ReturnsAsync(pacote);

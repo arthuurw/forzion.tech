@@ -51,7 +51,7 @@ public class RegistrarLeadAgenteHandlerTests
         new(tenantId, name, contactType, contactValue, interest, consentGranted, consentPurpose, consentGrantedAt, idempotencyKey, originUserAgent, originAssistant);
 
     private void SetupTreinador(Treinador? treinador, Guid tenantId) =>
-        _treinadorRepo.Setup(r => r.ObterPorIdAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
 
     // --- AGF2-01: caminho feliz ---
 
@@ -141,7 +141,7 @@ public class RegistrarLeadAgenteHandlerTests
         result.IsFailure.Should().BeTrue();
         _leadRepo.Verify(r => r.AdicionarAsync(It.IsAny<Lead>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
-        _treinadorRepo.Verify(r => r.ObterPorIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _treinadorRepo.Verify(r => r.ObterPorIdSemTrackingAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // --- AGF2-05: limites de tamanho / campos obrigatórios ---
