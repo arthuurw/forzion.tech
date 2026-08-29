@@ -85,7 +85,7 @@ public class AgentLeadsEndpointTests
         return mock;
     }
 
-    private static async Task<HttpResponseMessage> EnviarAssinadaAsync(HttpClient cliente, string caminho, string corpoJson)
+    private static async Task<HttpResponseMessage> EnviarAssinadaAsync(HttpClient cliente, string caminho, string corpoJson, string contentType = "application/json")
     {
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var corpoBytes = Encoding.UTF8.GetBytes(corpoJson);
@@ -94,7 +94,7 @@ public class AgentLeadsEndpointTests
 
         using var requisicao = new HttpRequestMessage(HttpMethod.Post, caminho)
         {
-            Content = new StringContent(corpoJson, Encoding.UTF8, "application/json")
+            Content = new StringContent(corpoJson, Encoding.UTF8, contentType)
         };
         requisicao.Headers.TryAddWithoutValidation(HmacSignatureFilter.HeaderDeAssinatura, "v1=" + Convert.ToHexStringLower(mac));
         requisicao.Headers.TryAddWithoutValidation(HmacSignatureFilter.HeaderDeTimestamp, timestamp.ToString(provider: null));
@@ -149,6 +149,19 @@ public class AgentLeadsEndpointTests
 
         resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await LerCodeAsync(resposta)).Should().Be("validation_failed");
+    }
+
+    [Fact]
+    public async Task ContentTypeNaoJson_Retorna400ComValidationFailedNaoServiceUnavailable()
+    {
+        var mockHandler = CriarMockHandler(Result.Success(new StagedLead(Guid.NewGuid().ToString(), "agent", "pending")));
+        await using var servidor = await IniciarAsync(mockHandler);
+
+        using var resposta = await EnviarAssinadaAsync(servidor.Cliente, CaminhoDeLeads, CorpoValido, contentType: "text/plain");
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await LerCodeAsync(resposta)).Should().Be("validation_failed");
+        mockHandler.Verify(h => h.HandleAsync(It.IsAny<RegistrarLeadAgenteCommand>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

@@ -84,6 +84,11 @@ public static class AgentEndpoints
             if (!Guid.TryParse(tenantId, out var tenantGuid))
                 return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
 
+            // ReadFromJsonAsync lança BadHttpRequestException (não JsonException) p/ content-type
+            // não-JSON — sem este guard cai no catch-all do AgentExceptionFilter e vira 503.
+            if (!httpContext.Request.HasJsonContentType())
+                return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+
             // [FromBody] em tipo complexo faria o binder ler o corpo ANTES da cadeia de filtros —
             // o HmacSignatureFilter, mais interno, hashearia um corpo já drenado (vazio) e toda
             // requisição assinada corretamente cairia em signature_invalid. Leitura manual aqui
@@ -168,6 +173,11 @@ public static class AgentEndpoints
             CancellationToken cancellationToken) =>
         {
             if (!Guid.TryParse(tenantId, out var tenantGuid))
+                return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
+
+            // Mesmo motivo do POST leads: guard de content-type antes do ReadFromJsonAsync
+            // (BadHttpRequestException não é JsonException, cairia no catch-all do filtro).
+            if (!httpContext.Request.HasJsonContentType())
                 return AgentProblem.Criar(AgentErrorCode.ValidationFailed, StatusCodes.Status400BadRequest);
 
             // Mesmo motivo do POST leads: leitura manual do corpo aqui, depois que o
