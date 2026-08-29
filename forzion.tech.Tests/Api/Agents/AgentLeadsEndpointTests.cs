@@ -36,6 +36,9 @@ public class AgentLeadsEndpointTests
     private const string CorpoConsentimentoNegado =
         """{"name":"Fulano","contact":{"type":"email","value":"fulano@lead.com"},"consent":{"granted":false,"purpose":"Contato comercial"},"idempotencyKey":"chave-1"}""";
 
+    private const string CorpoSemIdempotencyKey =
+        """{"name":"Fulano","contact":{"type":"email","value":"fulano@lead.com"},"consent":{"granted":true,"purpose":"Contato comercial"}}""";
+
     private sealed record Servidor(WebApplication App, HttpClient Cliente) : IAsyncDisposable
     {
         public async ValueTask DisposeAsync()
@@ -143,6 +146,18 @@ public class AgentLeadsEndpointTests
         await using var servidor = await IniciarAsync(mockHandler);
 
         using var resposta = await EnviarAssinadaAsync(servidor.Cliente, CaminhoDeLeads, CorpoConsentimentoNegado);
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await LerCodeAsync(resposta)).Should().Be("validation_failed");
+    }
+
+    [Fact]
+    public async Task IdempotencyKeyAusente_Retorna400ComValidationFailed()
+    {
+        var mockHandler = CriarMockHandler(Result.Failure<StagedLead>(LeadAgenteErrors.IdempotencyKeyObrigatoria));
+        await using var servidor = await IniciarAsync(mockHandler);
+
+        using var resposta = await EnviarAssinadaAsync(servidor.Cliente, CaminhoDeLeads, CorpoSemIdempotencyKey);
 
         resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await LerCodeAsync(resposta)).Should().Be("validation_failed");

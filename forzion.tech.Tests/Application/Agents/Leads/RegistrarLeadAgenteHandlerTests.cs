@@ -183,6 +183,23 @@ public class RegistrarLeadAgenteHandlerTests
         result.IsFailure.Should().BeTrue();
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task HandleAsync_IdempotencyKeyAusenteVaziaOuEmBranco_RetornaValidacaoENadaPersiste(string? idempotencyKey)
+    {
+        var treinador = CriarTreinadorPublicado();
+        SetupTreinador(treinador, treinador.Id);
+
+        var result = await _handler.HandleAsync(ComandoValido(treinador.Id, idempotencyKey: idempotencyKey));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Should().Be(LeadAgenteErrors.IdempotencyKeyObrigatoria);
+        _leadRepo.Verify(r => r.AdicionarAsync(It.IsAny<Lead>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Fact]
     public async Task HandleAsync_UserAgentAcimaDe500_RetornaValidacao()
     {
