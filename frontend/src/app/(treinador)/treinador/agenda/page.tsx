@@ -7,7 +7,7 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import type { Dayjs } from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import PageHeader from "@/components/ui/PageHeader";
@@ -98,8 +98,8 @@ export default function AgendaTreinadorPage() {
     try {
       const { data } = await agendaApi.criarBloqueio({
         tipo: "Pontual",
-        inicioUtc: `${dia}T${pontualHoraInicio}:00.000Z`,
-        fimUtc: `${dia}T${pontualHoraFim}:00.000Z`,
+        inicioUtc: dayjs(`${dia}T${pontualHoraInicio}`).toISOString(),
+        fimUtc: dayjs(`${dia}T${pontualHoraFim}`).toISOString(),
         motivo: pontualMotivo.trim() || null,
       });
       setBloqueios((prev) => [...prev, data]);
