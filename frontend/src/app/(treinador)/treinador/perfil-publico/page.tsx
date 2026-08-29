@@ -39,6 +39,8 @@ interface PoliticaLinha {
   valor: string;
 }
 
+const MAX_POLITICAS = 20;
+
 export default function PerfilPublicoTreinadorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -95,8 +97,10 @@ export default function PerfilPublicoTreinadorPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const politicasNoLimite = politicas.length >= MAX_POLITICAS;
+
   const handleAdicionarPolitica = () => {
-    if (!novaPoliticaChave.trim() || !novaPoliticaValor.trim()) return;
+    if (!novaPoliticaChave.trim() || !novaPoliticaValor.trim() || politicasNoLimite) return;
     setPoliticas((prev) => [...prev, { chave: novaPoliticaChave.trim(), valor: novaPoliticaValor.trim() }]);
     setNovaPoliticaChave("");
     setNovaPoliticaValor("");
@@ -182,6 +186,7 @@ export default function PerfilPublicoTreinadorPage() {
                 required
                 error={publicadoBloqueado}
                 helperText={publicadoBloqueado ? "Nome fantasia é obrigatório para publicar o perfil." : undefined}
+                slotProps={{ htmlInput: { maxLength: 200 } }}
               />
             </Grid>
 
@@ -341,6 +346,7 @@ export default function PerfilPublicoTreinadorPage() {
                 size="small"
                 fullWidth
                 placeholder="Ex: cancelamento"
+                slotProps={{ htmlInput: { maxLength: 100 } }}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
@@ -351,18 +357,26 @@ export default function PerfilPublicoTreinadorPage() {
                 size="small"
                 fullWidth
                 placeholder="Ex: cancelamento com 24h de antecedência"
+                slotProps={{ htmlInput: { maxLength: 500 } }}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 2 }}>
               <Button
                 startIcon={<AddIcon />}
                 onClick={handleAdicionarPolitica}
-                disabled={!novaPoliticaChave.trim() || !novaPoliticaValor.trim()}
+                disabled={!novaPoliticaChave.trim() || !novaPoliticaValor.trim() || politicasNoLimite}
                 fullWidth
               >
                 Adicionar política
               </Button>
             </Grid>
+            {politicasNoLimite && (
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="caption" color="error">
+                  Limite de {MAX_POLITICAS} políticas atingido.
+                </Typography>
+              </Grid>
+            )}
           </Grid>
         </CardContent>
       </Card>
