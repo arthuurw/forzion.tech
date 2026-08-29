@@ -117,6 +117,12 @@ public class TreinadorRepository(AppDbContext context, TimeProvider timeProvider
                 .Where(e => e.TreinadorId == treinador.Id)
                 .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
 
+            // solicitacoes_agendamento.pacote_id/.lead_id → pacotes/leads (RESTRICT); apagar
+            // antes dos dois para não bloquear a exclusão deles mais abaixo.
+            await _context.SolicitacoesAgendamento
+                .Where(s => s.TreinadorId == treinador.Id)
+                .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
             // FK RESTRICT (ver specification-db): excluir dependentes antes dos pais.
             // pagamentos → assinaturas_aluno → vínculos → pacotes.
             var assinaturaIds = await _context.AssinaturaAlunos

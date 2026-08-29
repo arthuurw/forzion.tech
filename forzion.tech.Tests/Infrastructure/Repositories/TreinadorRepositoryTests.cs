@@ -161,6 +161,53 @@ public class TreinadorRepositoryTests(InfrastructureTestFixture fixture)
         }
     }
 
+    // solicitacoes_agendamento.pacote_id e .lead_id são RESTRICT; sem apagar solicitações
+    // antes de pacotes/leads, a exclusão abortava com violação de FK (23503).
+    [Fact]
+    public async Task ExcluirComDependenciasAsync_ComSolicitacaoAgendamentoPendente_ExcluiSemViolarFK()
+    {
+        Guid treinadorId, solicitacaoId;
+
+        await using (var seedCtx = fixture.CreateContext())
+        {
+            var contaT = Conta.Criar(Email.Criar($"t{Guid.NewGuid():N}@test.com").Value, "hash", TipoConta.Treinador, DateTime.UtcNow).Value;
+            var treinador = Treinador.Criar(contaT.Id, $"Tr{Guid.NewGuid():N}", DateTime.UtcNow).Value;
+            var pacote = Pacote.Criar(treinador.Id, $"Pac{Guid.NewGuid():N}", 99.90m, DateTime.UtcNow).Value;
+            var contato = ContatoLead.Criar(TipoContatoLead.Email, $"lead{Guid.NewGuid():N}@test.com").Value;
+            var consentimento = ConsentimentoLead.Criar("Contato comercial", DateTime.UtcNow, DateTime.UtcNow).Value;
+            var lead = Lead.Criar(treinador.Id, "Fulano", contato, null, consentimento, null, LeadSource.Agent, null, null, DateTime.UtcNow).Value;
+            var solicitacao = SolicitacaoAgendamento.Criar(
+                treinador.Id, pacote.Id, lead.Id, "slot-1",
+                DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(1).AddHours(1),
+                $"idem-{Guid.NewGuid():N}", "hash", DateTime.UtcNow).Value;
+
+            await seedCtx.Contas.AddAsync(contaT);
+            await seedCtx.Treinadores.AddAsync(treinador);
+            await seedCtx.Pacotes.AddAsync(pacote);
+            await seedCtx.Leads.AddAsync(lead);
+            await seedCtx.SolicitacoesAgendamento.AddAsync(solicitacao);
+            await seedCtx.SaveChangesAsync();
+
+            treinadorId = treinador.Id;
+            solicitacaoId = solicitacao.Id;
+        }
+
+        await using (var actCtx = fixture.CreateContext())
+        {
+            var treinador = await actCtx.Treinadores.FirstAsync(t => t.Id == treinadorId);
+
+            var act = async () => await new TreinadorRepository(actCtx, TimeProvider.System).ExcluirComDependenciasAsync(treinador, Guid.NewGuid());
+
+            await act.Should().NotThrowAsync();
+        }
+
+        await using (var assertCtx = fixture.CreateContext())
+        {
+            (await assertCtx.Treinadores.AnyAsync(t => t.Id == treinadorId)).Should().BeFalse();
+            (await assertCtx.SolicitacoesAgendamento.AnyAsync(s => s.Id == solicitacaoId)).Should().BeFalse();
+        }
+    }
+
     // Timestamp do log de exclusão (prova de auditoria, §2 specification-coding) usa o
     // relógio do servidor via TimeProvider injetado, não DateTime.UtcNow.
     [Fact]
