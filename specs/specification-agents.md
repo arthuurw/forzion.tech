@@ -92,15 +92,16 @@ Envelope `application/problem+json` (RFC 9457) com `type`/`title`/`status`/`code
 |---|---|---|
 | `signature_invalid` | 401 | header ausente/vazio/não-parseável, prefixo ≠ `v1=`, hex inválido, HMAC não confere |
 | `timestamp_out_of_window` | 401 | assinatura válida e `\|agora − ts\| > 300s` |
-| `validation_failed` | 400 | corpo ≥ 64 KB; validação de request das fatias 1-4 |
+| `validation_failed` | 400 | corpo ≥ 64 KB; validação de request das fatias 1-4; `Content-Type` ≠ JSON em endpoint de corpo (T33); `idempotencyKey` ausente/vazia/em branco em `POST leads` — agora SEMPRE obrigatória, sem branch opcional (T32); exceção de leitura do corpo (`BadHttpRequestException`/`IOException`) dentro de `HmacSignatureFilter` — antes vazava como `dependency_unavailable` 503 (T34) |
 | `tenant_not_found` | 404 | `tenantId` inexistente **ou** fora do escopo (colapso deliberado — não confirma existência) |
 | `service_not_found` | 404 | pacote inexistente, de outro treinador, não público, sem `DuracaoMinutos`, emitido por `GET availability` (fatia 3), **e** por `POST booking-requests` (fatia 4) — que ADICIONALMENTE exige `IsAtivo` (§6-D, divergência deliberada D-H/R4). **Não emitido pela fatia 1** — `GET services` lista, nunca resolve um item, então não há 404 por serviço ali |
 | `slot_not_found` | 404 | slot derivado que nunca existiu — emitido por `POST booking-requests` (fatia 4, `LocalizarPorId` devolve nulo) |
 | `slot_unavailable` | 409 | slot existia e lotou/sumiu entre a consulta e o write — emitido por `POST booking-requests` (fatia 4) |
 | `idempotency_conflict` | 409 | mesma `idempotencyKey` com argumentos diferentes (fatias 2 e 4) |
 | `dependency_unavailable` | 503 | `agents-ready` `Unhealthy`; falha do repositório ou fuso persistido que não resolve durante `GET availability` (fatia 3, §6-C) ou `POST booking-requests` (fatia 4, §6-D) — **nunca** `200 []`/`200 []` disfarçado nem `201`/`404`/`409` |
+| `rate_limited` | 429 | política `agents` do rate limiter (`AddRateLimiter`) rejeita a janela — construído como `ProblemDetails` avulso FORA do enum fechado `AgentErrorCode` (T36): o `OnRejected` do rate limiter roda ANTES da cadeia de `IEndpointFilter`, então nunca alcança `AgentProblem.Criar`/`AgentExceptionFilter`; envelope RFC 9457 replicado manualmente (`type`/`title`/`status`/`code=rate_limited`) para o consumidor não precisar distinguir a origem |
 
-Mensagem interna PT-BR **nunca** vira `detail`. `code` NUNCA sai de `ToString()` de enum — o domínio é PT-BR e um rename interno quebraria o contrato em silêncio; o valor de wire é tabela explícita (`AgentErrorCodeExtensions`).
+Mensagem interna PT-BR **nunca** vira `detail`. `code` NUNCA sai de `ToString()` de enum — o domínio é PT-BR e um rename interno quebraria o contrato em silêncio; o valor de wire é tabela explícita (`AgentErrorCodeExtensions`). **Exceção**: `rate_limited` (429) fica FORA dessa tabela fechada por desenho — o contrato YAML (`ErrorCode` schema) não o lista, e adicioná-lo ao enum quebraria `AgentProblemTests.Criar_EmiteApenasCodigosDoEnumDoContrato` (guarda de drift contra o schema).
 
 `503 dependency_unavailable` é resposta de primeira classe, não exceção não tratada: `GET /availability` que não consegue consultar a agenda responde `503` e **nunca lista vazia** — o gateway lê lista vazia como "não há vaga" e o agente diria ao consumidor que não existe horário quando a consulta falhou.
 
@@ -114,6 +115,8 @@ Mensagem interna PT-BR **nunca** vira `detail`. `code` NUNCA sai de `ToString()`
 ## 6-A. ENDPOINTS DE LEITURA — FATIA 1 (`GET business-info`, `GET services`)
 
 Ambos vivem no MESMO grupo `/internal/agents/v1`, herdam HMAC + `AgentExceptionFilter` + rate limit sem declarar nada. `tenantId` = `Treinador.Id` (D1).
+
+Todos os 5 handlers do gateway (fatias 1-4: `business-info`, `services`, `leads`, `availability`, `booking-requests`) resolvem o `Treinador` via `ITreinadorRepository.ObterPorIdSemTrackingAsync` (T37, auditoria 2026-08-26) — request do gateway é sempre leitura-do-tenant-e-descarte, `AsNoTracking` evita o change tracker do EF Core acumular a entidade sem necessidade num `DbContext` scoped por requisição.
 
 **Bind de `tenantId`**: manual como `string` + `Guid.TryParse` no próprio endpoint — NUNCA o model-binding automático do ASP.NET Core para `Guid` (esse erraria fora do envelope `AgentProblem`, quebrando o contrato). Malformado ⇒ `400 validation_failed`.
 
@@ -138,6 +141,10 @@ Ambos vivem no MESMO grupo `/internal/agents/v1`, herdam HMAC + `AgentExceptionF
 ## 6-B. ENDPOINT DE ESCRITA COM CORPO — FATIA 2 (`POST leads`)
 
 `POST /internal/agents/v1/tenants/{tenantId}/leads` é o primeiro endpoint do grupo com parâmetro de corpo. `RegistrarLeadAgenteHandler` (`Application/UseCases/Agents/Leads/`) implementa a ordem: consent → limites → contato → `AgentTenantGuard.EstaPublicado` → idempotência → persistir. Resposta projeta `StagedLead {leadId, source: "agent", status: "pending"}` por tabela explícita (nunca `ToString()` de enum) — literal constante mesmo no caminho idempotente (o lead pode já ter mudado de status internamente; o wire só conhece `pending`).
+
+`idempotencyKey` é **sempre obrigatória** (auditoria 2026-08-26, AUD-27/T32) — ausente, vazia ou só espaço em branco ⇒ `400 validation_failed` (`LeadAgenteErrors.IdempotencyKeyObrigatoria`), verificado ANTES da checagem de tamanho. Removido o branch antigo que tratava chave ausente como lead não-idempotente — o contrato lista o campo como `required`, e persistir sem chave abria reenvio duplicado do gateway sem detecção.
+
+Endpoint exige `Content-Type` JSON antes de tentar `ReadFromJsonAsync` (T33) — ausente/incorreto ⇒ `400 validation_failed`, nunca cai no `catch` genérico do `AgentExceptionFilter` (que responderia `503 dependency_unavailable`, teria confundido erro de cliente com falha de dependência).
 
 - **GOTCHA `[FromBody]` em tipo complexo quebra a assinatura — CANÔNICO, vale para qualquer endpoint futuro do grupo com corpo.** Minimal API resolve parâmetros ANTES da cadeia de `IEndpointFilter` rodar (`EndpointFilterInvocationContext.Arguments` já vem populado quando `InvokeAsync` do filtro mais externo começa — confirmado no doc oficial: filtros leem `context.GetArguments()[0]` já materializado, síncrono, sem await). Um parâmetro `[FromBody] TipoComplexo` faz o model binder LER E DRENAR `HttpContext.Request.Body` nesse momento — antes do `HmacSignatureFilter` (mais interno na cadeia) sequer rodar. O filtro então hasheia um corpo já vazio, e toda requisição assinada corretamente cai em `401 signature_invalid` mudo (o desalinhamento é inteiramente do lado do servidor; o gateway não tem como saber). Reproduzido e corrigido nesta fatia: nenhum teste do grupo cobria essa combinação porque as fatias 0-1 só têm `GET`s (sem corpo) e o único endpoint de teste com corpo do grupo (`HmacSignatureFilterTests`) usa `HttpContext` cru, não `[FromBody]`.
   **Fix obrigatório para todo endpoint futuro do grupo com corpo**: assinatura do handler recebe `HttpContext httpContext` (não o DTO tipado), e o corpo é lido MANUALMENTE dentro do handler via `httpContext.Request.ReadFromJsonAsync<T>(cancellationToken)` — nesse ponto o `HmacSignatureFilter` já rodou e já substituiu `Request.Body` pelo buffer que ele mesmo hasheou (`requisicao.Body = corpo;`), então a leitura do handler vê exatamente os bytes verificados. `JsonException` na desserialização ⇒ `400 validation_failed`.

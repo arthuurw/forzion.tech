@@ -107,6 +107,7 @@ public static class InfrastructureExtensions
                         deps, maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5)));
                 })
                 .UseSnakeCaseNamingConvention()
+                .UseLoggerFactory(sp.GetRequiredService<ILoggerFactory>())
                 .Options;
 
             var dispatcher = sp.GetRequiredService<IDomainEventDispatcher>();
