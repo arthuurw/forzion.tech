@@ -95,4 +95,25 @@ describe("POST /api/auth/register/treinador", () => {
     const res = await POST(req);
     expect(res.status).toBe(422);
   });
+
+  it("cross-origin → 403 sem chamar o backend", async () => {
+    let backendCalled = false;
+    server.use(
+      http.post("*/auth/register/treinador", () => {
+        backendCalled = true;
+        return HttpResponse.json({}, { status: 201 });
+      }),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      headers: { origin: "http://evil.com" },
+      body: {},
+    });
+    const res = await POST(req);
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: "cross-origin" });
+    expect(backendCalled).toBe(false);
+  });
 });

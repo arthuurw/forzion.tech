@@ -23,4 +23,26 @@ describe("POST /api/auth/mfa/email/enviar", () => {
 
     expect(received).toBe("203.0.113.7");
   });
+
+  it("cross-origin → 403 sem chamar o backend", async () => {
+    let backendCalled = false;
+    server.use(
+      http.post("*/auth/mfa/email/enviar", () => {
+        backendCalled = true;
+        return HttpResponse.json({});
+      }),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      headers: { origin: "http://evil.com" },
+      cookies: { mfa_pending: "pending-tok" },
+    });
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body).toEqual({ error: "cross-origin" });
+    expect(backendCalled).toBe(false);
+  });
 });

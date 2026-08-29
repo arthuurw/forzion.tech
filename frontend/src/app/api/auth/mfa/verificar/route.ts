@@ -7,10 +7,11 @@ import {
   applyTrustedDeviceCookie,
   clearMfaPendingCookie,
 } from "@/lib/auth/sessionCookies";
+import { withSameOrigin } from "@/lib/security/withSameOrigin";
 
 const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
 
-export async function POST(request: NextRequest) {
+export const POST = withSameOrigin(async (request: NextRequest) => {
   const ip = getClientIp(request);
   if (!checkRateLimit(ip)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -57,4 +58,4 @@ export async function POST(request: NextRequest) {
   if (trustedDeviceToken) applyTrustedDeviceCookie(response, trustedDeviceToken);
 
   return response;
-}
+});

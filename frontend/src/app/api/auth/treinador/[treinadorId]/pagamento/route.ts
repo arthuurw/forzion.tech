@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { forwardedForHeader } from "@/lib/security/forwardedFor";
+import { withSameOrigin } from "@/lib/security/withSameOrigin";
 
 const API_BASE = process.env.API_BASE_URL ?? "https://localhost:7220";
 
-export async function POST(
+export const POST = withSameOrigin(async (
   request: NextRequest,
   { params }: { params: Promise<{ treinadorId: string }> },
-) {
+) => {
   const ip = getClientIp(request);
   if (!checkRateLimit(ip)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
@@ -33,4 +34,4 @@ export async function POST(
 
   const data = await res.json();
   return NextResponse.json(data, { status: res.status });
-}
+});

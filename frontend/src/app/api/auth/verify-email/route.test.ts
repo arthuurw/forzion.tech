@@ -99,4 +99,26 @@ describe("POST /api/auth/verify-email", () => {
 
     expect(received).toBe("203.0.113.7");
   });
+
+  it("cross-origin → 403 sem chamar o backend", async () => {
+    let backendCalled = false;
+    server.use(
+      http.post("*/auth/verify-email", () => {
+        backendCalled = true;
+        return HttpResponse.json({}, { status: 200 });
+      }),
+    );
+
+    const req = createMockRequest({
+      method: "POST",
+      headers: { origin: "http://evil.com" },
+      body: { token: "a".repeat(64) },
+    });
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body).toEqual({ error: "cross-origin" });
+    expect(backendCalled).toBe(false);
+  });
 });
