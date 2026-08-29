@@ -94,7 +94,7 @@ public class PacoteRepositoryTests(InfrastructureTestFixture fixture)
     }
 
     [Fact]
-    public async Task ListarAtivosPorTreinadorAsync_NaoRastreiaEntidadesRetornadas()
+    public async Task ListarAtivosPorTreinadorAsync_RastreiaEntidadesRetornadas_InativarTreinadorHandlerPrecisaMutarECommitar()
     {
         await using var ctx = fixture.CreateContext();
         var treinadorId = await SeedTreinadorAsync(ctx);
@@ -103,7 +103,7 @@ public class PacoteRepositoryTests(InfrastructureTestFixture fixture)
 
         await Repo(ctx).ListarAtivosPorTreinadorAsync(treinadorId);
 
-        ctx.ChangeTracker.Entries<Pacote>().Should().BeEmpty();
+        ctx.ChangeTracker.Entries<Pacote>().Should().ContainSingle();
     }
 
     // --- ListarPublicosPorTreinadorAsync ---
