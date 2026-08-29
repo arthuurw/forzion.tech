@@ -16,6 +16,13 @@ const PACOTE_PUBLICO = {
   isPublico: true,
 };
 
+const PACOTE_PRIVADO = {
+  ...PACOTE_PUBLICO,
+  pacoteId: "33333333-3333-3333-3333-333333333333",
+  nome: "Avaliação física",
+  isPublico: false,
+};
+
 async function renderPage() {
   const { default: Page } = await import("@/app/(treinador)/treinador/pacotes/page");
   render(<Page />);
@@ -119,5 +126,44 @@ describe("PacotesTreinadorPage — catálogo público", () => {
 
     expect(screen.getByText(/categoria é obrigatória para tornar o pacote público/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^salvar$/i })).toBeDisabled();
+  });
+
+  it("limpa categoria e duração de um pacote privado ao esvaziar os campos e salvar", async () => {
+    let corpoEnviado: Record<string, unknown> | null = null;
+    server.use(
+      http.get("*/treinador/pacotes", () => HttpResponse.json([PACOTE_PRIVADO])),
+      http.patch("*/treinador/pacotes/:id", async ({ request }) => {
+        corpoEnviado = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ...PACOTE_PRIVADO, categoria: null, duracaoMinutos: null });
+      }),
+    );
+    await renderPage();
+
+    fireEvent.click(await screen.findByText("Avaliação física"));
+    fireEvent.change(await screen.findByLabelText(/^Categoria$/i), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText(/Duração \(min\)/i), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: /^salvar$/i }));
+
+    await waitFor(() => expect(corpoEnviado).not.toBeNull());
+    expect(corpoEnviado).toMatchObject({ categoria: "", duracaoMinutos: 0 });
+  });
+
+  it("preserva categoria e duração de um pacote privado quando os campos não são tocados", async () => {
+    let corpoEnviado: Record<string, unknown> | null = null;
+    server.use(
+      http.get("*/treinador/pacotes", () => HttpResponse.json([PACOTE_PRIVADO])),
+      http.patch("*/treinador/pacotes/:id", async ({ request }) => {
+        corpoEnviado = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(PACOTE_PRIVADO);
+      }),
+    );
+    await renderPage();
+
+    fireEvent.click(await screen.findByText("Avaliação física"));
+    await screen.findByLabelText(/^Categoria$/i);
+    fireEvent.click(screen.getByRole("button", { name: /^salvar$/i }));
+
+    await waitFor(() => expect(corpoEnviado).not.toBeNull());
+    expect(corpoEnviado).toMatchObject({ categoria: "Pilates", duracaoMinutos: 60 });
   });
 });

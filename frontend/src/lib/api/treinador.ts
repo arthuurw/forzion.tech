@@ -162,8 +162,11 @@ export const treinadorApi = {
     nome?: string;
     preco?: number;
     descricao?: string | null;
-    categoria?: string | null;
-    duracaoMinutos?: number | null;
+    // string vazia / 0 são as sentinelas de "limpar" no contrato do backend
+    // (AtualizarCatalogoPublico); `null` significa "campo ausente" e nunca deve
+    // ser enviado por este endpoint de edição.
+    categoria?: string;
+    duracaoMinutos?: number;
     trialDisponivel?: boolean;
     isPublico?: boolean;
   }) {

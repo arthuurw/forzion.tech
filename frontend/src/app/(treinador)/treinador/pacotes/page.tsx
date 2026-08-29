@@ -127,8 +127,11 @@ export default function PacotesTreinadorPage() {
         nome: editNome.trim(),
         preco: Number(editPreco),
         descricao: editDescricao.trim() || null,
-        categoria: editCategoria.trim() || null,
-        duracaoMinutos: editDuracaoMinutos ? Number(editDuracaoMinutos) : null,
+        // "" e 0 são as sentinelas de "limpar" do contrato de AtualizarCatalogoPublico —
+        // null significa "campo ausente" (não mexer), por isso nunca usado aqui: o form
+        // de edição sempre representa o estado completo do pacote.
+        categoria: editCategoria.trim(),
+        duracaoMinutos: editDuracaoMinutos ? Number(editDuracaoMinutos) : 0,
         trialDisponivel: editTrialDisponivel,
         isPublico: editPublico,
       });
