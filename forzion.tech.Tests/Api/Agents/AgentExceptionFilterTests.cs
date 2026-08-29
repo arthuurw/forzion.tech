@@ -73,8 +73,39 @@ public class AgentExceptionFilterTests
         var entrada = logger.Entradas.Should().ContainSingle(e => e.Level == LogLevel.Error).Subject;
         entrada.Exception.Should().NotBeNull();
         entrada.Exception.Should().NotBeSameAs(excecao);
-        entrada.Exception!.Message.Should().Be(nameof(InvalidOperationException));
+        entrada.Exception!.Message.Should().Be(typeof(InvalidOperationException).FullName);
     }
+
+    [Fact]
+    public async Task ExcecaoNaoTratada_LogaTipoCompletoEStackTraceDaExcecaoOriginal()
+    {
+        var logger = new LoggerFake();
+        var filter = new AgentExceptionFilter(logger);
+        EndpointFilterDelegate next = _ => LancarComStackTrace();
+
+        await filter.InvokeAsync(CriarContexto(), next);
+
+        var entrada = logger.Entradas.Should().ContainSingle(e => e.Level == LogLevel.Error).Subject;
+        entrada.Message.Should().Contain(typeof(InvalidOperationException).FullName!);
+        entrada.Message.Should().Contain(nameof(LancarComStackTrace));
+    }
+
+    [Fact]
+    public async Task ExcecaoNaoTratada_MensagemLogadaNuncaContemOTextoOriginalDaExcecao()
+    {
+        var logger = new LoggerFake();
+        var filter = new AgentExceptionFilter(logger);
+        const string MensagemSensivel = "timeout de conexao com o postgres do tenant 7f3a";
+        EndpointFilterDelegate next = _ => throw new InvalidOperationException(MensagemSensivel);
+
+        await filter.InvokeAsync(CriarContexto(), next);
+
+        var entrada = logger.Entradas.Should().ContainSingle(e => e.Level == LogLevel.Error).Subject;
+        entrada.Message.Should().NotContain(MensagemSensivel);
+        entrada.Exception!.Message.Should().NotContain(MensagemSensivel);
+    }
+
+    private static ValueTask<object?> LancarComStackTrace() => throw new InvalidOperationException("erro real");
 
     // Reproduz a transformacao real de ErrorLogDbSinkProvider.ErrorLogDbLogger.Log (mensagem +
     // "| Tipo: Mensagem" do exception, depois MascaraPii.Scrub) — Scrub cobre e-mail/telefone via
