@@ -22,6 +22,23 @@ public class PerfilPublico
 
     public Result AtualizarDados(string? nomeFantasia, EnderecoPublico? endereco, IReadOnlyDictionary<string, string>? politicas, DateTime agora)
     {
+        if (nomeFantasia is not null && nomeFantasia.Trim().Length > ParametrosDerivacao.MaxNomeFantasiaLength)
+            return Result.Failure(PerfilPublicoErrors.NomeFantasiaMuitoLongo);
+
+        if (politicas is not null)
+        {
+            if (politicas.Count > ParametrosDerivacao.MaxPoliticas)
+                return Result.Failure(PerfilPublicoErrors.PoliticasExcedemLimite);
+
+            foreach (var (chave, valor) in politicas)
+            {
+                if (chave.Length > ParametrosDerivacao.MaxPoliticaChaveLength)
+                    return Result.Failure(PerfilPublicoErrors.PoliticaChaveMuitoLonga);
+                if (valor.Length > ParametrosDerivacao.MaxPoliticaValorLength)
+                    return Result.Failure(PerfilPublicoErrors.PoliticaValorMuitoLongo);
+            }
+        }
+
         NomeFantasia = string.IsNullOrWhiteSpace(nomeFantasia) ? null : nomeFantasia.Trim();
         Endereco = endereco;
         Politicas = politicas;
