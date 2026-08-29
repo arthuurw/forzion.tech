@@ -59,6 +59,7 @@ public class AppDbContext(
     public DbSet<TrocaEmailToken> TrocaEmailTokens => Set<TrocaEmailToken>();
     public DbSet<ReconciliacaoStripeEstado> ReconciliacoesStripeEstado => Set<ReconciliacaoStripeEstado>();
     public DbSet<RedefinicaoSenhaSegundoFator> RedefinicoesSenhaSegundoFator => Set<RedefinicaoSenhaSegundoFator>();
+    public DbSet<TentativasLoginConta> TentativasLoginConta => Set<TentativasLoginConta>();
     public DbSet<Notificacao> Notificacoes => Set<Notificacao>();
     public DbSet<Lead> Leads => Set<Lead>();
     public DbSet<LeadConvite> LeadConvites => Set<LeadConvite>();

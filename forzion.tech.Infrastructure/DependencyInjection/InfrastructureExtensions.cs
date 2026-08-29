@@ -140,6 +140,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IMensagemSuporteRepository, MensagemSuporteRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IRedefinicaoSenhaSegundoFatorRepository, RedefinicaoSenhaSegundoFatorRepository>();
+        services.AddScoped<ITentativasLoginContaRepository, TentativasLoginContaRepository>();
         services.AddScoped<ITrocaEmailTokenRepository, TrocaEmailTokenRepository>();
         services.AddScoped<IRefreshTokenFamilyRepository, RefreshTokenFamilyRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
