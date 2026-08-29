@@ -97,18 +97,21 @@ jobs:
             git -C /opt/forzion/app pull origin homolog
             EDGE_DIR=/opt/forzion/app bash scripts/reload-edge.sh
 
-            # Probe pelo edge público (Host explícito) — health-gate acima só olha o backend por dentro.
+            # Probe pelo edge público (Host explícito) — health-gate acima só olha o backend por
+            # dentro. Usa /auth/planos, não /health/ready: a allowlist do BFF (route.ts) fecha
+            # /health/** de propósito -- /auth/planos é GET anônimo real, sempre 200, e exercita
+            # a MESMA cadeia nginx->frontend->backend.
             PROD_HOST="$(grep -E '^PROD_HOST=' "$EF" | head -1 | cut -d= -f2-)"
             PROD_HOST="${PROD_HOST%\"}"; PROD_HOST="${PROD_HOST#\"}"
             edge_ok=0
             for _ in $(seq 1 30); do
-              if [ -n "$PROD_HOST" ] && curl -fsS -k --resolve "$PROD_HOST:443:127.0.0.1" "https://$PROD_HOST/api/backend/health/ready" >/dev/null 2>&1; then
+              if [ -n "$PROD_HOST" ] && curl -fsS -k --resolve "$PROD_HOST:443:127.0.0.1" "https://$PROD_HOST/api/backend/auth/planos" >/dev/null 2>&1; then
                 edge_ok=1; break
               fi
               sleep 4
             done
             if [ "$edge_ok" != 1 ]; then
-              if curl -fsS -k --resolve "homologacao.forzion.tech:443:127.0.0.1" "https://homologacao.forzion.tech/api/backend/health/ready" >/dev/null 2>&1; then
+              if curl -fsS -k --resolve "homologacao.forzion.tech:443:127.0.0.1" "https://homologacao.forzion.tech/api/backend/auth/planos" >/dev/null 2>&1; then
                 echo "::error::Edge (nginx) REPROVADO pós-restart -- routing quebrado ou PROD_HOST ausente em $EF. Homolog (edge compartilhado) segue OK."
               else
                 echo "::error::Edge (nginx) REPROVADO pós-restart E homolog (edge compartilhado) tambem nao responde -- possivel borda inteira caida, investigar IMEDIATAMENTE."

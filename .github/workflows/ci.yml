@@ -630,10 +630,13 @@ jobs:
 
             # Health-gate acima só olha o backend por dentro (exec), nunca passa pelo
             # nginx -- probe pelo edge público com Host explícito (default_server
-            # devolve 444 a Host desconhecido, nginx.conf:23-29).
+            # devolve 444 a Host desconhecido, nginx.conf:23-29). Usa /auth/planos, não
+            # /health/ready: a allowlist do BFF (route.ts) fecha /health/** de propósito
+            # (nunca esteve exposto ao público antes por engano) -- /auth/planos é GET
+            # anônimo real, sempre 200, e exercita a MESMA cadeia nginx->frontend->backend.
             edge_ok=0
             for _ in $(seq 1 30); do
-              if curl -fsS -k --resolve homologacao.forzion.tech:443:127.0.0.1 https://homologacao.forzion.tech/api/backend/health/ready >/dev/null 2>&1; then
+              if curl -fsS -k --resolve homologacao.forzion.tech:443:127.0.0.1 https://homologacao.forzion.tech/api/backend/auth/planos >/dev/null 2>&1; then
                 edge_ok=1; break
               fi
               sleep 4
