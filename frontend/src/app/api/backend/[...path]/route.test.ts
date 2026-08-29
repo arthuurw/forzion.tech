@@ -444,4 +444,111 @@ describe("Backend proxy /api/backend/[...path]", () => {
       expect(res.status).toBe(200);
     });
   });
+
+  describe("Limite de tamanho do corpo", () => {
+    const MAX_BODY_BYTES = 10 * 1024 * 1024;
+
+    it("content-length acima do teto → 413 sem ler o corpo nem chamar o backend", async () => {
+      setupCookies({});
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      let arrayBufferCalled = false;
+
+      const req = createMockRequest({
+        method: "POST",
+        headers: { "content-length": String(MAX_BODY_BYTES + 1) },
+        body: { a: 1 },
+      });
+      Object.defineProperty(req, "arrayBuffer", {
+        value: async () => {
+          arrayBufferCalled = true;
+          return new ArrayBuffer(0);
+        },
+      });
+
+      const res = await POST(req, makeCtx(["admin", "x"]));
+      const body = await res.json();
+
+      expect(res.status).toBe(413);
+      expect(body).toEqual({ error: "payload_too_large" });
+      expect(arrayBufferCalled).toBe(false);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    it("content-length no teto exato → segue para o backend", async () => {
+      setupCookies({});
+      server.use(http.post("*/admin/x", () => HttpResponse.json({})));
+
+      const req = createMockRequest({
+        method: "POST",
+        headers: { "content-length": String(MAX_BODY_BYTES) },
+        body: { a: 1 },
+      });
+      const res = await POST(req, makeCtx(["admin", "x"]));
+
+      expect(res.status).toBe(200);
+    });
+
+    it("sem content-length → não é bloqueado por este guard", async () => {
+      setupCookies({});
+      server.use(http.post("*/admin/x", () => HttpResponse.json({})));
+
+      const req = createMockRequest({ method: "POST", body: { a: 1 } });
+      const res = await POST(req, makeCtx(["admin", "x"]));
+
+      expect(res.status).toBe(200);
+    });
+
+    it("GET não é afetado pelo guard de corpo (sem corpo a limitar)", async () => {
+      setupCookies({});
+      server.use(http.get("*/admin/x", () => HttpResponse.json({})));
+
+      const req = createMockRequest({
+        method: "GET",
+        headers: { "content-length": String(MAX_BODY_BYTES + 1) },
+      });
+      const res = await GET(req, makeCtx(["admin", "x"]));
+
+      expect(res.status).toBe(200);
+    });
+  });
+
+  describe("Timeout do backend", () => {
+    it("fetch expira (AbortSignal.timeout) → 504 backend_timeout", async () => {
+      setupCookies({});
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockRejectedValue(new DOMException("The operation was aborted due to timeout", "TimeoutError"));
+
+      const req = createMockRequest({ method: "GET" });
+      const res = await GET(req, makeCtx(["admin", "x"]));
+      const body = await res.json();
+
+      expect(res.status).toBe(504);
+      expect(body).toEqual({ error: "backend_timeout" });
+      fetchSpy.mockRestore();
+    });
+
+    it("passa um AbortSignal ao fetch do backend", async () => {
+      setupCookies({});
+      server.use(http.get("*/admin/x", () => HttpResponse.json({})));
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+      const req = createMockRequest({ method: "GET" });
+      await GET(req, makeCtx(["admin", "x"]));
+
+      const init = fetchSpy.mock.calls[0]?.[1] as RequestInit | undefined;
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
+      fetchSpy.mockRestore();
+    });
+
+    it("erro de rede que não é timeout propaga (não vira 504 silencioso)", async () => {
+      setupCookies({});
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("fetch failed"));
+
+      const req = createMockRequest({ method: "GET" });
+      await expect(GET(req, makeCtx(["admin", "x"]))).rejects.toThrow("fetch failed");
+      fetchSpy.mockRestore();
+    });
+  });
 });
