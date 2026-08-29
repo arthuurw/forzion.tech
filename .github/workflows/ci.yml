@@ -304,6 +304,20 @@ jobs:
             detect --source=/repo --no-git \
             --config=/repo/.gitleaks.toml --redact --no-banner
 
+  # ─── HIGIENE DE CI/INFRA (workflows, imagens de gate, zap, renovate) ──────────
+  # Sem `needs: [changes]`: roda em TODO disparo, igual ao gitleaks acima — os
+  # invariantes cobertos (permissions dos workflows, digest das imagens de gate,
+  # resolução de modo do zap.yml, baseBranches do renovate) vivem fora do
+  # path-filter de "backend"/"frontend" e não podem depender dele.
+  ci-hygiene:
+    name: Higiene de CI (permissions, digests, zap, renovate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verifica invariantes de CI/infra
+        run: bash scripts/test/ci-hygiene-check.sh
+
   # ─── SEGURANÇA / SUPPLY CHAIN (BACKEND .NET) ──────────────────────────────────
   security-backend:
     name: Security backend — vuln NuGet + SBOM
@@ -493,7 +507,7 @@ jobs:
   # reprova; só 'failure'/'cancelled' reprovam o gate.
   gate:
     name: Gate
-    needs: [changes, test-backend-unit, test-backend-integration, test-frontend, build-frontend, gitleaks, security, security-backend, sanity-backend, lint-migrations, zap-baseline]
+    needs: [changes, test-backend-unit, test-backend-integration, test-frontend, build-frontend, gitleaks, ci-hygiene, security, security-backend, sanity-backend, lint-migrations, zap-baseline]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
