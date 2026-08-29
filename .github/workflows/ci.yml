@@ -476,7 +476,7 @@ jobs:
         run: |
           docker run --rm --network host \
             -v "$PWD/.zap:/zap/wrk:rw" \
-            ghcr.io/zaproxy/zaproxy:stable \
+            ghcr.io/zaproxy/zaproxy@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef \
             zap-baseline.py -t http://localhost:3001 -c baseline.conf
 
       - name: Logs do frontend (se falhou)
