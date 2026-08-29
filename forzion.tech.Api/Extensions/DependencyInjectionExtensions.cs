@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using FluentValidation;
 using forzion.tech.Api.Configuration;
@@ -154,7 +155,7 @@ public static class DependencyInjectionExtensions
             {
                 opt.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-                opt.OnRejected = (context, _) =>
+                opt.OnRejected = async (context, _) =>
                 {
                     var logger = context.HttpContext.RequestServices
                         .GetRequiredService<ILoggerFactory>()
@@ -162,7 +163,26 @@ public static class DependencyInjectionExtensions
                     var alertaSeguranca = context.HttpContext.RequestServices
                         .GetRequiredService<IAlertaSegurancaSentry>();
                     RegistrarRejeicaoAuth(context.HttpContext, logger, alertaSeguranca);
-                    return ValueTask.CompletedTask;
+
+                    var politica = context.HttpContext.GetEndpoint()?
+                        .Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName;
+                    // Só a policy `agents` sai no envelope RFC 9457 — as demais (auth/mfa/read/write)
+                    // nunca declararam esse contrato e mudar o corpo delas quebraria consumidor
+                    // existente sem motivo. `code` NÃO usa AgentErrorCode/AgentProblem de propósito:
+                    // rate-limit é infraestrutura, fora do ErrorCode fechado do contrato do gateway
+                    // (AgentProblemTests.Criar_EmiteApenasCodigosDoEnumDoContrato trava esse enum).
+                    if (politica == "agents")
+                    {
+                        var problema = new ProblemDetails
+                        {
+                            Type = "https://forzion.tech/problems/rate_limited",
+                            Title = "Rate limited",
+                            Status = StatusCodes.Status429TooManyRequests,
+                            Detail = "Too many requests. Retry after the rate limit window.",
+                        };
+                        problema.Extensions["code"] = "rate_limited";
+                        await Results.Problem(problema).ExecuteAsync(context.HttpContext).ConfigureAwait(false);
+                    }
                 };
 
                 static FixedWindowRateLimiterOptions Fixed(int permit, TimeSpan window) => new()
@@ -534,7 +554,7 @@ public static class DependencyInjectionExtensions
         var politica = httpContext.GetEndpoint()?
             .Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName;
 
-        if (politica is not ("auth" or "mfa"))
+        if (politica is not ("auth" or "mfa" or "agents"))
             return;
 
         var rota = httpContext.Request.Path.Value;
