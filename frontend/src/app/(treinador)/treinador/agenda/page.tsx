@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import {
   Box, Card, CardContent, Button, Grid, TextField, Stack, Typography, IconButton, Chip, MenuItem, Divider,
   Tabs, Tab,
@@ -8,6 +8,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs, { type Dayjs } from "dayjs";
+import { useSearchParams } from "next/navigation";
 import AlertBanner from "@/components/ui/AlertBanner";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import PageHeader from "@/components/ui/PageHeader";
@@ -16,6 +17,8 @@ import { agendaApi } from "@/lib/api/agenda";
 import type { BloqueioAgendaResponse } from "@/types";
 import { TIPO_BLOQUEIO_LABEL, DIA_SEMANA_LABEL } from "@/lib/constants/labels";
 import SolicitacoesTab from "./_components/SolicitacoesTab";
+
+const TAB_SOLICITACOES_INDEX = 2;
 
 const DATE_FIELD_SLOTS = {
   textField: { size: "small" as const, fullWidth: true },
@@ -52,8 +55,9 @@ function formatarIntervaloPontual(b: BloqueioAgendaResponse): string {
   return `${data} ${horaInicio} — ${horaFim}`;
 }
 
-export default function AgendaTreinadorPage() {
-  const [tab, setTab] = useState(0);
+function AgendaTreinadorPageInner() {
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState(searchParams.get("tab") === "solicitacoes" ? TAB_SOLICITACOES_INDEX : 0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -404,5 +408,13 @@ export default function AgendaTreinadorPage() {
         <SolicitacoesTab />
       </AgendaTabPanel>
     </Box>
+  );
+}
+
+export default function AgendaTreinadorPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <AgendaTreinadorPageInner />
+    </Suspense>
   );
 }
