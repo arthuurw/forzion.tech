@@ -55,7 +55,12 @@ fi
 
 # --- .env (preencher após execução) ---
 if [ ! -f /opt/forzion/.env ]; then
-  cat > /opt/forzion/.env <<'EOF'
+  # umask 077 restringe o arquivo a rw-------  já na criação — sem isto a janela entre o
+  # `cat >` e o chmod abaixo deixaria segredos (DB_CONNECTION, JWT_SECRET, chaves de cifra)
+  # world/group-readable, mesmo que por instantes.
+  (
+    umask 077
+    cat > /opt/forzion/.env <<'EOF'
 APP_ENV=Homolog
 # DB_CONNECTION: Session pooler Supabase (porta 5432, IPv4) — copiar host/user EXATOS do
 # Dashboard > Connect > Session pooler (user = forzion_api.<project-ref>). NÃO usar Transaction
@@ -67,11 +72,26 @@ JWT_SECRET=TROQUE_POR_SECRET_FORTE_MINIMO_32_CHARS
 JWT_ISSUER=homologacao.forzion.tech
 JWT_AUDIENCE=homologacao.forzion.tech
 CORS_ORIGINS=https://homologacao.forzion.tech
+# Fail-closed: ausentes, o boot em Homolog/Production lança (specification-security).
+MFA_ENCRYPTION_KEY=TROQUE_POR_CHAVE_BASE64_32_BYTES
+DATA_PROTECTION_KEY=TROQUE_POR_CHAVE_BASE64_32_BYTES
+FORWARDED_KNOWN_NETWORKS=TROQUE_PELA_SUBNET_DA_REDE_DOCKER_forzion-hmg
+AGENTS_HMAC_SECRET_ATUAL=TROQUE_POR_SECRET_FORTE_MINIMO_32_CHARS
+AGENTS_HMAC_SECRET_ANTERIOR=
+DELIVERY_LOG_HASH_KEY=TROQUE_POR_CHAVE_BASE64_32_BYTES
+# Credenciais do broker Pact (só o compose de homolog sobe o serviço pact-broker).
+PACT_POSTGRES_USER=pact
+PACT_POSTGRES_PASSWORD=TROQUE_POR_SENHA_FORTE
+PACT_BROKER_USERNAME=pact
+PACT_BROKER_PASSWORD=TROQUE_POR_SENHA_FORTE
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_URL_BASE=https://homologacao.forzion.tech
 SEED_ZAP_TEST_PASSWORD=
 EOF
+  )
+  sudo chown root:root /opt/forzion/.env
+  sudo chmod 600 /opt/forzion/.env
   echo ""
   echo "⚠️  Edite /opt/forzion/.env com os valores reais antes de continuar."
 fi

@@ -18,11 +18,21 @@ services:
       timeout: 3s
       retries: 30
       start_period: 10s
+    mem_limit: 512m
+    cpu_shares: 512
+    pids_limit: 200
 
   migrate:
+    # BACKEND_IMAGE (setado em prod: a mesma tag já puxada do GHCR pelo deploy real) evita
+    # compilar na VM — ver scripts/migrate-dryrun.sh. `build:` abaixo só entra em jogo quando
+    # BACKEND_IMAGE está vazio (fallback local/homolog, onde compilar na VM é aceito).
+    image: ${BACKEND_IMAGE:-forzion-dryrun-migrate:local}
     build:
       context: .
       dockerfile: forzion.tech.Api/Dockerfile
+    mem_limit: 512m
+    cpu_shares: 512
+    pids_limit: 200
     environment:
       ASPNETCORE_ENVIRONMENT: Homolog
       # DRYRUN_SCHEMA vem do migrate-dryrun.sh (mesmo schema do pg_dump --schema); migration é schema-agnostic.

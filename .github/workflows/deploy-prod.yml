@@ -63,6 +63,8 @@ jobs:
             DB_CONNECTION="$(grep -E '^DB_CONNECTION=' "$EF" | head -1 | cut -d= -f2-)"
             DB_CONNECTION="${DB_CONNECTION%\"}"; DB_CONNECTION="${DB_CONNECTION#\"}"
             export DB_CONNECTION
+            # Mesma imagem já puxada do GHCR acima (backend), nunca compilada na VM.
+            export BACKEND_IMAGE="${REGISTRY}/forzion/backend:${TAG}"
             ENV_FILE="$EF" bash scripts/migrate-dryrun.sh
 
             $DC run --rm --no-deps backend migrate

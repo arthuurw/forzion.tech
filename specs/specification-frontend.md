@@ -17,6 +17,7 @@ DOC AGENTES (denso). Fonte de verdade da arquitetura frontend. Atualizar NA MESM
 
 ## CONFIGURAÇÃO DE BUILD (`next.config.ts`)
 - `output: "standalone"` — container otimizado; necessário para o `docker-compose.homolog.yml`.
+- **Imagem nunca compila na VM de prod**: `docker-compose.server.yml` referencia `frontend` só por `image:` (`${REGISTRY}/forzion/frontend:${TAG}`, publicada por `release-images.yml`); o deploy de prod só faz `pull`. Homolog builda na VM por decisão consciente (staging) — ver [specification-infrastructure] §ISOLAMENTO-PRD-HMG.
 - `turbopack` (dev): `root: path.resolve(__dirname)`.
 - `optimizePackageImports`: `@mui/material`, `@mui/icons-material` (reduz bundle).
 - `withSentryConfig`: source maps só sobem com `SENTRY_AUTH_TOKEN`; `next build` sem token funciona (sem upload). `sourcemaps.disable: !SENTRY_AUTH_TOKEN`.
