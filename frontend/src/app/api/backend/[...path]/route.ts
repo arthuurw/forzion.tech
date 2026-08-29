@@ -12,6 +12,21 @@ const ALLOWED_REQUEST_HEADERS = ["content-type", "accept", "x-step-up-token"];
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+// Allowlist (fail-closed) dos prefixos de topo que `src/lib/api/**` de fato consome. Um prefixo
+// novo do backend (ex.: `/internal/**`, `/health/**`) nasce BLOQUEADO até entrar aqui de propósito
+// — o inverso (blocklist crescente) deixa qualquer rota nova exposta por omissão.
+const ALLOWED_PATH_PREFIXES = new Set([
+  "admin",
+  "aluno",
+  "alunos",
+  "auth",
+  "conta",
+  "notificacoes",
+  "suporte",
+  "treinador",
+  "treinos",
+]);
+
 // Decodifica em laço porque uma única passada deixa passar `%2569nternal`.
 // Termina: cada passada que muda a string a encurta.
 function decodeFully(segment: string): string | null {
@@ -42,7 +57,7 @@ async function proxy(request: NextRequest, path: string[]): Promise<NextResponse
   if (firstSegment === null) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
-  if (firstSegment.toLowerCase() === "internal") {
+  if (!ALLOWED_PATH_PREFIXES.has(firstSegment.toLowerCase())) {
     return new NextResponse(null, { status: 404 });
   }
 

@@ -244,6 +244,10 @@ public static class DependencyInjectionExtensions
         // "agents-ready" é aditiva à "ready" e cobre só db+schema: Stripe/Resend/WhatsApp fora do ar não
         // impedem o gateway de agentes de operar, e reportá-los abriria circuito sem relação causal.
         services.AddHttpClient(); // necessário para IHttpClientFactory em ResendHealthCheck
+        // Singleton: AddCheck<T> sem registro próprio cria instância nova a cada /health/ready,
+        // apagando a memoização por janela curta feita em campo de instância.
+        services.AddSingleton<forzion.tech.Infrastructure.Health.StripeHealthCheck>();
+        services.AddSingleton<forzion.tech.Infrastructure.Health.ResendHealthCheck>();
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>("db", tags: new[] { "ready", AgentEndpoints.TagAgentsReady })
             .AddCheck<forzion.tech.Infrastructure.Health.SchemaHealthCheck>("schema", tags: new[] { "ready", AgentEndpoints.TagAgentsReady })

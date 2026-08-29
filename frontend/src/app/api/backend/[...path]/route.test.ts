@@ -164,7 +164,7 @@ describe("Backend proxy /api/backend/[...path]", () => {
     });
   });
 
-  describe("Bloqueio do prefixo internal", () => {
+  describe("Allowlist de prefixos (fail-closed)", () => {
     let fetchSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
@@ -211,6 +211,24 @@ describe("Backend proxy /api/backend/[...path]", () => {
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
+    // Health nunca esteve na blocklist antiga (só "internal" estava) — o proxy anônimo
+    // alcançava /health/ready do backend por omissão.
+    it("primeiro segmento 'health' → 404 sem chamar o backend", async () => {
+      const req = createMockRequest({ method: "GET" });
+      const res = await GET(req, makeCtx(["health", "ready"]));
+
+      expect(res.status).toBe(404);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("prefixo desconhecido, ausente do allowlist → 404 sem chamar o backend", async () => {
+      const req = createMockRequest({ method: "GET" });
+      const res = await GET(req, makeCtx(["contas", "internal-teste"]));
+
+      expect(res.status).toBe(404);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
     it("codificação malformada no primeiro segmento → 400 sem chamar o backend", async () => {
       const req = createMockRequest({ method: "GET" });
       const res = await GET(req, makeCtx(["%zz", "foo"]));
@@ -220,27 +238,45 @@ describe("Backend proxy /api/backend/[...path]", () => {
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
-    it("'internal' fora do primeiro segmento não é bloqueado", async () => {
+    it("segmento seguinte contendo 'internal'/'health' não bloqueia — só o primeiro segmento gateia", async () => {
       server.use(
-        http.get("*/contas/internal-teste", () => HttpResponse.json({ ok: true })),
+        http.get("*/treinador/internal-health-teste", () => HttpResponse.json({ ok: true })),
       );
 
       const req = createMockRequest({ method: "GET" });
-      const res = await GET(req, makeCtx(["contas", "internal-teste"]));
+      const res = await GET(req, makeCtx(["treinador", "internal-health-teste"]));
 
       expect(res.status).toBe(200);
     });
 
-    it("primeiro segmento que só começa com 'internal' não é bloqueado", async () => {
-      server.use(
-        http.get("*/internal-teste/contas", () => HttpResponse.json({ ok: true })),
-      );
+    // Copiado à mão de `grep -rhoE "apiClient\.(get|post|put|patch|delete)..." src/lib/api/*.ts`
+    // (não recalculado do próprio ALLOWED_PATH_PREFIXES — senão o teste provaria só que a
+    // constante é igual a si mesma, nunca detectando um prefixo real removido por engano).
+    const PREFIXOS_REALMENTE_USADOS = [
+      "admin",
+      "aluno",
+      "alunos",
+      "auth",
+      "conta",
+      "notificacoes",
+      "suporte",
+      "treinador",
+      "treinos",
+    ];
 
-      const req = createMockRequest({ method: "GET" });
-      const res = await GET(req, makeCtx(["internal-teste", "contas"]));
+    it.each(PREFIXOS_REALMENTE_USADOS)(
+      "prefixo real '%s' de src/lib/api continua passando para o backend",
+      async (prefixo) => {
+        server.use(
+          http.get(`*/${prefixo}/sonda`, () => HttpResponse.json({ ok: true })),
+        );
 
-      expect(res.status).toBe(200);
-    });
+        const req = createMockRequest({ method: "GET" });
+        const res = await GET(req, makeCtx([prefixo, "sonda"]));
+
+        expect(res.status).toBe(200);
+      },
+    );
   });
 
   describe("Repasse do IP real ao backend", () => {
