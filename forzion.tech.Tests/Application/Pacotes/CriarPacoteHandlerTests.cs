@@ -90,6 +90,18 @@ public class CriarPacoteHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_IsPublicoTrueSemDuracao_Falha()
+    {
+        var command = new CriarPacoteCommand(Guid.NewGuid(), "Sem duração", 100m, Categoria: "Pilates", IsPublico: true);
+
+        var result = await _handler.HandleAsync(command);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("pacote.duracao_obrigatoria_para_publico");
+        _pacoteRepo.Verify(r => r.AdicionarAsync(It.IsAny<Pacote>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task HandleAsync_SemCamposDeCatalogoPublico_CriaPacotePrivado()
     {
         var command = new CriarPacoteCommand(Guid.NewGuid(), "Básico", 100m);
