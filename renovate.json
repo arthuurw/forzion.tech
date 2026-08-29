@@ -8,6 +8,7 @@
     "schedule:weeknights"
   ],
   "timezone": "America/Sao_Paulo",
+  "baseBranchPatterns": ["homolog"],
   "labels": ["dependencies"],
   "rangeStrategy": "bump",
   "packageRules": [
