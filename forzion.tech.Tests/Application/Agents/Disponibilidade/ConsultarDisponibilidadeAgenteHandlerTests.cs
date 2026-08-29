@@ -164,7 +164,7 @@ public class ConsultarDisponibilidadeAgenteHandlerTests
         slot.CapacityRemaining.Should().Be(3);
     }
 
-    // --- AUD-13: janela auxiliar cobre a cauda do último slot ---
+    // --- janela auxiliar cobre a cauda do último slot ---
 
     [Fact]
     public async Task HandleAsync_BloqueioComecaDepoisDeToUtcMasSobrepoeUltimoSlot_RemoveOSlot()

@@ -180,7 +180,7 @@ public class ConfirmarSolicitacaoHandlerTests
     [Fact]
     public async Task HandleAsync_ConflitoDeConcorrenciaOtimistaNoCommit_RetentaERetornaTransicaoJaDecidida()
     {
-        // Simula Recusar/Cancelar commitando entre o SELECT e o UPDATE desta tx (T9 — xmin de
+        // Simula Recusar/Cancelar commitando entre o SELECT e o UPDATE desta tx (xmin de
         // solicitacoes_agendamento). O mock reusa a MESMA instância entre tentativas: a 1ª chamada
         // a Confirmar() já mutou Status para Confirmada antes do commit abortar; a 2ª tentativa
         // relê essa instância (releitura real veria Recusada/Cancelada) e Confirmar() rejeita por

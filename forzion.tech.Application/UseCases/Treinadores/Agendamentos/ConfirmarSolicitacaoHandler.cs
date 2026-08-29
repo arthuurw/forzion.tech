@@ -33,7 +33,7 @@ public class ConfirmarSolicitacaoHandler(
             }
             // A NpgsqlExecutionStrategy reembrulha PostgresException — o inspector varre a cadeia
             // inteira de InnerException para reconhecer 40001 (R7/specification-concurrency §3).
-            // EhConflitoDeConcorrenciaOtimista cobre o xmin de solicitacoes_agendamento (T8):
+            // EhConflitoDeConcorrenciaOtimista cobre o xmin de solicitacoes_agendamento:
             // Recusar/Cancelar commitando entre o SELECT e o UPDATE desta tx.
             catch (Exception ex) when ((databaseErrorInspector.EhConflitoDeSerializacao(ex) || databaseErrorInspector.EhConflitoDeConcorrenciaOtimista(ex)) && tentativa < MaxTentativas)
             {

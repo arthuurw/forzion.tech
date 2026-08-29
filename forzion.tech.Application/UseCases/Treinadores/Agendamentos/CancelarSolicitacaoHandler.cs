@@ -32,7 +32,7 @@ public class CancelarSolicitacaoHandler(
         {
             await unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
-        // O xmin de solicitacoes_agendamento (T8) aborta o UPDATE quando outra transição
+        // O xmin de solicitacoes_agendamento aborta o UPDATE quando outra transição
         // (Confirmar/Recusar) já commitou nesta solicitação entre a leitura e este commit —
         // a decisão concorrente venceu, então a transição pedida aqui não se aplica mais.
         catch (Exception ex) when (databaseErrorInspector.EhConflitoDeConcorrenciaOtimista(ex))

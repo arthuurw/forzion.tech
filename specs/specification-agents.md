@@ -142,7 +142,7 @@ Todos os 5 handlers do gateway (fatias 1-4: `business-info`, `services`, `leads`
 
 `POST /internal/agents/v1/tenants/{tenantId}/leads` é o primeiro endpoint do grupo com parâmetro de corpo. `RegistrarLeadAgenteHandler` (`Application/UseCases/Agents/Leads/`) implementa a ordem: consent → limites → contato → `AgentTenantGuard.EstaPublicado` → idempotência → persistir. Resposta projeta `StagedLead {leadId, source: "agent", status: "pending"}` por tabela explícita (nunca `ToString()` de enum) — literal constante mesmo no caminho idempotente (o lead pode já ter mudado de status internamente; o wire só conhece `pending`).
 
-`idempotencyKey` é **sempre obrigatória** (auditoria 2026-08-26, AUD-27/T32) — ausente, vazia ou só espaço em branco ⇒ `400 validation_failed` (`LeadAgenteErrors.IdempotencyKeyObrigatoria`), verificado ANTES da checagem de tamanho. Removido o branch antigo que tratava chave ausente como lead não-idempotente — o contrato lista o campo como `required`, e persistir sem chave abria reenvio duplicado do gateway sem detecção.
+`idempotencyKey` é **sempre obrigatória** (auditoria 2026-08-26, AUD-09/T32) — ausente, vazia ou só espaço em branco ⇒ `400 validation_failed` (`LeadAgenteErrors.IdempotencyKeyObrigatoria`), verificado ANTES da checagem de tamanho. Removido o branch antigo que tratava chave ausente como lead não-idempotente — o contrato lista o campo como `required`, e persistir sem chave abria reenvio duplicado do gateway sem detecção.
 
 Endpoint exige `Content-Type` JSON antes de tentar `ReadFromJsonAsync` (T33) — ausente/incorreto ⇒ `400 validation_failed`, nunca cai no `catch` genérico do `AgentExceptionFilter` (que responderia `503 dependency_unavailable`, teria confundido erro de cliente com falha de dependência).
 
@@ -187,7 +187,7 @@ Adicionar os dois campos unilateralmente quebraria o teste de conformidade contr
 
 **`slotId` validado por RE-DERIVAÇÃO, nunca aceito do cliente** — mesmo princípio de `GET availability` (§6-C): re-deriva `[agora, agora + min(HorizonteDias, 31 dias)]` para o serviço e procura o hash. Slot que deixou de existir (bloqueio criado depois da consulta, política encurtada, fora do horizonte de 31 dias do write, já passou) vira `404 slot_not_found` de graça, sem regra duplicada.
 
-**Idempotência sob corrida** — mesmo padrão de `POST leads` (§6-B): `catch` de violação de unicidade relê pela chave e resolve pelo mesmo critério da idempotência; releitura vier nula ⇒ RE-LANÇA (nunca engole). Chave ausente/vazia ⇒ `validation_failed` (campo `required` no contrato, diferente do lead onde o repo aceitava ausência).
+**Idempotência sob corrida** — mesmo padrão de `POST leads` (§6-B): `catch` de violação de unicidade relê pela chave e resolve pelo mesmo critério da idempotência; releitura vier nula ⇒ RE-LANÇA (nunca engole). Chave ausente/vazia ⇒ `validation_failed` (campo `required` no contrato) — mesma exigência de `POST leads` desde T32/AUD-09 (§6-B), que fechou o branch antigo que aceitava lead sem chave.
 
 **Esteira do treinador** (`/treinador/agenda/*`, JWT, fora do grupo de agentes):
 

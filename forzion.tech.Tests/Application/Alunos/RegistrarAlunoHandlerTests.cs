@@ -299,7 +299,7 @@ public class RegistrarAlunoHandlerTests
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    // --- Conversão de lead via convite (T31) ---
+    // --- Conversão de lead via convite ---
 
     private static Lead NovoLead(Guid treinadorId) =>
         Lead.Criar(

@@ -38,7 +38,7 @@ public class ResolvedorLeadAgendamento(
             await leadRepository.AdicionarAsync(novoLeadResult.Value, cancellationToken).ConfigureAwait(false);
 
             // Commit dedicado (não delegado ao handler chamador): a criação do lead precisa
-            // colidir com a UNIQUE parcial de contato ativo (AUD-35) ANTES de a solicitação ser
+            // colidir com a UNIQUE parcial de contato ativo ANTES de a solicitação ser
             // montada em cima dele — senão o handler prossegue com um lead que nunca vai persistir.
             try
             {

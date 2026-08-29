@@ -70,7 +70,7 @@ public class TreinadorRepositoryTests(InfrastructureTestFixture fixture)
         }
     }
 
-    // AUD-03: leads.treinador_id → treinadores é RESTRICT; sem apagar leads/convites antes,
+    // leads.treinador_id → treinadores é RESTRICT; sem apagar leads/convites antes,
     // a exclusão abortava com violação de FK.
     [Fact]
     public async Task ExcluirComDependenciasAsync_ComLeadELeadConvite_ExcluiSemViolarFK()
@@ -197,7 +197,7 @@ public class TreinadorRepositoryTests(InfrastructureTestFixture fixture)
         }
     }
 
-    // AUD-43: reads da borda de agente não podem trackear — ObterPorIdAsync fica tracked de
+    // Reads da borda de agente não podem trackear — ObterPorIdAsync fica tracked de
     // propósito para os caminhos de escrita (ex.: ExcluirComDependenciasAsync acima).
     [Fact]
     public async Task ObterPorIdSemTrackingAsync_NaoRastreiaEntidadeRetornada()

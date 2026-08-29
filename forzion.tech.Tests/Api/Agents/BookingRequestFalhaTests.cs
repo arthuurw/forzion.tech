@@ -26,7 +26,7 @@ namespace forzion.tech.Tests.Api.Agents;
 // AGF4-11: prova que falha de infra em QUALQUER ponto do fluxo do POST booking-requests vira 503
 // dependency_unavailable — nunca 201 (disfarçado de sucesso) e nunca 404/409 (disfarçado de decisão
 // de negócio). Molde: DisponibilidadeFalhaTests (fatia 3) — handler REAL registrado no DI, com um
-// repositório que lança; diferente de BookingRequestEndpointTests (T15), que mocka o handler inteiro.
+// repositório que lança; diferente de BookingRequestEndpointTests, que mocka o handler inteiro.
 public class BookingRequestFalhaTests
 {
     private const string Segredo = "segredo-atual-com-pelo-menos-32-bytes!!";

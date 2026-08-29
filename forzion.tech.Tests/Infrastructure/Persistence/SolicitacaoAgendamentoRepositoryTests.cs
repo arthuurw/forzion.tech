@@ -136,7 +136,7 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
     [Fact]
     public async Task ListarPorTreinadorAsync_SemFiltroDeStatus_PlanoDeExecucaoUsaIndiceDedicado()
     {
-        // AUD-42: reproduz a forma real da consulta paginada (WHERE treinador_id + ORDER BY +
+        // Reproduz a forma real da consulta paginada (WHERE treinador_id + ORDER BY +
         // LIMIT, como em ListarPorTreinadorAsync). Sem o LIMIT o planner prefere um bitmap scan
         // pelo índice (treinador_id, status, inicio_utc) já existente seguido de sort completo —
         // só o LIMIT torna vantajoso evitar esse sort via o índice novo pré-ordenado.
@@ -206,7 +206,7 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
     [Fact]
     public async Task ListarPorTreinadorAsync_OrdenaPorInicioUtcDescendente()
     {
-        // AUD-05: mais recente primeiro — pendente nova não fica escondida atrás de histórico.
+        // Mais recente primeiro — pendente nova não fica escondida atrás de histórico.
         await using var ctx = fixture.CreateContext();
         var (treinadorId, pacoteId, leadId) = await SeedTenantAsync(ctx);
         var maisTarde = CriarSolicitacao(treinadorId, pacoteId, leadId, "chave-mais-tarde", Agora.AddDays(3), Agora.AddDays(3).AddMinutes(30));
@@ -225,7 +225,7 @@ public class SolicitacaoAgendamentoRepositoryTests(InfrastructureTestFixture fix
     [Fact]
     public async Task ListarPorTreinadorAsync_MesmoInicioUtc_DesempataPorIdEPaginacaoNaoRepiteNemPerdeItem()
     {
-        // AUD-05: sem o desempate por Id, ORDER BY inicio_utc empatado não tem ordem estável —
+        // Sem o desempate por Id, ORDER BY inicio_utc empatado não tem ordem estável —
         // a mesma página pode devolver itens em ordem diferente entre chamadas, fazendo a
         // paginação por offset repetir ou pular linha ao avançar de página.
         await using var ctx = fixture.CreateContext();

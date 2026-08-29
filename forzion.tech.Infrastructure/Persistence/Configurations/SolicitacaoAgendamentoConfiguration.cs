@@ -58,7 +58,7 @@ public class SolicitacaoAgendamentoConfiguration : IEntityTypeConfiguration<Soli
             .HasDatabaseName("ix_solicitacoes_agendamento_treinador_id_status_inicio_utc");
 
         // Cobre a listagem da esteira SEM filtro de status (o índice acima exige igualdade em
-        // Status pra servir o ORDER BY sem sort extra) — AUD-42.
+        // Status pra servir o ORDER BY sem sort extra).
         builder.HasIndex(s => new { s.TreinadorId, s.InicioUtc, s.Id })
             .IsDescending(false, true, false)
             .HasDatabaseName("ix_solicitacoes_agendamento_treinador_id_inicio_utc_id");

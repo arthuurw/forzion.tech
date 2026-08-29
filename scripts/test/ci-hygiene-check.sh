@@ -29,7 +29,7 @@ fi
 
 # --- 2. imagens de gate pinadas por digest (nunca tag móvel) ------------------------
 # "arquivo:imagem" -- cada imagem tem de aparecer como imagem@sha256:... no arquivo, e
-# nunca mais como imagem:latest / imagem:stable (as tags móveis que motivaram o AUD-45).
+# nunca mais como imagem:latest / imagem:stable (tags móveis que escondem drift de versão).
 gate_images=(
   "$WORKFLOWS_DIR/semgrep.yml:semgrep/semgrep"
   "$WORKFLOWS_DIR/zap.yml:ghcr.io/zaproxy/zaproxy"

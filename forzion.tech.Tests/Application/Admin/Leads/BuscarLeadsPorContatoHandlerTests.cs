@@ -77,7 +77,7 @@ public class BuscarLeadsPorContatoHandlerTests
         _leadRepo.Verify(r => r.BuscarPorContatoCrossTenantAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    // --- AUD-37: busca admin cross-tenant deixa rastro de auditoria ---
+    // --- busca admin cross-tenant deixa rastro de auditoria ---
 
     [Fact]
     public async Task HandleAsync_RegistraAuditoriaAtribuidaAoAdminRealComContatoMascarado()

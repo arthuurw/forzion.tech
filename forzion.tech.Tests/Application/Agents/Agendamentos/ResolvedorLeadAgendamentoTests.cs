@@ -132,7 +132,7 @@ public class ResolvedorLeadAgendamentoTests
             "o lead reusado já está tracked pelo DbContext — chamar AdicionarAsync de novo duplicaria o insert");
     }
 
-    // --- AUD-35: UNIQUE parcial de leads(treinador_id, contato_valor) colide sob corrida ---
+    // --- UNIQUE parcial de leads(treinador_id, contato_valor) colide sob corrida ---
 
     [Fact]
     public async Task ResolverAsync_NovoLeadColideNaUnicidade_ReusaOVencedorDaRequery()

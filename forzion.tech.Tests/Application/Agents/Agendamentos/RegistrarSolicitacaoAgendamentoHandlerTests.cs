@@ -105,7 +105,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
         capturada.InicioUtc.Should().Be(InicioSlotValido, "InicioUtc vem do slot derivado, nunca do command");
         capturada.FimUtc.Should().Be(FimSlotValido);
         _unitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Exactly(2),
-            "resolvedor comita o lead novo (AUD-35) antes do commit da solicitacao");
+            "resolvedor comita o lead novo antes do commit da solicitacao");
     }
 
     [Fact]
@@ -234,7 +234,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
         result.Error!.Should().Be(SolicitacaoAgendamentoAgenteErrors.SlotNaoEncontrado);
     }
 
-    // --- AUD-24: horizonte da política (60d) excede o teto de 31d do caminho de escrita ---
+    // --- horizonte da política (60d) excede o teto de 31d do caminho de escrita ---
 
     [Fact]
     public async Task HandleAsync_SlotAlemDoTetoDe31DiasDoCaminhoDeEscrita_RetornaSlotNaoEncontrado()
@@ -381,7 +381,7 @@ public class RegistrarSolicitacaoAgendamentoHandlerTests
             .ReturnsAsync((SolicitacaoAgendamento?)null)
             .ReturnsAsync(vencedor);
         var excecaoDeUnicidade = new InvalidOperationException("23505");
-        // 1º commit = o lead novo do resolvedor (AUD-35, sem colisão aqui); só o 2º (solicitação) viola.
+        // 1º commit = o lead novo do resolvedor (sem colisão aqui); só o 2º (solicitação) viola.
         _unitOfWork.SetupSequence(u => u.CommitAsync(It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask)
             .ThrowsAsync(excecaoDeUnicidade);
