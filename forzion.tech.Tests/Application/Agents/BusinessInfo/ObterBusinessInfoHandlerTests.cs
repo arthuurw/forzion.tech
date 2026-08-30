@@ -122,8 +122,11 @@ public class ObterBusinessInfoHandlerTests
 
         var result = await _handler.HandleAsync(new ObterBusinessInfoQuery(treinador.Id));
 
-        var json = JsonSerializer.Serialize(result.Value);
-        json.Should().NotContain("address").And.NotContain("policies").And.NotContain("openingHours");
+        var json = JsonSerializer.Serialize(result.Value, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        using var documento = JsonDocument.Parse(json);
+
+        documento.RootElement.EnumerateObject().Select(p => p.Name)
+            .Should().NotIntersectWith(["address", "openingHours", "policies"]);
     }
 
     [Fact]
