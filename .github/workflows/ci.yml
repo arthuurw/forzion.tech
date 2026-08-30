@@ -318,6 +318,13 @@ jobs:
       - name: Verifica invariantes de CI/infra
         run: bash scripts/test/ci-hygiene-check.sh
 
+      # Estatico de proposito: os outros edge-*-check.sh exigem Docker e por isso nunca
+      # rodaram em CI. Este cobre a classe que o `nginx -t` do deploy aprova e o deploy
+      # nao pega -- proxy_pass que renormaliza o caminho assinado, porta publicada sem IP,
+      # 404 de /internal/ removido de um vhost publico.
+      - name: Verifica invariantes da rota do tailnet (agentes)
+        run: bash scripts/test/edge-agents-invariants-check.sh
+
   # ─── SEGURANÇA / SUPPLY CHAIN (BACKEND .NET) ──────────────────────────────────
   security-backend:
     name: Security backend — vuln NuGet + SBOM
