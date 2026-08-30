@@ -6,6 +6,17 @@ set -euo pipefail
 EDGE_DIR="${EDGE_DIR:-/opt/forzion/app}"
 cd "$EDGE_DIR"
 
+# O compose publica 8443/8444 ligadas ao IP do tailnet. Ausente o IP, o Docker recusa o bind
+# e a borda INTEIRA (prd+hmg) nao sobe -- e o `nginx -t` abaixo nao pega, porque roda em
+# container efemero SEM publicar porta: nao e erro de config, e recusa de bind. Abortar aqui
+# deixa a borda VELHA servindo; deixar passar a derruba. Vazio desliga o guard (rodar o
+# script fora da VM, ex. edge-config-freshness-check.sh, onde nao ha tailnet).
+TAILNET_IP="${TAILNET_IP-100.114.212.86}"
+if [ -n "$TAILNET_IP" ] && ! ip -4 -o addr show 2>/dev/null | grep -qw "$TAILNET_IP"; then
+  echo "::error::IP tailnet $TAILNET_IP ausente no host — abortando ANTES de recriar a borda (prd+hmg seguem no ar)."
+  exit 1
+fi
+
 for net in forzion-hmg forzion-prd; do
   docker network create "$net" >/dev/null 2>&1 || true
   docker network inspect "$net" >/dev/null 2>&1 || { echo "::error::network $net indisponivel"; exit 1; }

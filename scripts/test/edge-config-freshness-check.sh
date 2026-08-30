@@ -108,15 +108,17 @@ servido() {
   curl -s -m 5 "http://127.0.0.1:$PORT/" || true
 }
 
+# TAILNET_IP= desliga o guard de IP do reload-edge.sh: o compose efemero deste caso nao
+# publica as portas do tailnet, e nenhuma maquina de dev tem o IP da VM.
 escreve_conf V1
-EDGE_DIR="$WORK" bash "$REPO_ROOT/scripts/reload-edge.sh" >/dev/null
+TAILNET_IP= EDGE_DIR="$WORK" bash "$REPO_ROOT/scripts/reload-edge.sh" >/dev/null
 sleep 1
 corpo="$(servido)"
 [ "$corpo" = "V1" ] || { echo "FALHOU -- edge devia servir V1, veio '$corpo'." >&2; exit 1; }
 echo "OK -- primeiro reload serve V1."
 
 escreve_conf V2
-EDGE_DIR="$WORK" bash "$REPO_ROOT/scripts/reload-edge.sh" >/dev/null
+TAILNET_IP= EDGE_DIR="$WORK" bash "$REPO_ROOT/scripts/reload-edge.sh" >/dev/null
 sleep 1
 corpo="$(servido)"
 [ "$corpo" = "V2" ] || {
