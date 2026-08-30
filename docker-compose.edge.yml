@@ -12,9 +12,15 @@ x-logging: &default-logging
 services:
   nginx:
     image: nginx:1.27-alpine
+    # 8443/8444 (gateway de agentes) ligadas ao IP do TAILNET, nunca a 0.0.0.0: o ufw não
+    # filtra porta publicada pelo Docker (a chain DOCKER-USER precede o INPUT), então o bind
+    # por IP é a defesa inteira. Efeito colateral: o IP precisa existir no host na hora do
+    # bind, senão o Docker recusa e a borda INTEIRA não sobe — reload-edge.sh guarda isso.
     ports:
       - "80:80"
       - "443:443"
+      - "100.114.212.86:8443:8443"
+      - "100.114.212.86:8444:8444"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./certbot/conf:/etc/letsencrypt:ro
