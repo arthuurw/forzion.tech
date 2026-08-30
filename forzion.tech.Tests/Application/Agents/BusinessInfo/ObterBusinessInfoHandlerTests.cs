@@ -145,6 +145,46 @@ public class ObterBusinessInfoHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_TreinadorComFusoNaoDefault_EmiteOFusoPersistidoDoTreinador()
+    {
+        var treinador = CriarTreinadorAtivoEPublicado();
+        treinador.DefinirFusoHorario("America/Manaus", DateTime.UtcNow);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        SetupSemPacotesPublicos(treinador.Id);
+
+        var result = await _handler.HandleAsync(new ObterBusinessInfoQuery(treinador.Id));
+
+        result.Value.Timezone.Should().Be("America/Manaus");
+    }
+
+    [Fact]
+    public async Task HandleAsync_TreinadorSemFusoDefinido_EmiteODefaultDaEntidade()
+    {
+        var treinador = CriarTreinadorAtivoEPublicado();
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        SetupSemPacotesPublicos(treinador.Id);
+
+        var result = await _handler.HandleAsync(new ObterBusinessInfoQuery(treinador.Id));
+
+        result.Value.Timezone.Should().Be("America/Sao_Paulo");
+    }
+
+    [Fact]
+    public async Task HandleAsync_SemEnderecoNemPoliticas_TimezoneContinuaNoJson()
+    {
+        var treinador = CriarTreinadorAtivoEPublicado();
+        treinador.DefinirFusoHorario("America/Manaus", DateTime.UtcNow);
+        _treinadorRepo.Setup(r => r.ObterPorIdSemTrackingAsync(treinador.Id, It.IsAny<CancellationToken>())).ReturnsAsync(treinador);
+        SetupSemPacotesPublicos(treinador.Id);
+
+        var result = await _handler.HandleAsync(new ObterBusinessInfoQuery(treinador.Id));
+
+        var json = JsonSerializer.Serialize(result.Value, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        using var documento = JsonDocument.Parse(json);
+        documento.RootElement.GetProperty("timezone").GetString().Should().Be("America/Manaus");
+    }
+
+    [Fact]
     public void BusinessInfoResponse_NuncaExpoePropriedadeDePlanos()
     {
         typeof(BusinessInfoResponse).GetProperties().Select(p => p.Name)

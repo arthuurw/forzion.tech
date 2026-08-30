@@ -15,6 +15,7 @@ public sealed record OpeningHoursResponse(int DayOfWeek, string OpensAt, string 
 
 public sealed record BusinessInfoResponse(
     string Name,
+    string Timezone,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] AddressResponse? Address,
     IReadOnlyList<string> Modalities,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<OpeningHoursResponse>? OpeningHours,

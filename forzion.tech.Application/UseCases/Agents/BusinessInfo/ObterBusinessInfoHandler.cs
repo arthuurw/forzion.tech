@@ -31,7 +31,7 @@ public class ObterBusinessInfoHandler(
             .ListarPublicosPorTreinadorAsync(query.TenantId, cancellationToken)
             .ConfigureAwait(false);
 
-        return Result.Success(MapResponse(treinador.PerfilPublico, DerivarModalidades(pacotesPublicos)));
+        return Result.Success(MapResponse(treinador.PerfilPublico, treinador.FusoHorario, DerivarModalidades(pacotesPublicos)));
     }
 
     internal static IReadOnlyList<string> DerivarModalidades(IReadOnlyList<Pacote> pacotesPublicos)
@@ -50,9 +50,10 @@ public class ObterBusinessInfoHandler(
         return modalidades;
     }
 
-    internal static BusinessInfoResponse MapResponse(PerfilPublico perfil, IReadOnlyList<string> modalidades) =>
+    internal static BusinessInfoResponse MapResponse(PerfilPublico perfil, string fusoHorario, IReadOnlyList<string> modalidades) =>
         new(
             perfil.NomeFantasia!,
+            fusoHorario,
             perfil.Endereco is null ? null : MapAddress(perfil.Endereco),
             modalidades,
             perfil.HorariosFuncionamento.Count == 0 ? null : perfil.HorariosFuncionamento.Select(MapOpeningHours).ToList(),
