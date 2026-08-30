@@ -653,6 +653,21 @@ jobs:
               exit 1
             fi
 
+            # Rota do tailnet (AGF0-37). IP literal, igual ao do docker-compose.edge.yml:
+            # se os dois divergirem o probe testaria um alvo que ninguem publica. 401 e o
+            # unico resultado certo -- prova que a requisicao chegou no backend E que a
+            # assinatura e exigida. Cada outro codigo aponta uma causa diferente.
+            cod_agentes="$(curl -s -o /dev/null -w '%{http_code}' -m 10 \
+              http://100.114.212.86:8443/internal/agents/v1/health || true)"
+            case "$cod_agentes" in
+              401) echo "Rota de agentes OK -- 401, assinatura exigida." ;;
+              000) echo "::error::Rota de agentes: sem resposta -- porta nao publicada ou tailscaled fora do ar."; exit 1 ;;
+              404) echo "::error::Rota de agentes: 404 -- o location nao casou, ou a requisicao caiu na borda publica."; exit 1 ;;
+              502|504) echo "::error::Rota de agentes: $cod_agentes -- rota certa, backend-hmg fora."; exit 1 ;;
+              200) echo "::error::Rota de agentes: 200 SEM assinatura -- o filtro HMAC saiu do caminho. Falha de SEGURANCA, nao de rota."; exit 1 ;;
+              *) echo "::error::Rota de agentes: HTTP $cod_agentes inesperado."; exit 1 ;;
+            esac
+
             docker image prune -f
             docker builder prune -f --reserved-space 5g
 
