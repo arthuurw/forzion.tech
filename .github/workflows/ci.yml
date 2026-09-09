@@ -657,11 +657,17 @@ jobs:
             # se os dois divergirem o probe testaria um alvo que ninguem publica. 401 e o
             # unico resultado certo -- prova que a requisicao chegou no backend E que a
             # assinatura e exigida. Cada outro codigo aponta uma causa diferente.
+            # `--resolve backend:8443:IP` faz o curl mandar `Host: backend` (ja presente no
+            # AllowedHosts de appsettings.Homolog.json) enquanto conecta no IP do tailnet --
+            # sem isso o Host vira o IP literal e o HostFilteringMiddleware do ASP.NET Core
+            # rejeita com 400 ANTES do filtro HMAC rodar (mesma classe de specification-
+            # infrastructure §AllowedHosts, achada em producao em 2026-09-06).
             cod_agentes="$(curl -s -o /dev/null -w '%{http_code}' -m 10 \
-              http://100.114.212.86:8443/internal/agents/v1/health || true)"
+              --resolve backend:8443:100.114.212.86 http://backend:8443/internal/agents/v1/health || true)"
             case "$cod_agentes" in
               401) echo "Rota de agentes OK -- 401, assinatura exigida." ;;
               000) echo "::error::Rota de agentes: sem resposta -- porta nao publicada ou tailscaled fora do ar."; exit 1 ;;
+              400) echo "::error::Rota de agentes: 400 -- Host rejeitado pelo AllowedHosts do backend, ver appsettings.Homolog.json."; exit 1 ;;
               404) echo "::error::Rota de agentes: 404 -- o location nao casou, ou a requisicao caiu na borda publica."; exit 1 ;;
               502|504) echo "::error::Rota de agentes: $cod_agentes -- rota certa, backend-hmg fora."; exit 1 ;;
               200) echo "::error::Rota de agentes: 200 SEM assinatura -- o filtro HMAC saiu do caminho. Falha de SEGURANCA, nao de rota."; exit 1 ;;

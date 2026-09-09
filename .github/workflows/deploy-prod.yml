@@ -122,11 +122,17 @@ jobs:
             # Rota do tailnet de PRODUCAO (8444; homolog e a 8443). IP literal, igual ao do
             # docker-compose.edge.yml. 401 e o unico resultado certo -- prova que chegou no
             # backend E que a assinatura e exigida.
+            # `--resolve backend:8444:IP` faz o curl mandar `Host: backend` (ja presente no
+            # AllowedHosts de appsettings.Production.json) enquanto conecta no IP do tailnet --
+            # sem isso o Host vira o IP literal e o HostFilteringMiddleware do ASP.NET Core
+            # rejeita com 400 ANTES do filtro HMAC rodar (mesma classe de specification-
+            # infrastructure §AllowedHosts, achada em producao em 2026-09-06).
             cod_agentes="$(curl -s -o /dev/null -w '%{http_code}' -m 10 \
-              http://100.114.212.86:8444/internal/agents/v1/health || true)"
+              --resolve backend:8444:100.114.212.86 http://backend:8444/internal/agents/v1/health || true)"
             case "$cod_agentes" in
               401) echo "Rota de agentes (prd) OK -- 401, assinatura exigida." ;;
               000) echo "::error::Rota de agentes (prd): sem resposta -- porta nao publicada ou tailscaled fora do ar."; exit 1 ;;
+              400) echo "::error::Rota de agentes (prd): 400 -- Host rejeitado pelo AllowedHosts do backend, ver appsettings.Production.json."; exit 1 ;;
               404) echo "::error::Rota de agentes (prd): 404 -- o location nao casou, ou a requisicao caiu na borda publica."; exit 1 ;;
               502|504) echo "::error::Rota de agentes (prd): $cod_agentes -- rota certa, backend-prd fora."; exit 1 ;;
               200) echo "::error::Rota de agentes (prd): 200 SEM assinatura -- o filtro HMAC saiu do caminho. Falha de SEGURANCA, nao de rota."; exit 1 ;;

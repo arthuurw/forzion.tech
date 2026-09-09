@@ -52,10 +52,13 @@ PY
 RESPOSTA="$(mktemp)"
 trap 'rm -f "$RESPOSTA"' EXIT
 
+# --resolve manda `Host: backend` (ja presente no AllowedHosts dos dois appsettings) enquanto
+# conecta no IP do tailnet -- sem isso o Host vira o IP literal e o HostFilteringMiddleware do
+# ASP.NET Core rejeita com 400 ANTES do filtro HMAC ler a assinatura (achado em prod, 2026-09-06).
 CODIGO="$(curl -s -o "$RESPOSTA" -w '%{http_code}' -m 10 \
   -H "X-Forzion-Timestamp: $TS" \
   -H "X-Forzion-Signature: v1=$ASSINATURA" \
-  "http://${HOST_TAILNET}:${PORTA}${CAMINHO}" || true)"
+  --resolve "backend:${PORTA}:${HOST_TAILNET}" "http://backend:${PORTA}${CAMINHO}" || true)"
 
 CODE_WIRE="$(sed -n 's/.*"code" *: *"\([a-z_]*\)".*/\1/p' "$RESPOSTA" | head -1)"
 
@@ -64,6 +67,7 @@ echo "alvo: http://${HOST_TAILNET}:${PORTA}${CAMINHO} · ts=${TS} · HTTP ${CODI
 case "$CODIGO" in
   200) echo "OK -- assinatura aceita. AGF0-37 fechado para esta porta."; exit 0 ;;
   000) echo "FALHA: sem resposta -- porta nao publicada, tailscaled fora ou ACL ausente." >&2; exit 1 ;;
+  400) echo "FALHA: 400 -- Host rejeitado pelo AllowedHosts do backend deste ambiente." >&2; exit 1 ;;
   404) echo "FALHA: 404 -- location nao casou, ou caiu na borda publica." >&2; exit 1 ;;
   502|504) echo "FALHA: $CODIGO -- rota certa, backend do ambiente fora." >&2; exit 1 ;;
   503) echo "FALHA: 503 -- assinatura ACEITA, mas a tag agents-ready esta Unhealthy (db/schema)." >&2; exit 1 ;;
