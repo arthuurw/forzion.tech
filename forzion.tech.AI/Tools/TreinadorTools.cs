@@ -1,0 +1,159 @@
+﻿using forzion.tech.AI.GuardRails;
+using forzion.tech.Application.Interfaces.Repositories;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
+
+namespace forzion.tech.AI.Tools;
+
+public sealed class TreinadorTools
+{
+    private readonly IVinculoTreinadorAlunoRepository _vinculo;
+    private readonly IExecucaoTreinoRepository _execucao;
+    private readonly ITreinoAlunoRepository _treinoAluno;
+    private readonly IDraftSuggestionService _draftService;
+    private readonly IDraftRequestTracker _draftTracker;
+    private readonly ILogger<TreinadorTools> _logger;
+
+    private static readonly TimeSpan DraftTtl = TimeSpan.FromMinutes(10);
+
+    public TreinadorTools(
+        IVinculoTreinadorAlunoRepository vinculo,
+        IExecucaoTreinoRepository execucao,
+        ITreinoAlunoRepository treinoAluno,
+        IDraftSuggestionService draftService,
+        IDraftRequestTracker draftTracker,
+        ILogger<TreinadorTools> logger)
+    {
+        _vinculo = vinculo;
+        _execucao = execucao;
+        _treinoAluno = treinoAluno;
+        _draftService = draftService;
+        _draftTracker = draftTracker;
+        _logger = logger;
+    }
+
+    public IList<AITool> BuildTools(Guid treinadorId)
+    {
+        return
+        [
+            AIFunctionFactory.Create(
+                async () =>
+                {
+                    _logger.LogInformation("ToolCall get_meus_alunos TreinadorId={Id}", treinadorId);
+                    var detalhes = await _vinculo.ListarComDetalhesAsync(treinadorId, status: null, pagina: 1, tamanhoPagina: 50);
+                    if (!detalhes.Items.Any()) return "Nenhum aluno vinculado ativamente.";
+                    var linhas = detalhes.Items.Select(v => $"- {v.NomeAluno} (ID: {v.Vinculo.AlunoId})");
+                    return string.Join("\n", linhas);
+                },
+                name: "get_meus_alunos",
+                description: "Lista todos os alunos com vínculo ativo com o treinador. Sem parâmetros."),
+
+            AIFunctionFactory.Create(
+                GetProgressoAlunoFunc(treinadorId),
+                name: "get_progresso_aluno",
+                description: "Retorna histórico de execuções de um aluno vinculado. Parâmetros: alunoId (GUID string), ultimas (int 1-30)."),
+
+            AIFunctionFactory.Create(
+                GetFichasAlunoFunc(treinadorId),
+                name: "get_fichas_aluno",
+                description: "Lista fichas de treino ativas atribuídas a um aluno vinculado. Parâmetro: alunoId (GUID string)."),
+
+            AIFunctionFactory.Create(
+                GetExecucoesRecentesAlunoFunc(treinadorId),
+                name: "get_execucoes_recentes_aluno",
+                description: "Retorna execuções recentes (últimos 30 dias) de um aluno vinculado. Parâmetros: alunoId (GUID string), ultimas (int 1-10)."),
+
+            // WRITE TIER — retorna preview JSON, nunca persiste diretamente
+            AIFunctionFactory.Create(
+                SugerirFichaTreinoFunc(treinadorId),
+                name: "sugerir_ficha_treino",
+                description: "Gera sugestão de ficha de treino para um aluno. IMPORTANTE: retorna apenas preview — o treinador deve confirmar antes de salvar. Parâmetros: alunoId (GUID string), objetivo (string), dificuldade (Iniciante/Intermediário/Avançado), numeroDeTreinos (int 1-7)."),
+        ];
+    }
+
+    private Func<string, int, Task<string>> GetProgressoAlunoFunc(Guid treinadorId) =>
+        async (string alunoId, int ultimas) =>
+        {
+            _logger.LogInformation("ToolCall get_progresso_aluno TreinadorId={TId} AlunoId={AId}", treinadorId, alunoId);
+            if (!Guid.TryParse(alunoId, out var alunoGuid)) return "ID de aluno inválido.";
+
+            // CRÍTICO: validar vínculo ativo — impede Treinador X ver dados de aluno do Treinador Y
+            var vinculo = await _vinculo.ObterAtivoAsync(treinadorId, alunoGuid);
+            if (vinculo is null) return "Aluno não encontrado ou sem vínculo ativo com este treinador.";
+
+            ultimas = Math.Clamp(ultimas, 1, 30);
+            var execucoes = await _execucao.ListarComNomePorAlunoAsync(alunoGuid, pagina: 1, tamanhoPagina: ultimas);
+            if (!execucoes.Any()) return "Aluno ainda não registrou execuções de treino.";
+
+            var linhas = execucoes.Select(e =>
+                $"- {e.DataExecucao:dd/MM/yyyy} | {e.NomeTreino} | {e.TotalExercicios} ex | {e.TotalSeries} séries");
+            return $"Últimas {ultimas} execuções:\n{string.Join("\n", linhas)}";
+        };
+
+    private Func<string, Task<string>> GetFichasAlunoFunc(Guid treinadorId) =>
+        async (string alunoId) =>
+        {
+            _logger.LogInformation("ToolCall get_fichas_aluno TreinadorId={TId} AlunoId={AId}", treinadorId, alunoId);
+            if (!Guid.TryParse(alunoId, out var alunoGuid)) return "ID de aluno inválido.";
+
+            // CRÍTICO: validar vínculo ativo
+            var vinculo = await _vinculo.ObterAtivoAsync(treinadorId, alunoGuid);
+            if (vinculo is null) return "Aluno não encontrado ou sem vínculo ativo com este treinador.";
+
+            var fichas = await _treinoAluno.ListarAtivosComNomePorParAsync(treinadorId, alunoGuid);
+            if (!fichas.Any()) return "Nenhuma ficha ativa atribuída a este aluno.";
+
+            var linhas = fichas.Select(f => $"- {f.NomeTreino} (ID: {f.TreinoAluno.TreinoId})");
+            return string.Join("\n", linhas);
+        };
+
+    private Func<string, int, Task<string>> GetExecucoesRecentesAlunoFunc(Guid treinadorId) =>
+        async (string alunoId, int ultimas) =>
+        {
+            _logger.LogInformation("ToolCall get_execucoes_recentes_aluno TreinadorId={TId} AlunoId={AId}", treinadorId, alunoId);
+            if (!Guid.TryParse(alunoId, out var alunoGuid)) return "ID de aluno inválido.";
+
+            // CRÍTICO: validar vínculo ativo
+            var vinculo = await _vinculo.ObterAtivoAsync(treinadorId, alunoGuid);
+            if (vinculo is null) return "Aluno não encontrado ou sem vínculo ativo com este treinador.";
+
+            ultimas = Math.Clamp(ultimas, 1, 10);
+            var execucoes = await _execucao.ListarComNomePorAlunoAsync(alunoGuid, pagina: 1, tamanhoPagina: ultimas);
+            if (!execucoes.Any()) return "Nenhuma execução registrada ainda.";
+
+            var linhas = execucoes.Select(e =>
+                $"[{e.DataExecucao:dd/MM}] {e.NomeTreino} | {e.TotalExercicios} exercícios");
+            return string.Join("\n", linhas);
+        };
+
+    private Func<string, string, string, int, Task<string>> SugerirFichaTreinoFunc(Guid treinadorId) =>
+        async (string alunoId, string objetivo, string dificuldade, int numeroDeTreinos) =>
+        {
+            _logger.LogInformation("ToolCall sugerir_ficha_treino TreinadorId={TId} AlunoId={AId}", treinadorId, alunoId);
+            if (!Guid.TryParse(alunoId, out var alunoGuid)) return "ID de aluno inválido.";
+
+            var vinculo = await _vinculo.ObterAtivoAsync(treinadorId, alunoGuid);
+            if (vinculo is null) return "Aluno não encontrado ou sem vínculo ativo com este treinador.";
+
+            numeroDeTreinos = Math.Clamp(numeroDeTreinos, 1, 7);
+
+            var expiresAt = DateTime.UtcNow.Add(DraftTtl);
+            var draft = new SugestaoDraft(treinadorId, alunoGuid, objetivo, dificuldade, numeroDeTreinos, expiresAt);
+            var draftId = _draftService.StoreDraft(draft);
+
+            // Signal to the endpoint via shared scope — no LLM output parsing needed
+            _draftTracker.PendingDraftId = draftId;
+            _draftTracker.PendingDraftExpiresAt = expiresAt;
+
+            return $"""
+                Sugestão de ficha gerada com sucesso! O treinador precisa revisar e confirmar antes de salvar.
+
+                Resumo da sugestão:
+                - Objetivo: {objetivo}
+                - Dificuldade: {dificuldade}
+                - Frequência semanal: {numeroDeTreinos} treino(s)
+
+                Oriente o treinador a confirmar a sugestão no sistema para que a ficha seja criada.
+                """;
+        };
+}

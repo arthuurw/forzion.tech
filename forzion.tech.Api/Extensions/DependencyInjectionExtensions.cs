@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using FluentValidation;
+using forzion.tech.AI.Configuration;
 using forzion.tech.Api.Configuration;
 using forzion.tech.Api.Context;
 using forzion.tech.Api.Endpoints.Agents;
@@ -144,6 +145,8 @@ public static class DependencyInjectionExtensions
                 opt.AddPolicy("internal", _ => RateLimitPartition.GetNoLimiter<string>("test"));
                 opt.AddPolicy("webhook", _ => RateLimitPartition.GetNoLimiter<string>("test"));
                 opt.AddPolicy("agents", _ => RateLimitPartition.GetNoLimiter<string>("test"));
+                opt.AddPolicy("agent-aluno", _ => RateLimitPartition.GetNoLimiter<string>("test"));
+                opt.AddPolicy("agent-treinador", _ => RateLimitPartition.GetNoLimiter<string>("test"));
             });
         }
         else
@@ -226,6 +229,15 @@ public static class DependencyInjectionExtensions
                 opt.AddPolicy("agents", ctx =>
                     RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIp(ctx),
                         _ => Fixed(120, TimeSpan.FromMinutes(1))));
+
+                // assistentes de IA: custo por chamada é alto (tokens de LLM), então a janela é
+                // horária e a chave por usuário — limite de IP puniria NAT/rede compartilhada.
+                opt.AddPolicy("agent-aluno", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIpOrSub(ctx),
+                        _ => Fixed(20, TimeSpan.FromHours(1))));
+                opt.AddPolicy("agent-treinador", ctx =>
+                    RateLimitPartition.GetFixedWindowLimiter(RateLimitPartitionKeys.KeyFromIpOrSub(ctx),
+                        _ => Fixed(10, TimeSpan.FromHours(1))));
             });
         }
 
@@ -272,6 +284,8 @@ public static class DependencyInjectionExtensions
 
         if (!environment.IsEnvironment("Test"))
         {
+            services.AddForzionAI();
+            services.AddForzionOpenTelemetry(configuration);
             services.AddInfrastructure(configuration, environment);
             services.AddMfaProtection(configuration);
             services.AddDataProtectionPersistence(configuration);

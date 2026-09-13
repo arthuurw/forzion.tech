@@ -20,6 +20,7 @@ forzion.tech — SaaS de gestão fitness conectando treinadores e alunos: cadast
 - `forzion.tech.Domain` — entidades, value objects, enums, domain events.
 - `forzion.tech.Application` — use cases (handlers), interfaces, Result<T>, validators.
 - `forzion.tech.Infrastructure` — EF/repos, integrações, handlers de domain event, seed, migrations.
+- `forzion.tech.AI` — assistentes internos (Microsoft.Agents.AI): agentes, tools, guard rails, orçamento de tokens.
 - `forzion.tech.Api` — endpoints, middleware, DI, Program.cs.
 - `forzion.tech.Tests` — testes (xUnit).
 - `forzion.tech.PactVerification` — verificação de contratos Pact (provider). Entra no build da `.slnx`.

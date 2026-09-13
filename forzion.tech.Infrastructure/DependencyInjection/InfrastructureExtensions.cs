@@ -1,3 +1,4 @@
+using forzion.tech.AI.GuardRails;
 using forzion.tech.Application.Interfaces;
 using forzion.tech.Application.Interfaces.Repositories;
 using forzion.tech.Application.Services;
@@ -17,6 +18,7 @@ using forzion.tech.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -376,6 +378,10 @@ public static class InfrastructureExtensions
                 EnvolverComWhatsAppDecorator(sp,
                     new NullWhatsAppNotifier(sp.GetRequiredService<ILogger<NullWhatsAppNotifier>>())));
         }
+
+        // Token budget de IA — sobrescreve o InMemory registrado por AddForzionAI
+        services.RemoveAll<ITokenBudget>();
+        services.AddScoped<ITokenBudget, PostgresTokenBudget>();
 
         return services;
     }

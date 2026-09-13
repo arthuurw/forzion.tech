@@ -26,6 +26,10 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.18.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.18.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.18.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.18.0" />
     <PackageReference Include="Sentry.Extensions.Logging" Version="6.8.0" />
     <PackageReference Include="SonarAnalyzer.CSharp" Version="10.28.0.143324">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -39,6 +43,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\forzion.tech.AI\forzion.tech.AI.csproj" />
     <ProjectReference Include="..\forzion.tech.Application\forzion.tech.Application.csproj" />
     <ProjectReference Include="..\forzion.tech.Infrastructure\forzion.tech.Infrastructure.csproj" />
   </ItemGroup>
